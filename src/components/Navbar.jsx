@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X, Globe, LogOut, Settings, BarChart3 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -16,7 +16,8 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(3); // This will come from cart context
   const [selectedLanguage, setSelectedLanguage] = useState('EN');
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
+  const location = useLocation();
 
   const languages = [
     { code: 'EN', name: 'English' },
@@ -38,15 +39,15 @@ const Navbar = () => {
 
   const userProfile = user
     ? {
-        name: user.displayName || user.email,
+        name: profile?.name || user.displayName || user.email,
         email: user.email,
-        avatar: user.photoURL || 'https://ui-avatars.com/api/?name=' + (user.displayName || user.email),
-        role: 'user', // You may want to fetch this from your DB if you store roles
+        avatar: profile?.profilePicture || user.photoURL || 'https://ui-avatars.com/api/?name=' + (user.displayName || user.email),
+        role: profile?.role || 'user',
       }
     : null;
 
   return (
-    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
+    <nav className="bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors duration-300 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
@@ -55,24 +56,29 @@ const Navbar = () => {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">C</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">CureBay</span>
+              <span className="text-xl font-bold text-gray-900 dark:text-white transition-colors">CureBay</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link 
-              to="/" 
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+            <NavLink
+              to="/"
+              className={({ isActive }) =>
+                `font-medium transition-colors px-2 py-1 rounded-lg ${isActive ? 'bg-blue-600 text-white dark:bg-blue-400 dark:text-gray-900 shadow' : 'text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400'}`
+              }
+              end
             >
               Home
-            </Link>
-            <Link 
-              to="/shop" 
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+            </NavLink>
+            <NavLink
+              to="/shop"
+              className={({ isActive }) =>
+                `font-medium transition-colors px-2 py-1 rounded-lg ${isActive ? 'bg-blue-600 text-white dark:bg-blue-400 dark:text-gray-900 shadow' : 'text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400'}`
+              }
             >
               Shop
-            </Link>
+            </NavLink>
           </div>
 
           {/* Right Side Actions */}

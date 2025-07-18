@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&family=Outfit:wght@400;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -108,6 +109,21 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+body {
+  font-family: 'Outfit', Arial, sans-serif;
+}
+h1, h2, h3, h4, h5, h6, .font-serif {
+  font-family: 'Noto Serif', serif;
+}
+
+/* Optionally, set Tailwind's font-sans and font-serif for utility classes */
+.font-sans {
+  font-family: 'Outfit', Arial, sans-serif;
+}
+.font-serif {
+  font-family: 'Noto Serif', serif;
 }
 
 @layer base {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -9,6 +9,7 @@ import AuthPage from './pages/auth/AuthPage';
 import ShopPage from './pages/shop/ShopPage';
 import CartPage from './pages/cart/CartPage';
 import AdminDashboard from './pages/dashboard/admin/AdminDashboard';
+import { Switch } from './components/ui/switch';
 import './App.css';
 
 // Create a client
@@ -22,6 +23,20 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Simple dark mode state using localStorage
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('darkMode') === 'true';
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', darkMode);
+  }, [darkMode]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
@@ -58,6 +73,13 @@ function App() {
               },
             }}
           />
+          {/* Floating Dark Mode Toggle */}
+          <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}>
+            <div className="flex items-center gap-2 bg-white dark:bg-gray-900 shadow-lg rounded-full px-4 py-2">
+              <span className="text-xs text-gray-700 dark:text-gray-200">Dark Mode</span>
+              <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+            </div>
+          </div>
         </div>
       </Router>
     </QueryClientProvider>
