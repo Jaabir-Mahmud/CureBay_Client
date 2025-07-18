@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../../services/firebase';
 import Swal from 'sweetalert2';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -22,6 +22,8 @@ const AuthPage = () => {
     photo: null
   });
   const [error, setError] = useState('');
+  const [showResend, setShowResend] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
@@ -37,10 +39,36 @@ const AuthPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setShowResend(false);
+    setPendingEmail("");
     try {
       if (isLogin) {
         // Login
-        await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        const user = userCredential.user;
+        if (!user.emailVerified) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Email Not Verified',
+            text: 'Please verify your email before logging in.',
+            showCancelButton: true,
+            confirmButtonText: 'Resend Verification Email',
+            cancelButtonText: 'Close'
+          }).then(async (result) => {
+            if (result.isConfirmed) {
+              await sendEmailVerification(user);
+              Swal.fire({
+                icon: 'info',
+                title: 'Verification Email Sent',
+                text: 'A new verification link has been sent to your email.'
+              });
+            }
+          });
+          setShowResend(true);
+          setPendingEmail(formData.email);
+          await auth.signOut();
+          return;
+        }
         Swal.fire({
           icon: 'success',
           title: 'Login Successful',
@@ -50,12 +78,15 @@ const AuthPage = () => {
         });
       } else {
         // Signup
-        await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        await sendEmailVerification(userCredential.user);
         Swal.fire({
-          icon: 'success',
-          title: 'Signup Successful',
-          text: 'Your account has been created!'
+          icon: 'info',
+          title: 'Verify Your Email',
+          text: 'A verification link has been sent to your email. Please verify your email before logging in.'
         });
+        setShowResend(true);
+        setPendingEmail(formData.email);
         setIsLogin(true); // Switch to login after signup
       }
     } catch (err) {
@@ -65,6 +96,59 @@ const AuthPage = () => {
         text: err.message || 'An error occurred.'
       });
       setError(err.message || 'Authentication failed');
+    }
+  };
+
+  const handleResendVerification = async () => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, pendingEmail, formData.password);
+      await sendEmailVerification(userCredential.user);
+      Swal.fire({
+        icon: 'info',
+        title: 'Verification Email Sent',
+        text: 'A new verification link has been sent to your email.'
+      });
+      await auth.signOut();
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Resend Failed',
+        text: err.message || 'Could not resend verification email.'
+      });
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const { value: email } = await Swal.fire({
+      title: 'Reset Password',
+      input: 'email',
+      inputLabel: 'Enter your email address',
+      inputPlaceholder: 'Email',
+      showCancelButton: true,
+      confirmButtonText: 'Send Reset Link',
+      cancelButtonText: 'Cancel',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Please enter your email address';
+        }
+        return null;
+      }
+    });
+    if (email) {
+      try {
+        await sendPasswordResetEmail(auth, email);
+        Swal.fire({
+          icon: 'success',
+          title: 'Reset Email Sent',
+          text: 'A password reset link has been sent to your email.'
+        });
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Reset Failed',
+          text: err.message || 'Could not send reset email.'
+        });
+      }
     }
   };
 
@@ -242,9 +326,31 @@ const AuthPage = () => {
               </div>
             )}
 
+            <div className="flex justify-end">
+              {isLogin && (
+                <button
+                  type="button"
+                  className="text-blue-600 hover:underline text-sm"
+                  onClick={handleForgotPassword}
+                >
+                  Forgot Password?
+                </button>
+              )}
+            </div>
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
               {isLogin ? 'Sign In' : 'Sign Up'}
             </Button>
+            {showResend && (
+              <div className="text-center mt-2">
+                <button
+                  type="button"
+                  className="text-blue-600 hover:underline text-sm"
+                  onClick={handleResendVerification}
+                >
+                  Resend Verification Email
+                </button>
+              </div>
+            )}
           </form>
           {/* Toggle Login/Register */}
           <div className="text-center">
