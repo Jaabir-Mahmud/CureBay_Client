@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Upload, Github } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { auth } from '../../services/firebase';
+import Swal from 'sweetalert2';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,6 +21,10 @@ const AuthPage = () => {
     role: 'user',
     photo: null
   });
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/';
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -26,15 +34,66 @@ const AuthPage = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Authentication logic will be implemented here
-    console.log('Form submitted:', formData);
+    setError("");
+    try {
+      if (isLogin) {
+        // Login
+        await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        Swal.fire({
+          icon: 'success',
+          title: 'Login Successful',
+          text: 'Welcome back!'
+        }).then(() => {
+          navigate(from, { replace: true });
+        });
+      } else {
+        // Signup
+        await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        Swal.fire({
+          icon: 'success',
+          title: 'Signup Successful',
+          text: 'Your account has been created!'
+        });
+        setIsLogin(true); // Switch to login after signup
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Authentication Error',
+        text: err.message || 'An error occurred.'
+      });
+      setError(err.message || 'Authentication failed');
+    }
   };
 
-  const handleGoogleLogin = () => {
-    // Google authentication logic
-    console.log('Google login');
+  const handleGoogleLogin = async () => {
+    setError('');
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const idToken = await user.getIdToken();
+      // Send ID token to backend
+      const response = await fetch('/api/auth/firebase-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Login failed');
+      // Handle successful login (e.g., save user info, redirect)
+      Swal.fire({
+        icon: 'success',
+        title: 'Login Successful',
+        text: 'Welcome back!'
+      }).then(() => {
+        navigate(from, { replace: true });
+      });
+    } catch (err) {
+      setError(err.message || 'Google login failed');
+    }
   };
 
   const handleGithubLogin = () => {
@@ -53,8 +112,9 @@ const AuthPage = () => {
             {isLogin ? 'Sign in to your CureBay account' : 'Join CureBay for better healthcare'}
           </p>
         </CardHeader>
-        
         <CardContent className="space-y-6">
+          {/* Error Message */}
+          {error && <div className="text-red-500 text-center">{error}</div>}
           {/* Social Login Buttons */}
           <div className="space-y-3">
             <Button
@@ -70,7 +130,6 @@ const AuthPage = () => {
               </svg>
               <span>Continue with Google</span>
             </Button>
-            
             <Button
               onClick={handleGithubLogin}
               variant="outline"
@@ -80,7 +139,6 @@ const AuthPage = () => {
               <span>Continue with GitHub</span>
             </Button>
           </div>
-
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300" />
@@ -89,7 +147,6 @@ const AuthPage = () => {
               <span className="px-2 bg-white text-gray-500">Or continue with email</span>
             </div>
           </div>
-
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
@@ -124,6 +181,7 @@ const AuthPage = () => {
                   onChange={handleInputChange}
                   className="pl-10"
                   required
+                  autoComplete="username"
                 />
               </div>
             </div>
@@ -157,6 +215,7 @@ const AuthPage = () => {
                   onChange={handleInputChange}
                   className="pl-10 pr-10"
                   required
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
@@ -187,7 +246,6 @@ const AuthPage = () => {
               {isLogin ? 'Sign In' : 'Sign Up'}
             </Button>
           </form>
-
           {/* Toggle Login/Register */}
           <div className="text-center">
             <p className="text-sm text-gray-600">
@@ -200,7 +258,6 @@ const AuthPage = () => {
               </button>
             </p>
           </div>
-
           {/* Back to Home */}
           <div className="text-center">
             <Link to="/" className="text-sm text-gray-500 hover:text-gray-700">
