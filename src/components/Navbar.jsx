@@ -10,12 +10,13 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
+import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // This will be managed by auth context
   const [cartItemCount, setCartItemCount] = useState(3); // This will come from cart context
   const [selectedLanguage, setSelectedLanguage] = useState('EN');
+  const { user, logout } = useAuth();
 
   const languages = [
     { code: 'EN', name: 'English' },
@@ -23,18 +24,6 @@ const Navbar = () => {
     { code: 'FR', name: 'Français' },
     { code: 'DE', name: 'Deutsch' },
   ];
-
-  const userProfile = {
-    name: 'John Doe',
-    email: 'john@example.com',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face&auto=format',
-    role: 'user' // user, seller, admin
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    // Add logout logic here
-  };
 
   const getDashboardLink = (role) => {
     switch (role) {
@@ -46,6 +35,15 @@ const Navbar = () => {
         return '/user/dashboard';
     }
   };
+
+  const userProfile = user
+    ? {
+        name: user.displayName || user.email,
+        email: user.email,
+        avatar: user.photoURL || 'https://ui-avatars.com/api/?name=' + (user.displayName || user.email),
+        role: 'user', // You may want to fetch this from your DB if you store roles
+      }
+    : null;
 
   return (
     <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
@@ -116,7 +114,7 @@ const Navbar = () => {
             </Link>
 
             {/* User Authentication */}
-            {isLoggedIn ? (
+            {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-2 p-2">
@@ -134,6 +132,7 @@ const Navbar = () => {
                   <div className="px-2 py-1.5">
                     <p className="text-sm font-medium">{userProfile.name}</p>
                     <p className="text-xs text-gray-500">{userProfile.email}</p>
+                    <p className="text-xs text-blue-600 font-semibold capitalize">{userProfile.role}</p>
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -149,7 +148,7 @@ const Navbar = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <DropdownMenuItem onClick={logout} className="text-red-600">
                     <LogOut className="w-4 h-4 mr-2" />
                     Logout
                   </DropdownMenuItem>
@@ -193,7 +192,7 @@ const Navbar = () => {
               >
                 Shop
               </Link>
-              {!isLoggedIn && (
+              {!user && (
                 <Link
                   to="/auth"
                   className="block px-3 py-2 text-blue-600 font-medium hover:bg-blue-50 rounded-md"
