@@ -126,6 +126,14 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   font-family: 'Noto Serif', serif;
 }
 
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.group\/card > * {
+  transition: transform 0.3s cubic-bezier(.25,.8,.25,1);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
