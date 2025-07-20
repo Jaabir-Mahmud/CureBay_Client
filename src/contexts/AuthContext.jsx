@@ -48,11 +48,44 @@ export const AuthProvider = ({ children }) => {
           return;
         }
       } else if (res.status === 404) {
-        // User not found in database - they may have been deleted
-        console.log('User not found in database, logging out...');
+        // User not found in database - try to recreate the account
+        console.log('User not found in database, attempting to recreate account...');
+        try {
+          const loginResponse = await fetch('/api/auth/firebase-login', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ idToken: token }),
+          });
+          
+          console.log('Login response status:', loginResponse.status);
+          
+          if (loginResponse.ok) {
+            const userData = await loginResponse.json();
+            console.log('Account recreated successfully:', userData);
+            setProfile({
+              name: userData.user.username,
+              email: userData.user.email,
+              role: userData.user.role,
+              isActive: true,
+            });
+            toast.success('Account recreated successfully!', {
+              duration: 4000,
+              position: 'top-center',
+            });
+            return;
+          } else {
+            const errorData = await loginResponse.text();
+            console.error('Failed to recreate account:', loginResponse.status, errorData);
+          }
+        } catch (recreateError) {
+          console.error('Error recreating account:', recreateError);
+        }
+        
+        // If recreation fails, show the deletion message and log out
         setProfile(null);
         await signOut(auth);
-        // Show notification to user
         if (typeof window !== 'undefined') {
           toast.error('Your account has been deleted by an administrator. You have been logged out.', {
             duration: 6000,

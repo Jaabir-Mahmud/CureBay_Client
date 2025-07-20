@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../../services/firebase';
 import Swal from 'sweetalert2';
+import toast from 'react-hot-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 
 const AuthPage = () => {
@@ -69,13 +70,12 @@ const AuthPage = () => {
           await auth.signOut();
           return;
         }
-        Swal.fire({
-          icon: 'success',
-          title: 'Login Successful',
-          text: 'Welcome back!'
-        }).then(() => {
-          navigate(from, { replace: true });
+        // Show toast notification and navigate automatically
+        toast.success('Login Successful! Welcome back!', {
+          duration: 3000,
+          position: 'top-center',
         });
+        navigate(from, { replace: true });
       } else {
         // Signup
         const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
@@ -167,14 +167,12 @@ const AuthPage = () => {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Login failed');
-      // Handle successful login (e.g., save user info, redirect)
-      Swal.fire({
-        icon: 'success',
-        title: 'Login Successful',
-        text: 'Welcome back!'
-      }).then(() => {
-        navigate(from, { replace: true });
+      // Handle successful login with toast notification and automatic navigation
+      toast.success('Login Successful! Welcome back!', {
+        duration: 3000,
+        position: 'top-center',
       });
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || 'Google login failed');
     }
