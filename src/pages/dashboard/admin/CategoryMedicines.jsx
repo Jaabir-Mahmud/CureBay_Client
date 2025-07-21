@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Search, Filter, Grid, List, Eye, Edit, Trash2, Package, ShoppingCart, Plus, X, Upload, ImageIcon } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -21,6 +21,7 @@ import toast from 'react-hot-toast';
 const CategoryMedicines = () => {
   const { categoryId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const [category, setCategory] = useState(null);
   const [medicines, setMedicines] = useState([]);
@@ -30,6 +31,14 @@ const CategoryMedicines = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [sortBy, setSortBy] = useState('name');
   const [filterInStock, setFilterInStock] = useState('all');
+
+  // Get the tab to return to from URL params
+  const fromTab = searchParams.get('fromTab') || 'categories';
+
+  // Function to handle back navigation with proper tab restoration
+  const handleBackNavigation = () => {
+    navigate(`/dashboard/admin?tab=${fromTab}`);
+  };
 
   // Add Medicine Modal State
   const [addMedicineModalOpen, setAddMedicineModalOpen] = useState(false);
@@ -49,53 +58,118 @@ const CategoryMedicines = () => {
     isAdvertised: false
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Helper function to upload image file
+  const uploadImageFile = async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch('/api/upload/image', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to upload image');
+    }
+
+    return await response.json();
+  };
 
   useEffect(() => {
+    console.log('CategoryMedicines mounted with categoryId:', categoryId);
     fetchCategoryMedicines();
     fetchAllCategories();
   }, [categoryId]);
 
+  // Debug effect to track medicines state changes
+  useEffect(() => {
+    console.log('Medicines state changed:', medicines.length, 'medicines');
+    console.log('Current medicines:', medicines);
+  }, [medicines]);
+
   const fetchAllCategories = async () => {
     try {
+      console.log('Fetching categories...');
       const res = await fetch('/api/categories');
       if (res.ok) {
         const data = await res.json();
+        console.log('Categories fetched:', data);
         setCategories(data);
+        
+        if (data.length === 0) {
+          toast.error('No categories found. Please create categories first.');
+        }
+      } else {
+        console.error('Failed to fetch categories:', res.status, res.statusText);
+        toast.error('Failed to load categories');
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
+      toast.error('Error loading categories');
     }
   };
 
   const fetchCategoryMedicines = async () => {
     try {
       setLoading(true);
+      console.log('Fetching medicines for category:', categoryId);
       
       // Fetch category details
       const categoryRes = await fetch(`/api/categories/${categoryId}`);
       if (categoryRes.ok) {
         const categoryData = await categoryRes.json();
+        console.log('Category data:', categoryData);
         setCategory(categoryData);
+      } else {
+        console.error('Failed to fetch category:', categoryRes.status);
       }
       
       // Fetch medicines in this category
       const medicinesRes = await fetch(`/api/medicines?category=${categoryId}&limit=100`);
       if (medicinesRes.ok) {
         const medicinesData = await medicinesRes.json();
-        setMedicines(medicinesData.medicines || []);
+        console.log('Medicines data:', medicinesData);
+        console.log('Medicines data type:', typeof medicinesData);
+        console.log('Medicines data.medicines:', medicinesData.medicines);
+        
+        const medicinesList = medicinesData.medicines || medicinesData || [];
+        console.log('Setting medicines list with', medicinesList.length, 'items');
+        console.log('Sample medicine item:', medicinesList[0]);
+        
+        setMedicines(medicinesList);
+      } else {
+        console.error('Failed to fetch medicines:', medicinesRes.status, medicinesRes.statusText);
+        const errorText = await medicinesRes.text();
+        console.error('Error response:', errorText);
+        toast.error('Failed to load medicines');
+        setMedicines([]); // Set empty array on error
       }
     } catch (error) {
       console.error('Error fetching category medicines:', error);
+      toast.error('Error loading data');
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredMedicines = medicines
+  const filteredMedicines = Array.isArray(medicines) ? medicines
     .filter(medicine => {
-      const matchesSearch = medicine.name.toLowerCase().includes(search.toLowerCase()) ||
-                           medicine.genericName.toLowerCase().includes(search.toLowerCase()) ||
-                           medicine.company.toLowerCase().includes(search.toLowerCase());
+      // Safety check for medicine properties
+      if (!medicine || typeof medicine !== 'object') {
+        console.warn('Invalid medicine object:', medicine);
+        return false;
+      }
+      
+      const name = medicine.name || '';
+      const genericName = medicine.genericName || '';
+      const company = medicine.company || '';
+      
+      const matchesSearch = name.toLowerCase().includes(search.toLowerCase()) ||
+                           genericName.toLowerCase().includes(search.toLowerCase()) ||
+                           company.toLowerCase().includes(search.toLowerCase());
       
       const matchesStock = filterInStock === 'all' || 
                           (filterInStock === 'inStock' && medicine.inStock) ||
@@ -106,32 +180,42 @@ const CategoryMedicines = () => {
     .sort((a, b) => {
       switch (sortBy) {
         case 'name':
-          return a.name.localeCompare(b.name);
+          return (a.name || '').localeCompare(b.name || '');
         case 'price':
-          return a.finalPrice - b.finalPrice;
+          return (a.finalPrice || 0) - (b.finalPrice || 0);
         case 'stock':
-          return b.stockQuantity - a.stockQuantity;
+          return (b.stockQuantity || 0) - (a.stockQuantity || 0);
         case 'company':
-          return a.company.localeCompare(b.company);
+          return (a.company || '').localeCompare(b.company || '');
         default:
           return 0;
       }
-    });
+    }) : [];
+
+  // Debug log to check medicines state
+  console.log('Total medicines in state:', medicines.length);
+  console.log('Filtered medicines count:', filteredMedicines.length);
 
   const openAddMedicineModal = () => {
+    // Validate that we have a valid categoryId
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    const validCategoryId = categoryId && objectIdRegex.test(categoryId) ? categoryId : '';
+    
+    console.log('Opening modal with categoryId:', categoryId, 'Valid:', !!validCategoryId);
+    
     setMedicineForm({
       name: '',
       genericName: '',
       description: '',
-      image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&h=200&fit=crop&auto=format',
-      category: categoryId, // Pre-select current category
+      image: '', // Don't set a default image URL here
+      category: validCategoryId, // Pre-select current category if valid
       company: '',
       massUnit: '',
       price: '',
       unitPrice: '',
       stripPrice: '',
       discountPercentage: '0',
-      stockQuantity: '0',
+      stockQuantity: '1', // Default to 1 instead of 0
       isAdvertised: false
     });
     setAddMedicineModalOpen(true);
@@ -188,17 +272,63 @@ const CategoryMedicines = () => {
       toast.error('Valid price is required');
       return;
     }
+    if (!medicineForm.stockQuantity || isNaN(medicineForm.stockQuantity) || parseInt(medicineForm.stockQuantity) < 0) {
+      toast.error('Valid stock quantity is required');
+      return;
+    }
+
+    // Validate category ID format (basic MongoDB ObjectId check)
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(medicineForm.category)) {
+      toast.error('Invalid category selected. Please select a valid category.');
+      return;
+    }
+
+    console.log('Form validation passed. Form data being processed:', {
+      ...medicineForm,
+      categoryId: categoryId,
+      selectedCategory: medicineForm.category
+    });
 
     setIsSubmitting(true);
     try {
+      // Handle image upload if a file was selected
+      let imageUrl = medicineForm.image || '';
+      
+      if (medicineForm.imageFile) {
+        try {
+          setIsUploadingImage(true);
+          const uploadToast = toast.loading('Uploading image...');
+          
+          const uploadResult = await uploadImageFile(medicineForm.imageFile);
+          imageUrl = uploadResult.url;
+          
+          toast.dismiss(uploadToast);
+          toast.success('Image uploaded successfully!');
+        } catch (uploadError) {
+          toast.error(`Image upload failed: ${uploadError.message}`);
+          // Continue with form submission even if image upload fails
+          console.error('Image upload error:', uploadError);
+        } finally {
+          setIsUploadingImage(false);
+        }
+      }
+
       const formData = {
         ...medicineForm,
+        image: imageUrl, // Use uploaded image URL or provided URL
         price: parseFloat(medicineForm.price),
         unitPrice: parseFloat(medicineForm.unitPrice) || 0,
         stripPrice: parseFloat(medicineForm.stripPrice) || 0,
         discountPercentage: parseFloat(medicineForm.discountPercentage) || 0,
         stockQuantity: parseInt(medicineForm.stockQuantity) || 0,
       };
+
+      // Remove imageFile from the data being sent to server
+      delete formData.imageFile;
+
+      console.log('Original form data:', medicineForm);
+      console.log('Processed form data being sent:', formData);
 
       const res = await fetch('/api/medicines', {
         method: 'POST',
@@ -208,20 +338,35 @@ const CategoryMedicines = () => {
         body: JSON.stringify(formData),
       });
 
+      const responseText = await res.text();
+
       if (res.ok) {
-        const newMedicine = await res.json();
-        setMedicines(prev => [newMedicine, ...prev]);
+        const newMedicine = JSON.parse(responseText);
+        console.log('Medicine created successfully:', newMedicine);
+        
+        // Add the new medicine directly to the state instead of refetching
+        setMedicines(prevMedicines => {
+          const updatedMedicines = [...prevMedicines, newMedicine];
+          return updatedMedicines;
+        });
+        
         toast.success('Medicine added successfully!');
         closeAddMedicineModal();
-        fetchCategoryMedicines(); // Refresh the list
+        
+        // Also refresh the data as a fallback after a short delay
+        setTimeout(() => {
+          fetchCategoryMedicines();
+        }, 1000);
       } else {
         let errorMessage = 'Failed to add medicine';
         try {
-          const errorData = await res.json();
+          const errorData = JSON.parse(responseText);
+          console.error('Server error response:', errorData);
           errorMessage = errorData.message || errorMessage;
         } catch (e) {
-          // If response is not JSON, use status text
-          errorMessage = res.statusText || errorMessage;
+          // If response is not JSON, use the raw text or status text
+          console.error('Non-JSON error response:', responseText);
+          errorMessage = responseText || res.statusText || errorMessage;
         }
         toast.error(errorMessage);
       }
@@ -253,20 +398,30 @@ const CategoryMedicines = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/dashboard/admin')}
+              onClick={handleBackNavigation}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Dashboard
             </Button>
             
-            <Button
-              onClick={openAddMedicineModal}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Medicine
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={openAddMedicineModal}
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Medicine
+              </Button>
+              <Button
+                variant="outline"
+                onClick={fetchCategoryMedicines}
+                className="flex items-center gap-2"
+              >
+                <Package className="w-4 h-4" />
+                Refresh
+              </Button>
+            </div>
           </div>
           
           <div className="flex items-center gap-4 mb-2">
@@ -353,6 +508,7 @@ const CategoryMedicines = () => {
         </Card>
 
         {/* Medicines Display */}
+        {console.log('Rendering medicines. Total:', medicines.length, 'Filtered:', filteredMedicines.length)}
         {filteredMedicines.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
@@ -563,16 +719,27 @@ const CategoryMedicines = () => {
               </Label>
               <Select value={medicineForm.category} onValueChange={(value) => setMedicineForm(prev => ({ ...prev, category: value }))}>
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select a category" />
+                  <SelectValue placeholder={categories.length === 0 ? "No categories available" : "Select a category"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat._id} value={cat._id}>
-                      {cat.name}
+                  {categories.length === 0 ? (
+                    <SelectItem key="no-categories" value="" disabled>
+                      No categories found. Create categories first.
                     </SelectItem>
-                  ))}
+                  ) : (
+                    categories.map((cat) => (
+                      <SelectItem key={cat._id || cat.id} value={cat._id || cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
+              {categories.length === 0 && (
+                <p className="text-sm text-red-600 mt-1">
+                  No categories available. Please create categories first before adding medicines.
+                </p>
+              )}
             </div>
 
             {/* Description */}
@@ -706,18 +873,56 @@ const CategoryMedicines = () => {
               />
             </div>
 
-            {/* Medicine Image */}
-            <div>
-              <Label htmlFor="image" className="text-sm font-medium">
-                Medicine Image
-              </Label>
-              <Input
-                id="image"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setMedicineForm(prev => ({ ...prev, imageFile: e.target.files[0] }))}
-                className="mt-1"
-              />
+            {/* Medicine Image Section */}
+            <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+              <h4 className="text-sm font-medium text-gray-900">Medicine Image</h4>
+              
+              {/* File Upload */}
+              <div>
+                <Label htmlFor="imageFile" className="text-sm font-medium">
+                  Upload Image File
+                </Label>
+                <Input
+                  id="imageFile"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, imageFile: e.target.files[0] }))}
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Upload an image file (JPEG, PNG, GIF, WebP). Maximum size: 5MB.
+                  {medicineForm.imageFile && (
+                    <span className="text-green-600 font-medium">
+                      {' '}Selected: {medicineForm.imageFile.name}
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              {/* OR Divider */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 border-t border-gray-300"></div>
+                <span className="text-xs text-gray-500 px-2 bg-gray-50">OR</span>
+                <div className="flex-1 border-t border-gray-300"></div>
+              </div>
+
+              {/* Image URL */}
+              <div>
+                <Label htmlFor="image" className="text-sm font-medium">
+                  Medicine Image URL
+                </Label>
+                <Input
+                  id="image"
+                  type="url"
+                  value={medicineForm.image}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, image: e.target.value }))}
+                  placeholder="Enter image URL (e.g., https://example.com/medicine-image.jpg)"
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Provide a direct URL to the medicine image.
+                </p>
+              </div>
             </div>
 
             {/* Form Actions */}
@@ -731,13 +936,13 @@ const CategoryMedicines = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploadingImage}
                 className="flex items-center gap-2"
               >
-                {isSubmitting ? (
+                {isSubmitting || isUploadingImage ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Adding...
+                    {isUploadingImage ? 'Uploading Image...' : 'Adding Medicine...'}
                   </>
                 ) : (
                   <>

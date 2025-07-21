@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Users,
   Package,
@@ -193,117 +193,144 @@ function ManageUsers() {
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <div className="bg-white/30 dark:bg-white/10 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 transition-all duration-300">
-      <div className="flex flex-col sm:flex-row gap-2 mb-4">
-        <input
-          type="text"
-          placeholder="Search by name or email"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 text-gray-900 dark:text-white w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-        />
-        <select
-          value={roleFilter}
-          onChange={e => setRoleFilter(e.target.value)}
-          className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition w-full max-w-xs"
-        >
-          <option value="all">All Roles</option>
-          <option value="user">User</option>
-          <option value="seller">Seller</option>
-          <option value="admin">Admin</option>
-        </select>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={refreshUsers}
-                disabled={isRefreshing}
-                variant="outline"
-                className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 transition-all duration-200"
-              >
-                {isRefreshing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Refreshing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    Refresh
-                  </>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Refresh user list (Ctrl+R or F5)</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+    <div className="bg-white/30 dark:bg-white/10 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4 transition-all duration-300">
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            placeholder="Search by name or email"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="px-3 sm:px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 text-gray-900 dark:text-white w-full sm:max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-400 transition text-sm"
+          />
+          <select
+            value={roleFilter}
+            onChange={e => setRoleFilter(e.target.value)}
+            className="px-3 sm:px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition w-full sm:max-w-xs text-sm"
+          >
+            <option value="all">All Roles</option>
+            <option value="user">User</option>
+            <option value="seller">Seller</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div className="flex justify-start sm:justify-end">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={refreshUsers}
+                  disabled={isRefreshing}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 transition-all duration-200"
+                >
+                  {isRefreshing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span className="hidden sm:inline">Refreshing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      <span className="hidden sm:inline">Refresh</span>
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Refresh user list (Ctrl+R or F5)</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full rounded-xl overflow-hidden">
-          <thead>
-            <tr className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
-              <th className="py-3 px-4 text-left">Name</th>
-              <th className="py-3 px-4 text-left">Email</th>
-              <th className="py-3 px-4 text-left">Role</th>
-              <th className="py-3 px-4 text-left">Active</th>
-              <th className="py-3 px-4 text-left">Registered</th>
-              <th className="py-3 px-4 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map(user => (
-              <tr
-                key={user._id}
-                className="hover:bg-blue-50 dark:hover:bg-blue-900/30 transition"
-              >
-                <td className="py-2 px-4 font-medium text-gray-900 dark:text-white">{user.name}</td>
-                <td className="py-2 px-4 text-gray-700 dark:text-gray-300">{user.email}</td>
-                <td className="py-2 px-4 capitalize">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold
-                    ${user.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                      : user.role === 'seller' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                      : 'bg-gray-200 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300'}`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td className="py-2 px-4">
-                  <button
-                    onClick={() => toggleActive(user._id)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition
-                      ${user.isActive
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                        : 'bg-gray-200 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300'}`}
-                  >
-                    {user.isActive ? 'Active' : 'Inactive'}
-                  </button>
-                </td>
-                <td className="py-2 px-4 text-xs text-gray-500 dark:text-gray-400">
-                  {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}
-                </td>
-                <td className="py-2 px-4 flex gap-2">
-                  <select
-                    value={user.role}
-                    onChange={e => updateRole(user._id, e.target.value)}
-                    className="border border-gray-300 dark:border-gray-700 rounded-lg px-2 py-1 bg-white/80 dark:bg-gray-900/80 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-                  >
-                    <option value="user">User</option>
-                    <option value="seller">Seller</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                  <button
-                    onClick={() => openDeleteModal(user)}
-                    className="px-3 py-1 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-semibold text-xs hover:bg-red-200 dark:hover:bg-red-800/60 transition flex items-center gap-1"
-                  >
-                    <Trash2 size={12} />
-                    Delete
-                  </button>
-                </td>
+      <div className="overflow-x-auto -mx-3 sm:-mx-4">
+        <div className="inline-block min-w-full align-middle">
+          <table className="min-w-full rounded-xl overflow-hidden">
+            <thead>
+              <tr className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
+                <th className="py-2 sm:py-3 px-2 sm:px-4 text-left text-xs sm:text-sm font-medium">Name</th>
+                <th className="py-2 sm:py-3 px-2 sm:px-4 text-left text-xs sm:text-sm font-medium hidden sm:table-cell">Email</th>
+                <th className="py-2 sm:py-3 px-2 sm:px-4 text-left text-xs sm:text-sm font-medium">Role</th>
+                <th className="py-2 sm:py-3 px-2 sm:px-4 text-left text-xs sm:text-sm font-medium hidden md:table-cell">Active</th>
+                <th className="py-2 sm:py-3 px-2 sm:px-4 text-left text-xs sm:text-sm font-medium hidden lg:table-cell">Registered</th>
+                <th className="py-2 sm:py-3 px-2 sm:px-4 text-left text-xs sm:text-sm font-medium">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredUsers.map(user => (
+                <tr
+                  key={user._id}
+                  className="hover:bg-blue-50 dark:hover:bg-blue-900/30 transition border-b border-gray-100 dark:border-gray-700 last:border-0"
+                >
+                  <td className="py-2 sm:py-3 px-2 sm:px-4">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{user.name}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 sm:hidden truncate max-w-[120px]">{user.email}</p>
+                    </div>
+                  </td>
+                  <td className="py-2 sm:py-3 px-2 sm:px-4 text-gray-700 dark:text-gray-300 text-xs sm:text-sm hidden sm:table-cell">
+                    <span className="truncate max-w-[200px] block">{user.email}</span>
+                  </td>
+                  <td className="py-2 sm:py-3 px-2 sm:px-4 capitalize">
+                    <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold
+                      ${user.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                        : user.role === 'seller' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                        : 'bg-gray-200 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300'}`}>
+                      {user.role}
+                    </span>
+                    <div className="md:hidden mt-1">
+                      <button
+                        onClick={() => toggleActive(user._id)}
+                        className={`px-1.5 py-0.5 rounded-full text-xs font-semibold transition
+                          ${user.isActive
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                            : 'bg-gray-200 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300'}`}
+                      >
+                        {user.isActive ? 'Active' : 'Inactive'}
+                      </button>
+                    </div>
+                  </td>
+                  <td className="py-2 sm:py-3 px-2 sm:px-4 hidden md:table-cell">
+                    <button
+                      onClick={() => toggleActive(user._id)}
+                      className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-semibold transition
+                        ${user.isActive
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                          : 'bg-gray-200 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300'}`}
+                    >
+                      {user.isActive ? 'Active' : 'Inactive'}
+                    </button>
+                  </td>
+                  <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs text-gray-500 dark:text-gray-400 hidden lg:table-cell">
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}
+                  </td>
+                  <td className="py-2 sm:py-3 px-2 sm:px-4">
+                    <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
+                      <select
+                        value={user.role}
+                        onChange={e => updateRole(user._id, e.target.value)}
+                        className="border border-gray-300 dark:border-gray-700 rounded px-1 sm:px-2 py-0.5 sm:py-1 bg-white/80 dark:bg-gray-900/80 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition text-xs w-full sm:w-auto"
+                      >
+                        <option value="user">User</option>
+                        <option value="seller">Seller</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      <button
+                        onClick={() => openDeleteModal(user)}
+                        className="px-2 sm:px-3 py-0.5 sm:py-1 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-semibold text-xs hover:bg-red-200 dark:hover:bg-red-800/60 transition flex items-center justify-center gap-1"
+                      >
+                        <Trash2 size={10} className="sm:w-3 sm:h-3" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Delete Confirmation Modal */}
@@ -404,7 +431,10 @@ function ManageUsers() {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    return searchParams.get('tab') || 'overview';
+  });
   const [stats, setStats] = useState(null);
   const [recentUsers, setRecentUsers] = useState([]);
   const [pendingPayments, setPendingPayments] = useState([]);
@@ -491,6 +521,18 @@ const AdminDashboard = () => {
   const [deleteCategoryModalOpen, setDeleteCategoryModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+
+  // Function to handle tab changes and update URL
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
+
+  // Update activeTab when URL search params change (e.g., browser back/forward)
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'overview';
+    setActiveTab(tab);
+  }, [searchParams]);
 
   useEffect(() => {
     // Set default stats to prevent breaking when API fails
@@ -694,7 +736,8 @@ const AdminDashboard = () => {
   };
 
   const viewCategoryMedicines = (category) => {
-    navigate(`/dashboard/admin/categories/${category.id}/medicines`);
+    // Preserve current tab in the URL for proper back navigation
+    navigate(`/dashboard/admin/categories/${category.id}/medicines?fromTab=${activeTab}`);
   };
 
   const closeCategoryModal = () => {
@@ -906,28 +949,63 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <>
+      <style>{`
+        .tab-scroll::-webkit-scrollbar {
+          height: 4px;
+        }
+        .tab-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .tab-scroll::-webkit-scrollbar-thumb {
+          background: #d1d5db;
+          border-radius: 2px;
+        }
+        .tab-scroll::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
+        }
+        @media (max-width: 640px) {
+          .tab-scroll::-webkit-scrollbar {
+            height: 2px;
+          }
+        }
+      `}</style>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-300">Manage your CureBay platform</p>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Manage your CureBay platform</p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="banners">Banners</TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <div className="w-full overflow-x-auto pb-2 tab-scroll">
+            <TabsList className="flex h-10 items-center gap-1 rounded-md bg-muted p-1 text-muted-foreground" style={{ minWidth: 'max-content' }}>
+              <TabsTrigger value="overview" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="users" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
+                Users
+              </TabsTrigger>
+              <TabsTrigger value="categories" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
+                Categories
+              </TabsTrigger>
+              <TabsTrigger value="payments" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
+                Payments
+              </TabsTrigger>
+              <TabsTrigger value="reports" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
+                Reports
+              </TabsTrigger>
+              <TabsTrigger value="banners" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
+                Banners
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
               <CardContainer className="inter-var">
                 <CardBody className="relative bg-white/20 dark:bg-white/10 backdrop-blur-md border border-white/30 dark:border-white/20 shadow-lg rounded-2xl p-6 transition-all duration-300 group/card hover:shadow-2xl hover:shadow-blue-400/20">
                   <div className="absolute inset-0 rounded-2xl pointer-events-none border-2 border-transparent group-hover/card:border-blue-400 group-hover/card:shadow-lg group-hover/card:shadow-blue-400/30 transition-all duration-300" style={{ zIndex: 1 }} />
@@ -1041,25 +1119,25 @@ const AdminDashboard = () => {
             </div>
 
             {/* Recent Activity */}
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Recent Users</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">Recent Users</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {Array.isArray(recentUsers) && recentUsers.map((user) => (
-                      <div key={user._id} className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{user.name}</p>
-                          <p className="text-sm text-gray-600">{user.email}</p>
-                          <p className="text-xs text-gray-400">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}</p>
+                      <div key={user._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm sm:text-base truncate">{user.name}</p>
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{user.email}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}</p>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={user.role === 'seller' ? 'default' : user.role === 'admin' ? 'destructive' : 'secondary'}>
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                          <Badge variant={user.role === 'seller' ? 'default' : user.role === 'admin' ? 'destructive' : 'secondary'} className="text-xs">
                             {user.role}
                           </Badge>
-                          <Badge variant={user.isActive ? 'default' : 'secondary'}>
+                          <Badge variant={user.isActive ? 'default' : 'secondary'} className="text-xs">
                             {user.isActive ? 'Active' : 'Inactive'}
                           </Badge>
                         </div>
@@ -1071,21 +1149,25 @@ const AdminDashboard = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Pending Payments</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">Pending Payments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {(!pendingPayments || pendingPayments.length === 0) && <div className="text-gray-400">No pending payments.</div>}
+                  <div className="space-y-3 sm:space-y-4">
+                    {(!pendingPayments || pendingPayments.length === 0) && (
+                      <div className="text-gray-400 text-center py-8 text-sm sm:text-base">No pending payments.</div>
+                    )}
                     {Array.isArray(pendingPayments) && pendingPayments.map((payment) => (
-                      <div key={payment.id} className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">Order #{payment.id}</p>
-                          <p className="text-sm text-gray-600">{payment.customer} ({payment.email})</p>
-                          <p className="text-xs text-gray-400">{payment.date ? new Date(payment.date).toLocaleDateString() : ''}</p>
+                      <div key={payment.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm sm:text-base">Order #{payment.id}</p>
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
+                            {payment.customer} ({payment.email})
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">{payment.date ? new Date(payment.date).toLocaleDateString() : ''}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold">${payment.amount}</p>
-                          <Button size="sm" className="mt-1" onClick={() => acceptPayment(payment.id)}>
+                        <div className="text-left sm:text-right flex-shrink-0">
+                          <p className="font-bold text-sm sm:text-base">${payment.amount}</p>
+                          <Button size="sm" className="mt-1 w-full sm:w-auto" onClick={() => acceptPayment(payment.id)}>
                             Accept
                           </Button>
                         </div>
@@ -1110,11 +1192,11 @@ const AdminDashboard = () => {
           </TabsContent>
 
           {/* Categories Tab */}
-          <TabsContent value="categories" className="space-y-6">
+          <TabsContent value="categories" className="space-y-4 sm:space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Medicine Categories</h2>
-                <p className="text-gray-600 dark:text-gray-300">Manage and organize your medicine categories</p>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Medicine Categories</h2>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Manage and organize your medicine categories</p>
               </div>
               <Button onClick={() => openCategoryModal()} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
@@ -1124,7 +1206,7 @@ const AdminDashboard = () => {
 
             {/* Search and View Controls */}
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row gap-4 items-center">
                   <div className="relative flex-1 w-full">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -1132,23 +1214,27 @@ const AdminDashboard = () => {
                       placeholder="Search categories..."
                       value={categorySearch}
                       onChange={(e) => setCategorySearch(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 text-sm"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full sm:w-auto">
                     <Button
                       variant={categoryViewMode === 'grid' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setCategoryViewMode('grid')}
+                      className="flex-1 sm:flex-none"
                     >
-                      <Grid className="w-4 h-4" />
+                      <Grid className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Grid</span>
                     </Button>
                     <Button
                       variant={categoryViewMode === 'list' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setCategoryViewMode('list')}
+                      className="flex-1 sm:flex-none"
                     >
-                      <List className="w-4 h-4" />
+                      <List className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">List</span>
                     </Button>
                   </div>
                 </div>
@@ -1157,9 +1243,9 @@ const AdminDashboard = () => {
 
             {/* Categories Display */}
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-3 sm:p-6">
                 {categoryViewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                     {filteredCategories.map((category) => {
                       const IconComponent = getIconComponent(category.icon);
                       const colorClasses = getColorClasses(category.color);
@@ -1167,29 +1253,33 @@ const AdminDashboard = () => {
                       return (
                         <div 
                           key={category.id} 
-                          className={`relative group rounded-lg border-2 ${colorClasses.border} ${colorClasses.bg} p-6 transition-all duration-300 hover:shadow-lg hover:scale-105`}
+                          className={`relative group rounded-lg border-2 ${colorClasses.border} ${colorClasses.bg} p-3 sm:p-6 transition-all duration-300 hover:shadow-lg hover:scale-105`}
                         >
-                          <div className="flex items-start justify-between mb-4">
-                            <div className={`w-12 h-12 rounded-full ${colorClasses.icon} flex items-center justify-center`}>
-                              <IconComponent className={`w-6 h-6 ${colorClasses.text}`} />
+                          <div className="flex items-start justify-between mb-3 sm:mb-4">
+                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full ${colorClasses.icon} flex items-center justify-center`}>
+                              <IconComponent className={`w-5 h-5 sm:w-6 sm:h-6 ${colorClasses.text}`} />
                             </div>
                             <Badge 
                               variant={category.status === 'active' ? 'default' : 'secondary'}
-                              className="cursor-pointer hover:opacity-80 transition-opacity"
+                              className="cursor-pointer hover:opacity-80 transition-opacity text-xs"
                               onClick={() => toggleCategoryStatus(category.id)}
                             >
                               {category.status}
                             </Badge>
                           </div>
                           
-                          <div className="mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                          <div className="mb-3 sm:mb-4">
+                            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
                               {category.name}
                             </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 sm:mb-3 overflow-hidden" style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical'
+                            }}>
                               {category.description}
                             </p>
-                            <div className="flex items-center justify-between text-sm">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 text-xs sm:text-sm">
                               <span className={`font-medium ${colorClasses.text}`}>
                                 {category.count.toLocaleString()} medicines
                               </span>
@@ -1199,38 +1289,42 @@ const AdminDashboard = () => {
                             </div>
                           </div>
 
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2">
                             <Button 
                               size="sm" 
                               variant="default" 
-                              className="flex-1"
+                              className="flex-1 text-xs"
                               onClick={() => viewCategoryMedicines(category)}
                             >
-                              <Eye className="w-3 h-3 mr-1" />
-                              View {category.name}
+                              <Eye className="w-3 h-3 sm:mr-1" />
+                              <span className="hidden sm:inline">View {category.name}</span>
+                              <span className="sm:hidden">View</span>
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => openCategoryModal(category)}
-                            >
-                              <Edit className="w-3 h-3" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() => openDeleteCategoryModal(category)}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
+                            <div className="flex gap-2 sm:flex-col lg:flex-row">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => openCategoryModal(category)}
+                                className="flex-1 sm:flex-none"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="text-red-600 hover:text-red-700 flex-1 sm:flex-none"
+                                onClick={() => openDeleteCategoryModal(category)}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {filteredCategories.map((category) => {
                       const IconComponent = getIconComponent(category.icon);
                       const colorClasses = getColorClasses(category.color);
@@ -1238,33 +1332,42 @@ const AdminDashboard = () => {
                       return (
                         <div 
                           key={category.id} 
-                          className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:shadow-md transition-shadow gap-3 sm:gap-4"
                         >
-                          <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full ${colorClasses.icon} flex items-center justify-center`}>
+                          <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                            <div className={`w-10 h-10 rounded-full ${colorClasses.icon} flex items-center justify-center flex-shrink-0`}>
                               <IconComponent className={`w-5 h-5 ${colorClasses.text}`} />
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-semibold text-gray-900 dark:text-white">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+                                <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
                                   {category.name}
                                 </h3>
                                 <Badge 
                                   variant={category.status === 'active' ? 'default' : 'secondary'}
-                                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                                  className="cursor-pointer hover:opacity-80 transition-opacity text-xs w-fit"
                                   onClick={() => toggleCategoryStatus(category.id)}
                                 >
                                   {category.status}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 overflow-hidden" style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical'
+                              }}>
                                 {category.description}
                               </p>
+                              <div className="sm:hidden mt-2">
+                                <div className={`font-medium ${colorClasses.text} text-sm`}>
+                                  {category.count.toLocaleString()} medicines
+                                </div>
+                              </div>
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                            <div className="hidden sm:block text-right">
                               <div className={`font-medium ${colorClasses.text}`}>
                                 {category.count.toLocaleString()}
                               </div>
@@ -1275,9 +1378,11 @@ const AdminDashboard = () => {
                                 size="sm" 
                                 variant="default"
                                 onClick={() => viewCategoryMedicines(category)}
+                                className="flex-1 sm:flex-none text-xs"
                               >
-                                <Eye className="w-3 h-3 mr-1" />
-                                View {category.name}
+                                <Eye className="w-3 h-3 sm:mr-1" />
+                                <span className="hidden sm:inline">View {category.name}</span>
+                                <span className="sm:hidden">View</span>
                               </Button>
                               <Button size="sm" variant="outline" onClick={() => openCategoryModal(category)}>
                                 <Edit className="w-3 h-3" />
@@ -1320,12 +1425,12 @@ const AdminDashboard = () => {
 
             {/* Category Modal */}
             <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className="sm:max-w-[425px] mx-4 sm:mx-0">
                 <DialogHeader>
-                  <DialogTitle>
+                  <DialogTitle className="text-lg sm:text-xl">
                     {editingCategory ? 'Edit Category' : 'Create New Category'}
                   </DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="text-sm">
                     {editingCategory 
                       ? 'Update the category details below.' 
                       : 'Add a new medicine category to organize your products.'
@@ -1335,35 +1440,37 @@ const AdminDashboard = () => {
                 
                 <form onSubmit={handleCategorySubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Category Name</Label>
+                    <Label htmlFor="name" className="text-sm">Category Name</Label>
                     <Input
                       id="name"
                       value={categoryForm.name}
                       onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})}
                       placeholder="e.g., Tablets, Syrups"
                       required
+                      className="text-sm"
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description" className="text-sm">Description</Label>
                     <Textarea
                       id="description"
                       value={categoryForm.description}
                       onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
                       placeholder="Brief description of this category"
                       rows={3}
+                      className="text-sm resize-none"
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="icon">Icon</Label>
+                      <Label htmlFor="icon" className="text-sm">Icon</Label>
                       <Select 
                         value={categoryForm.icon} 
                         onValueChange={(value) => setCategoryForm({...categoryForm, icon: value})}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1378,12 +1485,12 @@ const AdminDashboard = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="color">Color Theme</Label>
+                      <Label htmlFor="color" className="text-sm">Color Theme</Label>
                       <Select 
                         value={categoryForm.color} 
                         onValueChange={(value) => setCategoryForm({...categoryForm, color: value})}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1398,11 +1505,11 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={closeCategoryModal}>
+                  <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+                    <Button type="button" variant="outline" onClick={closeCategoryModal} className="w-full sm:w-auto">
                       Cancel
                     </Button>
-                    <Button type="submit">
+                    <Button type="submit" className="w-full sm:w-auto">
                       {editingCategory ? 'Update Category' : 'Create Category'}
                     </Button>
                   </DialogFooter>
@@ -1412,15 +1519,15 @@ const AdminDashboard = () => {
 
             {/* Delete Category Confirmation Modal */}
             <Dialog open={deleteCategoryModalOpen} onOpenChange={setDeleteCategoryModalOpen}>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md mx-4 sm:mx-0">
                 <DialogHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
-                      <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                    <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
+                      <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
                     </div>
                     <div>
-                      <DialogTitle className="text-left">Delete Category</DialogTitle>
-                      <DialogDescription className="text-left text-gray-600 dark:text-gray-300">
+                      <DialogTitle className="text-left text-base sm:text-lg">Delete Category</DialogTitle>
+                      <DialogDescription className="text-left text-gray-600 dark:text-gray-300 text-sm">
                         This action cannot be undone.
                       </DialogDescription>
                     </div>
@@ -1428,23 +1535,23 @@ const AdminDashboard = () => {
                 </DialogHeader>
                 
                 <div className="py-4">
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-3">
                       {categoryToDelete && (
                         <>
-                          <div className={`w-10 h-10 rounded-full ${getColorClasses(categoryToDelete.color).icon} flex items-center justify-center`}>
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${getColorClasses(categoryToDelete.color).icon} flex items-center justify-center`}>
                             {React.createElement(getIconComponent(categoryToDelete.icon), { 
-                              className: `w-5 h-5 ${getColorClasses(categoryToDelete.color).text}` 
+                              className: `w-4 h-4 sm:w-5 sm:h-5 ${getColorClasses(categoryToDelete.color).text}` 
                             })}
                           </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-white">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
                               {categoryToDelete.name}
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate">
                               {categoryToDelete.description}
                             </p>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
                               <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getColorClasses(categoryToDelete.color).bg} ${getColorClasses(categoryToDelete.color).text}`}>
                                 {categoryToDelete.count} medicines
                               </span>
@@ -1476,11 +1583,11 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                <DialogFooter className="flex gap-2">
+                <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
                   <Button
                     variant="outline"
                     onClick={closeDeleteCategoryModal}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 w-full sm:w-auto"
                   >
                     <X size={16} />
                     Cancel
@@ -1488,7 +1595,7 @@ const AdminDashboard = () => {
                   <Button
                     onClick={deleteCategory}
                     disabled={isDeletingCategory}
-                    className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 flex items-center gap-2"
+                    className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 flex items-center gap-2 w-full sm:w-auto"
                   >
                     {isDeletingCategory ? (
                       <>
@@ -1511,13 +1618,13 @@ const AdminDashboard = () => {
           <TabsContent value="payments">
             <Card>
               <CardHeader>
-                <CardTitle>Payment Management</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">Payment Management</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="space-y-4">
-                  <div className="text-gray-600">
-                    <p>Manage all payment transactions:</p>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
+                  <div className="text-gray-600 dark:text-gray-300">
+                    <p className="text-sm sm:text-base mb-3">Manage all payment transactions:</p>
+                    <ul className="list-disc list-inside space-y-2 text-sm">
                       <li>View pending and paid transactions</li>
                       <li>Accept or reject pending payments</li>
                       <li>Generate payment reports</li>
@@ -1533,22 +1640,22 @@ const AdminDashboard = () => {
           <TabsContent value="reports">
             <Card>
               <CardHeader>
-                <CardTitle>Sales Reports</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">Sales Reports</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="space-y-4">
-                  <div className="text-gray-600">
-                    <p>Generate comprehensive sales reports:</p>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
+                  <div className="text-gray-600 dark:text-gray-300">
+                    <p className="text-sm sm:text-base mb-3">Generate comprehensive sales reports:</p>
+                    <ul className="list-disc list-inside space-y-2 text-sm">
                       <li>Filter reports by date range</li>
                       <li>Export in PDF, DOC, CSV, or XLSX format</li>
                       <li>View medicine-wise sales data</li>
                       <li>Seller and buyer analytics</li>
                     </ul>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button>Generate Report</Button>
-                    <Button variant="outline">Export Data</Button>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:gap-0">
+                    <Button className="w-full sm:w-auto">Generate Report</Button>
+                    <Button variant="outline" className="w-full sm:w-auto">Export Data</Button>
                   </div>
                 </div>
               </CardContent>
@@ -1559,13 +1666,13 @@ const AdminDashboard = () => {
           <TabsContent value="banners">
             <Card>
               <CardHeader>
-                <CardTitle>Manage Banner Advertisements</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">Manage Banner Advertisements</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="space-y-4">
-                  <div className="text-gray-600">
-                    <p>Control homepage slider advertisements:</p>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
+                  <div className="text-gray-600 dark:text-gray-300">
+                    <p className="text-sm sm:text-base mb-3">Control homepage slider advertisements:</p>
+                    <ul className="list-disc list-inside space-y-2 text-sm">
                       <li>View all advertised medicines</li>
                       <li>Toggle medicines on/off the slider</li>
                       <li>Manage seller advertisement requests</li>
@@ -1579,6 +1686,7 @@ const AdminDashboard = () => {
         </Tabs>
       </div>
     </div>
+    </>
   );
 };
 
