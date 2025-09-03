@@ -56,7 +56,7 @@ const Navbar = () => {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">C</span>
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white transition-colors">CureBay</span>
+              <span className="text-xl font-bold text-gray-900 dark:text-white transition-colors">ureBay</span>
             </Link>
           </div>
 

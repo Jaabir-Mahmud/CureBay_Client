@@ -1,27 +1,27 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Eye, ShoppingCart, Star, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Card, CardContent } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
+import { useParams, Link } from 'react-router-dom';
+import { Search, Eye, ShoppingCart, Star, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ArrowLeft } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '../../components/ui/dialog';
+} from '../components/ui/dialog';
 
-const ShopPage = () => {
+const CategoryPage = () => {
+  const { categoryName } = useParams();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('name'); // name, price, rating, company
   const [sortOrder, setSortOrder] = useState('asc'); // asc, desc
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Mock data for medicines - expanded for pagination testing
-  const medicines = [
+  // Mock data for medicines - would be filtered by category from API
+  const allMedicines = [
     {
       id: 1,
       name: 'Paracetamol 500mg',
@@ -174,71 +174,22 @@ const ShopPage = () => {
       genericName: 'Omega-3 Fatty Acids',
       massUnit: '1000mg',
       usage: 'Take 2 capsules daily with meals.'
-    },
-    {
-      id: 10,
-      name: 'Antihistamine Syrup',
-      company: 'AllergyFree',
-      category: 'Syrups',
-      price: 14.99,
-      originalPrice: 19.99,
-      discount: 25,
-      rating: 4.2,
-      reviews: 112,
-      image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=300&h=300&fit=crop&auto=format',
-      inStock: true,
-      description: 'Relief from allergic reactions and seasonal allergies.',
-      genericName: 'Cetirizine',
-      massUnit: '150ml',
-      usage: 'Adults: 10ml once daily. Children 6-12: 5ml once daily.'
-    },
-    {
-      id: 11,
-      name: 'Probiotic Capsules',
-      company: 'GutHealth',
-      category: 'Supplements',
-      price: 26.99,
-      originalPrice: 34.99,
-      discount: 23,
-      rating: 4.5,
-      reviews: 145,
-      image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop&auto=format',
-      inStock: true,
-      description: 'Support digestive health with beneficial bacteria.',
-      genericName: 'Lactobacillus Complex',
-      massUnit: '30 capsules',
-      usage: 'Take 1 capsule daily with food.'
-    },
-    {
-      id: 12,
-      name: 'Iron Tablets',
-      company: 'BloodBoost',
-      category: 'Supplements',
-      price: 18.99,
-      originalPrice: 24.99,
-      discount: 24,
-      rating: 4.0,
-      reviews: 87,
-      image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop&auto=format',
-      inStock: true,
-      description: 'Essential iron supplement for anemia prevention.',
-      genericName: 'Ferrous Sulfate',
-      massUnit: '65mg',
-      usage: 'Take 1 tablet daily on empty stomach or as directed.'
     }
   ];
 
-  const categories = ['all', 'Tablets', 'Syrups', 'Capsules', 'Injections', 'Supplements', 'Others'];
+  // Filter medicines by category name
+  const categoryMedicines = allMedicines.filter(medicine => 
+    medicine.category.toLowerCase() === categoryName?.toLowerCase()
+  );
 
   // Memoized filtering, sorting, and pagination
   const { paginatedMedicines, totalPages, totalItems } = useMemo(() => {
-    // Filter medicines
-    let filtered = medicines.filter(medicine => {
+    // Filter medicines by search term
+    let filtered = categoryMedicines.filter(medicine => {
       const matchesSearch = medicine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            medicine.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            medicine.genericName.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === 'all' || medicine.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      return matchesSearch;
     });
 
     // Sort medicines
@@ -279,7 +230,7 @@ const ShopPage = () => {
     const paginatedMedicines = filtered.slice(startIndex, startIndex + itemsPerPage);
 
     return { paginatedMedicines, totalPages, totalItems };
-  }, [medicines, searchTerm, selectedCategory, sortBy, sortOrder, currentPage, itemsPerPage]);
+  }, [categoryMedicines, searchTerm, sortBy, sortOrder, currentPage, itemsPerPage]);
 
   // Handle sorting
   const handleSort = (field) => {
@@ -306,7 +257,6 @@ const ShopPage = () => {
   // Reset filters
   const resetFilters = () => {
     setSearchTerm('');
-    setSelectedCategory('all');
     setSortBy('name');
     setSortOrder('asc');
     setCurrentPage(1);
@@ -384,10 +334,22 @@ const ShopPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+        {/* Header with Back Button */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Medicine Shop</h1>
-          <p className="text-gray-600">Find the right medication for your health needs</p>
+          <div className="flex items-center gap-4 mb-4">
+            <Link to="/shop">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Shop
+              </Button>
+            </Link>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 capitalize">
+            {categoryName} Medicines
+          </h1>
+          <p className="text-gray-600">
+            Discover quality {categoryName?.toLowerCase()} for your health needs
+          </p>
         </div>
 
         {/* Search and Filter */}
@@ -409,26 +371,8 @@ const ShopPage = () => {
               variant="outline"
               className="whitespace-nowrap"
             >
-              <Filter className="w-4 h-4 mr-2" />
               Clear Filters
             </Button>
-          </div>
-          
-          {/* Category Filters */}
-          <div className="flex gap-2 flex-wrap">
-            {categories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                onClick={() => {
-                  setSelectedCategory(category);
-                  setCurrentPage(1);
-                }}
-                className="capitalize"
-              >
-                {category}
-              </Button>
-            ))}
           </div>
           
           {/* Sort and Items per Page Controls */}
@@ -499,7 +443,7 @@ const ShopPage = () => {
           )}
         </div>
 
-        {/* Medicines Table/Grid */}
+        {/* Medicines Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -522,9 +466,6 @@ const ShopPage = () => {
                       Company
                       {getSortIcon('company')}
                     </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
                   </th>
                   <th 
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
@@ -571,9 +512,6 @@ const ShopPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {medicine.company}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant="outline">{medicine.category}</Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
@@ -730,7 +668,9 @@ const ShopPage = () => {
         {/* Empty State */}
         {totalItems === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No medicines found matching your criteria.</p>
+            <p className="text-gray-500 text-lg">
+              No {categoryName?.toLowerCase()} medicines found matching your criteria.
+            </p>
             <Button
               onClick={resetFilters}
               className="mt-4"
@@ -744,5 +684,4 @@ const ShopPage = () => {
   );
 };
 
-export default ShopPage;
-
+export default CategoryPage;

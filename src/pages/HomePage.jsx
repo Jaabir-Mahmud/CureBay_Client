@@ -1,5 +1,5 @@
 import React from 'react';
-import HeroSection from '../components/HeroSection';
+import HeroSlider from '../components/HeroSlider';
 import CategorySection from '../components/CategorySection';
 import DiscountSection from '../components/DiscountSection';
 import ExtraSection1 from '../components/ExtraSection1';
@@ -8,7 +8,7 @@ import ExtraSection2 from '../components/ExtraSection2';
 const HomePage = () => {
   return (
     <div>
-      <HeroSection />
+      <HeroSlider />
       <CategorySection />
       <DiscountSection />
       <ExtraSection1 />

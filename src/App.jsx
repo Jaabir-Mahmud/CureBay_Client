@@ -7,9 +7,14 @@ import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import AuthPage from './pages/auth/AuthPage';
 import ShopPage from './pages/shop/ShopPage';
+import CategoryPage from './pages/CategoryPage';
 import CartPage from './pages/cart/CartPage';
 import AdminDashboard from './pages/dashboard/admin/AdminDashboard';
 import CategoryMedicines from './pages/dashboard/admin/CategoryMedicines';
+import UserDashboard from './pages/dashboard/user/UserDashboard';
+import SellerDashboard from './pages/dashboard/seller/SellerDashboard';
+import CheckoutPage from './pages/CheckoutPage.jsx';
+import InvoicePage from './pages/InvoicePage';
 import { AuthProvider } from './contexts/AuthContext';
 import { Switch } from './components/ui/switch';
 import './App.css';
@@ -55,10 +60,11 @@ function App() {
                 <Route path="/dashboard/admin" element={<AdminDashboard />} />
                 <Route path="/dashboard/admin/categories/:categoryId/medicines" element={<CategoryMedicines />} />
                 {/* Additional routes will be added here */}
-                <Route path="/category/:categoryName" element={<ShopPage />} />
-                <Route path="/checkout" element={<div className="p-8 text-center">Checkout Page - Coming Soon</div>} />
-                <Route path="/seller/dashboard" element={<div className="p-8 text-center">Seller Dashboard - Coming Soon</div>} />
-                <Route path="/user/dashboard" element={<div className="p-8 text-center">User Dashboard - Coming Soon</div>} />
+                <Route path="/category/:categoryName" element={<CategoryPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/invoice" element={<InvoicePage />} />
+                <Route path="/seller/dashboard" element={<SellerDashboard />} />
+                <Route path="/user/dashboard" element={<UserDashboard />} />
               </Routes>
             </main>
             <Footer />
