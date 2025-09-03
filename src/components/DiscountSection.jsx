@@ -311,7 +311,7 @@ const DiscountSection = () => {
   );
 
   return (
-    <section className="py-16 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20">
+    <section className="py-16 bg-gradient-to-br from-red-50 to-orange-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-12">
@@ -320,7 +320,7 @@ const DiscountSection = () => {
               <TrendingDown className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white transition-colors">
                 Flash Sale
               </h2>
               <div className="flex items-center justify-center mt-2">
@@ -331,10 +331,10 @@ const DiscountSection = () => {
           </div>
           
           {/* Countdown Timer */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg max-w-md mx-auto mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg max-w-md mx-auto mb-8 transition-colors duration-300">
             <div className="flex items-center justify-center mb-4">
               <Clock className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-gray-700 dark:text-gray-300 font-medium">Flash Sale Ends In</span>
+              <span className="text-gray-700 dark:text-gray-300 font-medium transition-colors">Flash Sale Ends In</span>
             </div>
             <div className="flex justify-center space-x-4">
               <div className="text-center">

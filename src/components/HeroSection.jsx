@@ -5,11 +5,11 @@ import { Badge } from './ui/badge';
 
 const HeroSection = () => {
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 overflow-hidden transition-colors duration-300">
       {/* Background Pattern */}
       <div className="absolute inset-0">
-        <div className="absolute top-20 left-10 w-96 h-96 bg-blue-100 rounded-full opacity-20 blur-3xl"></div>
-        <div className="absolute bottom-20 right-10 w-80 h-80 bg-purple-100 rounded-full opacity-20 blur-3xl"></div>
+        <div className="absolute top-20 left-10 w-96 h-96 bg-blue-100 dark:bg-blue-900/30 rounded-full opacity-20 blur-3xl"></div>
+        <div className="absolute bottom-20 right-10 w-80 h-80 bg-purple-100 dark:bg-purple-900/30 rounded-full opacity-20 blur-3xl"></div>
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
@@ -18,7 +18,7 @@ const HeroSection = () => {
           <div className="space-y-8">
             {/* Badge */}
             <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50">
                 <Heart className="w-3 h-3 mr-1" />
                 Checkup
               </Badge>
@@ -26,27 +26,27 @@ const HeroSection = () => {
 
             {/* Main Heading */}
             <div className="space-y-4">
-              <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+              <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white leading-tight transition-colors duration-300">
                 High Quality Checkup
                 <br />
-                <span className="text-gray-700">Makes You Healthy</span>
+                <span className="text-gray-700 dark:text-gray-300">Makes You Healthy</span>
               </h1>
             </div>
 
             {/* Appointment Scheduling */}
-            <div className="bg-white rounded-2xl p-6 shadow-lg border max-w-md">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 max-w-md transition-colors duration-300">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <Calendar className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium">Tuesday, 1 Jun 24</span>
+                  <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Tuesday, 1 Jun 24</span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <Clock className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium">8am</span>
+                  <Clock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">8am</span>
                 </div>
               </div>
               
-              <Button className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-xl py-3">
+              <Button className="w-full bg-gray-900 hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 text-white rounded-xl py-3 transition-colors duration-300">
                 <span className="mr-2">Guides</span>
                 <ArrowRight className="w-4 h-4" />
               </Button>
@@ -55,14 +55,14 @@ const HeroSection = () => {
             {/* Reserve Button */}
             <Button 
               size="lg" 
-              className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-4 rounded-2xl text-lg font-medium"
+              className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 rounded-2xl text-lg font-medium dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors duration-300"
             >
               <Calendar className="w-5 h-5 mr-2" />
               Reserve A Checkup
             </Button>
 
             {/* Address */}
-            <div className="text-gray-600 text-sm">
+            <div className="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">
               <p>306 Chapmans Lane San</p>
               <p>Ysidro, NM 87053</p>
             </div>
@@ -71,31 +71,31 @@ const HeroSection = () => {
           {/* Right Content - Interactive Elements */}
           <div className="relative">
             {/* Patient History Card */}
-            <div className="absolute top-0 left-0 bg-white rounded-2xl p-4 shadow-lg border z-10 transform -rotate-2">
+            <div className="absolute top-0 left-0 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg border border-gray-200 dark:border-gray-700 z-10 transform -rotate-2 transition-colors duration-300">
               <div className="flex items-center space-x-3 mb-3">
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                  <span className="text-orange-600 font-semibold text-sm">B</span>
+                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                  <span className="text-orange-600 dark:text-orange-400 font-semibold text-sm">B</span>
                 </div>
                 <div>
-                  <p className="font-medium text-sm">Brian</p>
-                  <p className="text-xs text-gray-500">19 y.o (Male)</p>
+                  <p className="font-medium text-sm text-gray-900 dark:text-white">Brian</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">19 y.o (Male)</p>
                 </div>
-                <Badge className="bg-orange-100 text-orange-700 text-xs">18%</Badge>
+                <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-xs">18%</Badge>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold">+10.57</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">+10.57</p>
               </div>
             </div>
 
             {/* Heart Rate Card */}
-            <div className="absolute top-20 right-0 bg-white rounded-2xl p-4 shadow-lg border z-10 transform rotate-1">
+            <div className="absolute top-20 right-0 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg border border-gray-200 dark:border-gray-700 z-10 transform rotate-1 transition-colors duration-300">
               <div className="flex items-center space-x-2 mb-2">
                 <Heart className="w-5 h-5 text-red-500 fill-current" />
-                <span className="text-sm font-medium">Heart</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Heart</span>
               </div>
-              <p className="text-xs text-gray-500 mb-1">Beep (80 bpm)</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Beep (80 bpm)</p>
               <div className="text-right">
-                <p className="text-lg font-bold">74</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">74</p>
               </div>
             </div>
 
@@ -103,13 +103,13 @@ const HeroSection = () => {
             <div className="flex items-center justify-center">
               <div className="relative">
                 {/* Large Circle Background */}
-                <div className="w-96 h-96 bg-gradient-to-br from-blue-50 to-purple-50 rounded-full flex items-center justify-center">
+                <div className="w-96 h-96 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-full flex items-center justify-center transition-colors duration-300">
                   {/* Inner Circle */}
-                  <div className="w-80 h-80 bg-white rounded-full shadow-lg flex items-center justify-center">
+                  <div className="w-80 h-80 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center transition-colors duration-300">
                     {/* Play Button */}
                     <Button 
                       size="lg" 
-                      className="w-16 h-16 rounded-full bg-gray-900 hover:bg-gray-800 shadow-xl"
+                      className="w-16 h-16 rounded-full bg-gray-900 hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 text-white shadow-xl transition-colors duration-300"
                     >
                       <Play className="w-6 h-6 text-white fill-current ml-1" />
                     </Button>
@@ -118,24 +118,24 @@ const HeroSection = () => {
 
                 {/* Floating Elements */}
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full"></div>
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
                   </div>
                 </div>
 
                 <div className="absolute top-1/2 -right-6 transform -translate-y-1/2">
-                  <div className="flex items-center space-x-2 bg-white rounded-full px-3 py-2 shadow-md">
-                    <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 text-xs">✓</span>
+                  <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-full px-3 py-2 shadow-md border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+                    <div className="w-6 h-6 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                      <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
                     </div>
-                    <span className="text-sm font-medium">Tue</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Tue</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Bottom Right - Rights Reserved */}
-            <div className="absolute bottom-0 right-0 text-xs text-gray-400">
+            <div className="absolute bottom-0 right-0 text-xs text-gray-400 dark:text-gray-500 transition-colors duration-300">
               All rights reserved
             </div>
           </div>

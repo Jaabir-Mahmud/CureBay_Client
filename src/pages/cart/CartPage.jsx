@@ -1,70 +1,36 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { useCart } from '../../contexts/CartContext';
+import SEOHelmet from '../../components/SEOHelmet';
 
 const CartPage = () => {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: 'Paracetamol 500mg',
-      company: 'PharmaCorp',
-      price: 19.99,
-      quantity: 2,
-      image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&h=300&fit=crop&auto=format',
-      inStock: true
-    },
-    {
-      id: 2,
-      name: 'Cough Syrup 100ml',
-      company: 'MediCare',
-      price: 12.99,
-      quantity: 1,
-      image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=300&h=300&fit=crop&auto=format',
-      inStock: true
-    },
-    {
-      id: 3,
-      name: 'Vitamin D3 Capsules',
-      company: 'HealthPlus',
-      price: 24.99,
-      quantity: 1,
-      image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop&auto=format',
-      inStock: true
-    }
-  ]);
+  const {
+    cartItems,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    getSubtotal,
+    getTax,
+    getShipping,
+    getFinalTotal
+  } = useCart();
 
-  const updateQuantity = (id, newQuantity) => {
-    if (newQuantity < 1) return;
-    setCartItems(items =>
-      items.map(item =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      )
-    );
-  };
-
-  const removeItem = (id) => {
-    setCartItems(items => items.filter(item => item.id !== id));
-  };
-
-  const clearCart = () => {
-    setCartItems([]);
-  };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const tax = subtotal * 0.08; // 8% tax
-  const shipping = subtotal > 50 ? 0 : 5.99; // Free shipping over $50
-  const total = subtotal + tax + shipping;
+  const subtotal = getSubtotal();
+  const tax = getTax();
+  const shipping = getShipping();
+  const total = getFinalTotal();
 
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 flex items-center justify-center">
         <div className="text-center">
           <ShoppingBag className="w-24 h-24 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
-          <p className="text-gray-600 mb-6">Add some medicines to get started</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Your cart is empty</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">Add some medicines to get started</p>
           <Link to="/shop">
             <Button className="bg-blue-600 hover:bg-blue-700">
               Continue Shopping
@@ -76,12 +42,19 @@ const CartPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <SEOHelmet
+        title="Shopping Cart - CureBay Online Pharmacy"
+        description="Review your selected medicines and healthcare products in your shopping cart. Secure checkout with fast delivery options."
+        keywords="shopping cart, medicines cart, online pharmacy checkout, healthcare products"
+        url={window.location.href}
+      />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Shopping Cart</h1>
-          <p className="text-gray-600">Review your selected medicines</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Shopping Cart</h1>
+          <p className="text-gray-600 dark:text-gray-300">Review your selected medicines</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -101,7 +74,7 @@ const CartPage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4 p-4 border rounded-lg">
+                  <div key={item.id} className="flex items-center space-x-4 p-4 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 transition-colors">
                     <img
                       src={item.image}
                       alt={item.name}
@@ -109,8 +82,8 @@ const CartPage = () => {
                     />
                     
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{item.name}</h3>
-                      <p className="text-sm text-gray-600">by {item.company}</p>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">{item.name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">by {item.company}</p>
                       <p className="text-lg font-bold text-blue-600">${item.price}</p>
                     </div>
 
@@ -118,7 +91,7 @@ const CartPage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.id, item.selectedVariant, item.quantity - 1)}
                         disabled={item.quantity <= 1}
                       >
                         <Minus className="w-4 h-4" />
@@ -129,20 +102,20 @@ const CartPage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        onClick={() => updateQuantity(item.id, item.selectedVariant, item.quantity + 1)}
                       >
                         <Plus className="w-4 h-4" />
                       </Button>
                     </div>
 
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-semibold text-gray-900 dark:text-white">
                         ${(item.price * item.quantity).toFixed(2)}
                       </p>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => removeFromCart(item.id, item.selectedVariant)}
                         className="text-red-600 hover:text-red-700 mt-1"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -188,8 +161,8 @@ const CartPage = () => {
                 </div>
 
                 {shipping > 0 && (
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <p className="text-sm text-blue-700">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg transition-colors">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
                       Add ${(50 - subtotal).toFixed(2)} more for free shipping!
                     </p>
                   </div>
@@ -223,6 +196,7 @@ const CartPage = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

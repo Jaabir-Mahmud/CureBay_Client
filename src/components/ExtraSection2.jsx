@@ -62,14 +62,14 @@ const ExtraSection2 = () => {
   ];
 
   return (
-    <section className="py-16 bg-gradient-to-br from-gray-50 to-blue-50">
+    <section className="py-16 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4 transition-colors">
             Why Choose CureBay?
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto transition-colors">
             We're committed to providing you with the best healthcare experience through quality, convenience, and care
           </p>
         </div>
@@ -83,17 +83,17 @@ const ExtraSection2 = () => {
               <Card key={feature.id} className="group hover:shadow-xl transition-all duration-300 border-0 shadow-md">
                 <CardContent className="p-8 text-center">
                   {/* Icon */}
-                  <div className={`w-16 h-16 ${feature.bgColor} rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    <IconComponent className={`w-8 h-8 ${feature.color}`} />
+                  <div className={`w-16 h-16 ${feature.bgColor} dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                    <IconComponent className={`w-8 h-8 ${feature.color} dark:text-gray-300`} />
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 transition-colors">
                     {feature.title}
                   </h3>
 
                   {/* Description */}
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed transition-colors">
                     {feature.description}
                   </p>
                 </CardContent>
@@ -103,12 +103,12 @@ const ExtraSection2 = () => {
         </div>
 
         {/* Stats Section */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 lg:p-12">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 lg:p-12 transition-colors">
           <div className="text-center mb-8">
-            <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
+            <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors">
               Trusted Healthcare Partner
             </h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300 transition-colors">
               Numbers that speak for our commitment to your health
             </p>
           </div>
@@ -119,7 +119,7 @@ const ExtraSection2 = () => {
                 <div className="text-3xl lg:text-4xl font-bold text-blue-600 mb-2">
                   {stat.value}
                 </div>
-                <div className="text-gray-600 font-medium">
+                <div className="text-gray-600 dark:text-gray-300 font-medium transition-colors">
                   {stat.label}
                 </div>
               </div>

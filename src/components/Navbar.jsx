@@ -11,10 +11,11 @@ import {
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [cartItemCount, setCartItemCount] = useState(3); // This will come from cart context
+  const { itemCount } = useCart();
   const [selectedLanguage, setSelectedLanguage] = useState('EN');
   const { user, profile, logout } = useAuth();
   const location = useLocation();
@@ -108,12 +109,12 @@ const Navbar = () => {
             <Link to="/cart" className="relative">
               <Button variant="ghost" size="sm" className="relative">
                 <ShoppingCart className="w-5 h-5" />
-                {cartItemCount > 0 && (
+                {itemCount > 0 && (
                   <Badge 
                     variant="destructive" 
                     className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center text-xs p-0"
                   >
-                    {cartItemCount}
+                    {itemCount}
                   </Badge>
                 )}
               </Button>

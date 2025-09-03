@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Eye, ShoppingCart, Star, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, Filter, Eye, ShoppingCart, Star, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Heart, Shield } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { useCart } from '../../contexts/CartContext';
+import SEOHelmet from '../../components/SEOHelmet';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +15,7 @@ import {
 } from '../../components/ui/dialog';
 
 const ShopPage = () => {
+  const { addToCart } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('name'); // name, price, rating, company
@@ -318,80 +321,247 @@ const ShopPage = () => {
     return sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
   };
 
-  const handleAddToCart = (medicine) => {
-    // Add to cart logic
-    console.log('Adding to cart:', medicine);
+  const handleAddToCart = (productData) => {
+    const { quantity = 1, selectedVariant, ...product } = productData;
+    addToCart(product, quantity, selectedVariant);
   };
 
-  const MedicineModal = ({ medicine }) => (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader>
-        <DialogTitle>{medicine.name}</DialogTitle>
-      </DialogHeader>
-      <div className="grid md:grid-cols-2 gap-6">
-        <div>
-          <img
-            src={medicine.image}
-            alt={medicine.name}
-            className="w-full h-64 object-cover rounded-lg"
-          />
-        </div>
-        <div className="space-y-4">
-          <div>
-            <Badge variant="outline">{medicine.category}</Badge>
-            <h3 className="text-xl font-semibold mt-2">{medicine.name}</h3>
-            <p className="text-gray-600">by {medicine.company}</p>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center">
-              <Star className="w-4 h-4 text-yellow-400 fill-current" />
-              <span className="ml-1 font-medium">{medicine.rating}</span>
+  const MedicineModal = ({ medicine }) => {
+    const [quantity, setQuantity] = useState(1);
+    const [selectedVariant, setSelectedVariant] = useState(medicine.massUnit);
+    
+    const variants = [
+      medicine.massUnit,
+      ...(medicine.alternativeUnits || [])
+    ];
+
+    return (
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+            {medicine.name}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Left Column - Images */}
+          <div className="space-y-4">
+            <div className="relative">
+              <img
+                src={medicine.image}
+                alt={medicine.name}
+                className="w-full h-80 object-cover rounded-lg shadow-lg"
+              />
+              {medicine.discount && (
+                <div className="absolute top-4 left-4">
+                  <Badge className="bg-red-500 text-white px-3 py-1 text-sm font-bold">
+                    -{medicine.discount}% OFF
+                  </Badge>
+                </div>
+              )}
+              {!medicine.inStock && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+                  <span className="text-white font-bold text-lg">Out of Stock</span>
+                </div>
+              )}
             </div>
-            <span className="text-gray-500">({medicine.reviews} reviews)</span>
+            
+            {/* Tags */}
+            <div className="flex flex-wrap gap-2">
+              {(medicine.tags || []).map((tag, index) => (
+                <Badge key={index} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <p><strong>Generic Name:</strong> {medicine.genericName}</p>
-            <p><strong>Strength:</strong> {medicine.massUnit}</p>
-            <p><strong>Description:</strong> {medicine.description}</p>
-            <p><strong>Usage:</strong> {medicine.usage}</p>
-          </div>
+          {/* Right Column - Details */}
+          <div className="space-y-6">
+            {/* Header Info */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">{medicine.category}</Badge>
+                {medicine.isPrescriptionRequired && (
+                  <Badge className="bg-orange-100 text-orange-700 text-xs">Prescription Required</Badge>
+                )}
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{medicine.name}</h3>
+              <p className="text-gray-600 dark:text-gray-300">by <strong>{medicine.company}</strong></p>
+            </div>
+            
+            {/* Rating and Reviews */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star 
+                    key={i} 
+                    className={`w-4 h-4 ${
+                      i < Math.floor(medicine.rating) 
+                        ? 'text-yellow-400 fill-current' 
+                        : 'text-gray-300'
+                    }`} 
+                  />
+                ))}
+                <span className="ml-1 font-medium text-gray-900 dark:text-white">{medicine.rating}</span>
+              </div>
+              <span className="text-gray-500">({medicine.reviews} reviews)</span>
+            </div>
 
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-blue-600">${medicine.price}</span>
-            {medicine.originalPrice && (
-              <span className="text-lg text-gray-500 line-through">${medicine.originalPrice}</span>
+            {/* Product Details */}
+            <div className="space-y-3 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Generic Name:</span>
+                  <p className="font-medium text-gray-900 dark:text-white">{medicine.genericName}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Strength:</span>
+                  <p className="font-medium text-gray-900 dark:text-white">{selectedVariant}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Manufacturer:</span>
+                  <p className="font-medium text-gray-900 dark:text-white">{medicine.company}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Stock:</span>
+                  <p className={`font-medium ${
+                    medicine.inStock ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {medicine.inStock ? 'In Stock' : 'Out of Stock'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Description</h4>
+              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{medicine.description}</p>
+            </div>
+
+            {/* Usage Instructions */}
+            {medicine.usage && (
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Usage Instructions</h4>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{medicine.usage}</p>
+              </div>
             )}
-            {medicine.discount && (
-              <Badge className="bg-red-500">-{medicine.discount}%</Badge>
-            )}
-          </div>
 
-          <Button
-            onClick={() => handleAddToCart(medicine)}
-            disabled={!medicine.inStock}
-            className="w-full bg-blue-600 hover:bg-blue-700"
-          >
-            <ShoppingCart className="w-4 h-4 mr-2" />
-            {medicine.inStock ? 'Add to Cart' : 'Out of Stock'}
-          </Button>
+            {/* Variant Selection */}
+            {variants.length > 1 && (
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Available Strengths</h4>
+                <div className="flex gap-2">
+                  {variants.map((variant) => (
+                    <Button
+                      key={variant}
+                      variant={selectedVariant === variant ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedVariant(variant)}
+                      className="text-xs"
+                    >
+                      {variant}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Price */}
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-3xl font-bold text-blue-600">${medicine.price}</span>
+                {medicine.originalPrice && (
+                  <span className="text-lg text-gray-500 line-through">${medicine.originalPrice}</span>
+                )}
+                {medicine.discount && (
+                  <Badge className="bg-red-500 text-white">Save ${(medicine.originalPrice - medicine.price).toFixed(2)}</Badge>
+                )}
+              </div>
+              
+              {/* Quantity Selector */}
+              <div className="flex items-center gap-4 mb-4">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Quantity:</span>
+                <div className="flex items-center border rounded-lg">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
+                    className="px-3 py-1"
+                  >
+                    -
+                  </Button>
+                  <span className="px-4 py-1 min-w-[50px] text-center border-x">{quantity}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="px-3 py-1"
+                  >
+                    +
+                  </Button>
+                </div>
+                <span className="text-sm text-gray-500">
+                  Total: ${(medicine.price * quantity).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => handleAddToCart({...medicine, quantity, selectedVariant})}
+                  disabled={!medicine.inStock}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  {medicine.inStock ? `Add ${quantity} to Cart` : 'Out of Stock'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="px-4"
+                  onClick={() => {
+                    // Add to wishlist logic
+                    console.log('Added to wishlist:', medicine.id);
+                  }}
+                >
+                  <Heart className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              {/* Additional Info */}
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+                  <Shield className="w-4 h-4" />
+                  <span>Authentic medicine with quality guarantee</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </DialogContent>
-  );
+      </DialogContent>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <SEOHelmet
+        title="Shop Medicines - CureBay Online Pharmacy"
+        description="Browse our extensive collection of medicines, supplements, and healthcare products. Find quality medications from trusted brands with fast delivery."
+        keywords="online pharmacy medicines, buy medicines online, prescription drugs, healthcare products, supplements, medical supplies"
+        url={window.location.href}
+      />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Medicine Shop</h1>
-          <p className="text-gray-600">Find the right medication for your health needs</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors">All Medicines</h1>
+          <p className="text-gray-600 dark:text-gray-300 transition-colors">Find the medicines you need from our extensive collection</p>
         </div>
 
-        {/* Search and Filter */}
-        <div className="mb-8 space-y-4">
+        {/* Filters and Search */}
+        <div className="mb-8 space-y-4 bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm transition-colors">
           {/* Search Bar */}
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -414,27 +584,30 @@ const ShopPage = () => {
             </Button>
           </div>
           
-          {/* Category Filters */}
-          <div className="flex gap-2 flex-wrap">
-            {categories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                onClick={() => {
-                  setSelectedCategory(category);
-                  setCurrentPage(1);
-                }}
-                className="capitalize"
-              >
-                {category}
-              </Button>
-            ))}
+          {/* Category Filter */}
+          <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600 dark:text-gray-300 transition-colors">Categories:</span>
+              {categories.map((category) => (
+                <Button
+                  key={category}
+                  variant={selectedCategory === category ? "default" : "outline"}
+                  onClick={() => {
+                    setSelectedCategory(category);
+                    setCurrentPage(1);
+                  }}
+                  className="capitalize"
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
           </div>
           
           {/* Sort and Items per Page Controls */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">Sort by:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300 transition-colors">Sort by:</span>
               <div className="flex gap-2">
                 <Button
                   variant={sortBy === 'name' ? 'default' : 'outline'}
@@ -471,8 +644,9 @@ const ShopPage = () => {
               </div>
             </div>
             
+            {/* Items Per Page */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Show:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300 transition-colors">Show:</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
@@ -487,114 +661,61 @@ const ShopPage = () => {
           </div>
         </div>
 
-        {/* Results Count and Pagination Info */}
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <p className="text-gray-600">
-            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} medicines
+        {/* Results Summary */}
+        <div className="mb-6">
+          <p className="text-gray-600 dark:text-gray-300 transition-colors">
+            Showing {paginatedMedicines.length} of {totalItems} results
+            {searchTerm && ` for "${searchTerm}"`}
+            {selectedCategory !== 'all' && ` in ${selectedCategory}`}
           </p>
-          {totalPages > 1 && (
-            <p className="text-sm text-gray-500">
-              Page {currentPage} of {totalPages}
-            </p>
-          )}
         </div>
 
-        {/* Medicines Table/Grid */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('name')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Medicine
-                      {getSortIcon('name')}
+        {/* Medicine Grid */}
+        {paginatedMedicines.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 dark:text-gray-400 transition-colors">No medicines found matching your criteria.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            {paginatedMedicines.map((medicine) => (
+              <Card key={medicine.id} className="transition-all duration-200 hover:shadow-lg hover:-translate-y-1 dark:bg-gray-800 dark:border-gray-700">
+                <CardContent className="p-4">
+                  {/* Medicine Image */}
+                  <div className="relative">
+                    <img
+                      className="h-48 w-full object-cover rounded-lg"
+                      src={medicine.image}
+                      alt={medicine.name}
+                    />
+                  </div>
+
+                  {/* Medicine Info */}
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1 transition-colors">{medicine.name}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-2 transition-colors">by {medicine.company}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2 transition-colors">{medicine.description}</p>
+                    
+                    {/* Rating */}
+                    <div className="flex items-center space-x-1">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span className="ml-1 text-sm font-medium">{medicine.rating}</span>
+                      <span className="ml-1 text-sm text-gray-500">({medicine.reviews})</span>
                     </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('company')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Company
-                      {getSortIcon('company')}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('price')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Price
-                      {getSortIcon('price')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('rating')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Rating
-                      {getSortIcon('rating')}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedMedicines.map((medicine) => (
-                  <tr key={medicine.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <img
-                          className="h-12 w-12 rounded-lg object-cover"
-                          src={medicine.image}
-                          alt={medicine.name}
-                        />
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {medicine.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {medicine.genericName}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {medicine.company}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant="outline">{medicine.category}</Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg font-semibold text-blue-600">
-                          ${medicine.price}
+                    
+                    {/* Price */}
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg font-semibold text-blue-600">
+                        ${medicine.price}
+                      </span>
+                      {medicine.originalPrice && (
+                        <span className="text-sm text-gray-500 line-through">
+                          ${medicine.originalPrice}
                         </span>
-                        {medicine.originalPrice && (
-                          <span className="text-sm text-gray-500 line-through">
-                            ${medicine.originalPrice}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                        <span className="ml-1 text-sm font-medium">{medicine.rating}</span>
-                        <span className="ml-1 text-sm text-gray-500">({medicine.reviews})</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      )}
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="flex items-center space-x-2">
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm">
@@ -614,13 +735,13 @@ const ShopPage = () => {
                         <ShoppingCart className="w-4 h-4 mr-1" />
                         Select
                       </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </div>
+        )}
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -741,6 +862,7 @@ const ShopPage = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

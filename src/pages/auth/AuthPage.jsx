@@ -11,23 +11,83 @@ import { auth } from '../../services/firebase';
 import Swal from 'sweetalert2';
 import toast from 'react-hot-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
+import SEOHelmet from '../../components/SEOHelmet';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+
+// Validation schemas
+const loginSchema = yup.object({
+  email: yup
+    .string()
+    .email('Please enter a valid email address')
+    .required('Email is required'),
+  password: yup
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .required('Password is required'),
+});
+
+const signupSchema = yup.object({
+  username: yup
+    .string()
+    .min(3, 'Username must be at least 3 characters')
+    .required('Username is required'),
+  email: yup
+    .string()
+    .email('Please enter a valid email address')
+    .required('Email is required'),
+  password: yup
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .matches(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
+    )
+    .required('Password is required'),
+  role: yup
+    .string()
+    .oneOf(['user', 'seller'], 'Please select a valid role')
+    .required('Role is required'),
+});
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    role: 'user',
-    photo: null
-  });
-  const [error, setError] = useState('');
   const [showResend, setShowResend] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
+
+  // React Hook Form setup
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+    setValue,
+    watch,
+  } = useForm({
+    resolver: yupResolver(isLogin ? loginSchema : signupSchema),
+    defaultValues: {
+      username: '',
+      email: '',
+      password: '',
+      role: 'user',
+    },
+  });
+
+  // Watch the role value for controlled component
+  const selectedRole = watch('role');
+
+  // Toggle between login and signup modes
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    reset(); // Reset form when switching modes
+    setShowResend(false);
+    setPendingEmail("");
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -37,16 +97,16 @@ const AuthPage = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
+  const onSubmit = async (data) => {
     setShowResend(false);
     setPendingEmail("");
+    
     try {
       if (isLogin) {
         // Login
-        const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
         const user = userCredential.user;
+        
         if (!user.emailVerified) {
           Swal.fire({
             icon: 'warning',
@@ -66,28 +126,33 @@ const AuthPage = () => {
             }
           });
           setShowResend(true);
-          setPendingEmail(formData.email);
+          setPendingEmail(data.email);
           await auth.signOut();
           return;
         }
+        
         // Show toast notification and navigate automatically
         toast.success('Login Successful! Welcome back!', {
           duration: 3000,
           position: 'top-center',
         });
         navigate(from, { replace: true });
+        
       } else {
         // Signup
-        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
         await sendEmailVerification(userCredential.user);
+        
         Swal.fire({
           icon: 'info',
           title: 'Verify Your Email',
           text: 'A verification link has been sent to your email. Please verify your email before logging in.'
         });
+        
         setShowResend(true);
-        setPendingEmail(formData.email);
+        setPendingEmail(data.email);
         setIsLogin(true); // Switch to login after signup
+        reset(); // Reset form after successful signup
       }
     } catch (err) {
       Swal.fire({
@@ -95,13 +160,14 @@ const AuthPage = () => {
         title: 'Authentication Error',
         text: err.message || 'An error occurred.'
       });
-      setError(err.message || 'Authentication failed');
     }
   };
 
   const handleResendVerification = async () => {
+    const currentPassword = watch('password'); // Get current password from form
+    
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, pendingEmail, formData.password);
+      const userCredential = await signInWithEmailAndPassword(auth, pendingEmail, currentPassword);
       await sendEmailVerification(userCredential.user);
       Swal.fire({
         icon: 'info',
@@ -153,20 +219,22 @@ const AuthPage = () => {
   };
 
   const handleGoogleLogin = async () => {
-    setError('');
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       const idToken = await user.getIdToken();
+      
       // Send ID token to backend
       const response = await fetch('/api/auth/firebase-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken })
       });
+      
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Login failed');
+      
       // Handle successful login with toast notification and automatic navigation
       toast.success('Login Successful! Welcome back!', {
         duration: 3000,
@@ -174,7 +242,7 @@ const AuthPage = () => {
       });
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || 'Google login failed');
+      toast.error(err.message || 'Google login failed');
     }
   };
 
@@ -184,19 +252,32 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl">
+    <>
+      <SEOHelmet
+        title={isLogin ? "Sign In - CureBay Online Pharmacy" : "Create Account - CureBay Online Pharmacy"}
+        description={isLogin ? "Sign in to your CureBay account to access your orders, prescriptions, and healthcare dashboard." : "Create your CureBay account to start shopping for medicines and healthcare products online."}
+        keywords={isLogin ? "login, sign in, pharmacy account, CureBay login" : "sign up, create account, register, pharmacy registration"}
+        url={window.location.href}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4 transition-colors duration-300">
+      <Card className="w-full max-w-md shadow-xl dark:bg-gray-800 dark:border-gray-700">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-gray-900">
+          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </CardTitle>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300">
             {isLogin ? 'Sign in to your CureBay account' : 'Join CureBay for better healthcare'}
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Error Message */}
-          {error && <div className="text-red-500 text-center">{error}</div>}
+          {Object.keys(errors).length > 0 && (
+            <div className="text-red-500 text-sm space-y-1">
+              {Object.entries(errors).map(([field, error]) => (
+                <div key={field}>{error.message}</div>
+              ))}
+            </div>
+          )}
           {/* Social Login Buttons */}
           <div className="space-y-3">
             <Button
@@ -230,7 +311,7 @@ const AuthPage = () => {
             </div>
           </div>
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {!isLogin && (
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
@@ -238,15 +319,15 @@ const AuthPage = () => {
                   <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="username"
-                    name="username"
                     type="text"
                     placeholder="Enter your username"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                    className="pl-10"
-                    required={!isLogin}
+                    className={`pl-10 ${errors.username ? 'border-red-500' : ''}`}
+                    {...register('username')}
                   />
                 </div>
+                {errors.username && (
+                  <p className="text-red-500 text-sm">{errors.username.message}</p>
+                )}
               </div>
             )}
 
@@ -256,16 +337,16 @@ const AuthPage = () => {
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="email"
-                  name="email"
                   type="email"
                   placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="pl-10"
-                  required
+                  className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
                   autoComplete="username"
+                  {...register('email')}
                 />
               </div>
+              {errors.email && (
+                <p className="text-red-500 text-sm">{errors.email.message}</p>
+              )}
             </div>
 
             {!isLogin && (
@@ -290,14 +371,11 @@ const AuthPage = () => {
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="password"
-                  name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="pl-10 pr-10"
-                  required
+                  className={`pl-10 pr-10 ${errors.password ? 'border-red-500' : ''}`}
                   autoComplete="current-password"
+                  {...register('password')}
                 />
                 <button
                   type="button"
@@ -307,13 +385,19 @@ const AuthPage = () => {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {errors.password && (
+                <p className="text-red-500 text-sm">{errors.password.message}</p>
+              )}
             </div>
 
             {!isLogin && (
               <div className="space-y-2">
                 <Label htmlFor="role">Select Role</Label>
-                <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}>
-                  <SelectTrigger>
+                <Select 
+                  value={selectedRole} 
+                  onValueChange={(value) => setValue('role', value)}
+                >
+                  <SelectTrigger className={errors.role ? 'border-red-500' : ''}>
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -321,6 +405,9 @@ const AuthPage = () => {
                     <SelectItem value="seller">Seller</SelectItem>
                   </SelectContent>
                 </Select>
+                {errors.role && (
+                  <p className="text-red-500 text-sm">{errors.role.message}</p>
+                )}
               </div>
             )}
 
@@ -335,8 +422,19 @@ const AuthPage = () => {
                 </button>
               )}
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              {isLogin ? 'Sign In' : 'Sign Up'}
+            <Button 
+              type="submit" 
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  {isLogin ? 'Signing In...' : 'Signing Up...'}
+                </span>
+              ) : (
+                isLogin ? 'Sign In' : 'Sign Up'
+              )}
             </Button>
             {showResend && (
               <div className="text-center mt-2">
@@ -355,7 +453,8 @@ const AuthPage = () => {
             <p className="text-sm text-gray-600">
               {isLogin ? "Don't have an account?" : "Already have an account?"}
               <button
-                onClick={() => setIsLogin(!isLogin)}
+                type="button"
+                onClick={toggleMode}
                 className="ml-1 text-blue-600 hover:text-blue-700 font-medium"
               >
                 {isLogin ? 'Sign up' : 'Sign in'}
@@ -371,6 +470,7 @@ const AuthPage = () => {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 };
 

@@ -15,6 +15,27 @@ import 'swiper/css/effect-fade';
 const HeroSlider = () => {
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Check if dark mode is active and set up observer
+  useEffect(() => {
+    const checkDarkMode = () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setIsDarkMode(isDark);
+    };
+    
+    // Initial check
+    checkDarkMode();
+    
+    // Set up observer for theme changes
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
 
   // Mock data for admin-managed slides - this would come from API
   const mockSlides = [
@@ -27,8 +48,10 @@ const HeroSlider = () => {
       buttonText: 'Shop Now',
       buttonLink: '/shop',
       isActive: true,
-      backgroundColor: 'from-blue-600 to-blue-800',
+      backgroundColor: 'from-blue-500 to-blue-700',
       textColor: 'text-white',
+      lightBackground: 'from-blue-50 to-blue-100',
+      lightTextColor: 'text-gray-800',
       featured: {
         medicine: {
           name: 'Paracetamol 500mg',
@@ -49,8 +72,10 @@ const HeroSlider = () => {
       buttonText: 'Browse Supplements',
       buttonLink: '/category/supplements',
       isActive: true,
-      backgroundColor: 'from-green-600 to-green-800',
+      backgroundColor: 'from-green-500 to-green-700',
       textColor: 'text-white',
+      lightBackground: 'from-green-50 to-green-100',
+      lightTextColor: 'text-gray-800',
       featured: {
         medicine: {
           name: 'Vitamin D3 1000 IU',
@@ -71,8 +96,10 @@ const HeroSlider = () => {
       buttonText: 'Learn More',
       buttonLink: '/about',
       isActive: true,
-      backgroundColor: 'from-purple-600 to-purple-800',
+      backgroundColor: 'from-purple-500 to-purple-700',
       textColor: 'text-white',
+      lightBackground: 'from-purple-50 to-purple-100',
+      lightTextColor: 'text-gray-800',
       featured: {
         medicine: {
           name: 'Insulin Pen',
@@ -152,18 +179,18 @@ const HeroSlider = () => {
 
   if (loading) {
     return (
-      <div className="relative h-[600px] bg-gray-100 animate-pulse flex items-center justify-center">
-        <div className="text-gray-500">Loading slides...</div>
+      <div className="relative h-[600px] bg-gray-100 dark:bg-gray-800 animate-pulse flex items-center justify-center transition-colors duration-300">
+        <div className="text-gray-500 dark:text-gray-400 transition-colors">Loading slides...</div>
       </div>
     );
   }
 
   if (slides.length === 0) {
     return (
-      <div className="relative h-[600px] bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-        <div className="text-center text-white">
+      <div className="relative h-[600px] bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center transition-colors duration-300">
+        <div className="text-center text-gray-900 dark:text-white transition-colors">
           <h2 className="text-3xl font-bold mb-4">Welcome to CureBay</h2>
-          <p className="text-gray-300 mb-6">Your trusted healthcare partner</p>
+          <p className="text-gray-600 dark:text-gray-300 mb-6 transition-colors">Your trusted healthcare partner</p>
           <Button className="bg-blue-600 hover:bg-blue-700">
             Browse Products
           </Button>
@@ -197,22 +224,32 @@ const HeroSlider = () => {
         loop={slides.length > 1}
         className="hero-slider h-[600px]"
       >
-        {slides.map((slide) => (
+        {slides.map((slide) => {
+          const backgroundGradient = isDarkMode ? slide.backgroundColor : slide.lightBackground;
+          const textColor = isDarkMode ? slide.textColor : slide.lightTextColor;
+          
+          return (
           <SwiperSlide key={slide.id}>
             <div 
-              className={`relative h-full bg-gradient-to-r ${slide.backgroundColor} overflow-hidden`}
+              className={`relative h-full overflow-hidden transition-colors duration-300`}
               style={{
-                backgroundImage: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${slide.image})`,
+                backgroundImage: `url(${slide.image})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}
             >
-              <div className="absolute inset-0 bg-black bg-opacity-30"></div>
+              {/* Theme-based overlay */}
+              <div 
+                className={`absolute inset-0 bg-gradient-to-r ${backgroundGradient} transition-all duration-300`}
+                style={{
+                  backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.92)'
+                }}
+              ></div>
               
               <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
                 <div className="grid lg:grid-cols-2 gap-12 items-center h-full">
                   {/* Left Content */}
-                  <div className={`space-y-6 ${slide.textColor}`}>
+                  <div className={`space-y-6 ${textColor} transition-colors duration-300`}>
                     <div className="space-y-4">
                       <h2 className="text-lg font-medium opacity-90">{slide.subtitle}</h2>
                       <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
@@ -226,14 +263,22 @@ const HeroSlider = () => {
                     <div className="flex flex-col sm:flex-row gap-4">
                       <Button 
                         size="lg" 
-                        className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-4 text-lg font-medium"
+                        className={`px-8 py-4 text-lg font-medium transition-colors duration-300 ${
+                          isDarkMode 
+                            ? 'bg-white text-gray-900 hover:bg-gray-100 border-white' 
+                            : 'bg-gray-900 text-white hover:bg-gray-800 border-gray-900'
+                        }`}
                       >
                         {slide.buttonText}
                       </Button>
                       <Button 
                         size="lg" 
                         variant="outline"
-                        className="border-white text-white hover:bg-white hover:text-gray-900 px-8 py-4 text-lg font-medium"
+                        className={`px-8 py-4 text-lg font-medium transition-colors duration-300 ${
+                          isDarkMode 
+                            ? 'border-white text-white hover:bg-white hover:text-gray-900' 
+                            : 'border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white bg-white'
+                        }`}
                       >
                         <Eye className="w-5 h-5 mr-2" />
                         Learn More
@@ -260,7 +305,7 @@ const HeroSlider = () => {
                   {/* Right Content - Featured Medicine */}
                   {slide.featured && slide.featured.medicine && (
                     <div className="flex justify-center">
-                      <div className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full transform hover:scale-105 transition-transform duration-300">
+                      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full transform hover:scale-105 transition-all duration-300">
                         <div className="text-center mb-4">
                           <Badge className="bg-red-500 text-white mb-2">
                             Featured Product
@@ -275,13 +320,13 @@ const HeroSlider = () => {
                           />
                           
                           <div className="text-center">
-                            <h3 className="font-semibold text-gray-900 mb-2">
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2 transition-colors">
                               {slide.featured.medicine.name}
                             </h3>
                             
                             <div className="flex items-center justify-center space-x-1 mb-3">
                               <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="text-sm font-medium text-gray-700">
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
                                 {slide.featured.medicine.rating}
                               </span>
                             </div>
@@ -327,35 +372,37 @@ const HeroSlider = () => {
               </div>
             </div>
           </SwiperSlide>
-        ))}
+          );
+        })}
       </Swiper>
 
       {/* Custom Navigation Buttons */}
       {slides.length > 1 && (
         <>
-          <button className="hero-slider-prev absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-3 rounded-full transition-all duration-300">
+          <button className="hero-slider-prev absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-white bg-opacity-80 hover:bg-opacity-100 dark:bg-black dark:bg-opacity-50 dark:hover:bg-opacity-75 text-gray-900 dark:text-white p-3 rounded-full transition-all duration-300 shadow-lg">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <button className="hero-slider-next absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-3 rounded-full transition-all duration-300">
+          <button className="hero-slider-next absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-white bg-opacity-80 hover:bg-opacity-100 dark:bg-black dark:bg-opacity-50 dark:hover:bg-opacity-75 text-gray-900 dark:text-white p-3 rounded-full transition-all duration-300 shadow-lg">
             <ChevronRight className="w-6 h-6" />
           </button>
         </>
       )}
 
       {/* Custom Styles */}
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{__html: `
         .hero-slider .swiper-pagination {
           bottom: 20px;
         }
         .hero-slider .swiper-pagination-bullet {
-          background: rgba(255, 255, 255, 0.5);
+          background: ${isDarkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.3)'};
           width: 12px;
           height: 12px;
+          transition: background-color 0.3s ease;
         }
         .hero-slider .swiper-pagination-bullet-active {
-          background: white;
+          background: ${isDarkMode ? 'white' : '#1f2937'};
         }
-      `}</style>
+      `}} />
     </div>
   );
 };

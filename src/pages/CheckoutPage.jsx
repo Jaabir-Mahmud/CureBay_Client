@@ -21,6 +21,33 @@ import { Badge } from "../components/ui/badge";
 import { useAuth } from "../contexts/AuthContext";
 import { CreditCard, Lock, ShoppingBag, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
+import SEOHelmet from "../components/SEOHelmet";
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+
+// Validation schema for shipping information
+const shippingSchema = yup.object({
+  street: yup
+    .string()
+    .min(5, 'Street address must be at least 5 characters')
+    .required('Street address is required'),
+  city: yup
+    .string()
+    .min(2, 'City must be at least 2 characters')
+    .required('City is required'),
+  state: yup
+    .string()
+    .min(2, 'State must be at least 2 characters')
+    .required('State is required'),
+  zipCode: yup
+    .string()
+    .matches(/^\d{5}(-\d{4})?$/, 'Please enter a valid ZIP code')
+    .required('ZIP code is required'),
+  country: yup
+    .string()
+    .required('Country is required'),
+});
 
 // Initialize Stripe (you'll need to add your publishable key)
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_...');
@@ -31,27 +58,51 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [shippingInfo, setShippingInfo] = useState({
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'United States'
+  
+  // React Hook Form setup
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    watch,
+  } = useForm({
+    resolver: yupResolver(shippingSchema),
+    mode: 'onChange',
+    defaultValues: {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: 'United States'
+    },
   });
 
-  const handleShippingChange = (field, value) => {
-    setShippingInfo(prev => ({ ...prev, [field]: value }));
+  // Watch all form values
+  const formData = watch();
+
+  // Check if dark mode is active
+  const isDarkMode = document.documentElement.classList.contains('dark');
+
+  // Dynamic CardElement styling based on theme
+  const cardElementOptions = {
+    style: {
+      base: {
+        fontSize: '16px',
+        color: isDarkMode ? '#ffffff' : '#424770',
+        backgroundColor: 'transparent',
+        '::placeholder': {
+          color: isDarkMode ? '#9ca3af' : '#aab7c4',
+        },
+      },
+      invalid: {
+        color: '#fa755a',
+        iconColor: '#fa755a'
+      }
+    },
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
+  const onSubmit = async (shippingData) => {
     if (!stripe || !elements) {
-      return;
-    }
-
-    if (!shippingInfo.street || !shippingInfo.city || !shippingInfo.state || !shippingInfo.zipCode) {
-      toast.error('Please fill in all shipping information');
       return;
     }
 
@@ -67,7 +118,7 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
         body: JSON.stringify({
           userId: profile?.id || user?.uid,
           items: orderData.items,
-          shippingAddress: shippingInfo
+          shippingAddress: shippingData
         })
       });
 
@@ -134,7 +185,7 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Shipping Information */}
       <Card>
         <CardHeader>
@@ -148,32 +199,38 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
             <Label htmlFor="street">Street Address</Label>
             <Input
               id="street"
-              value={shippingInfo.street}
-              onChange={(e) => handleShippingChange('street', e.target.value)}
               placeholder="123 Main Street"
-              required
+              className={errors.street ? 'border-red-500' : ''}
+              {...register('street')}
             />
+            {errors.street && (
+              <p className="text-red-500 text-sm mt-1">{errors.street.message}</p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="city">City</Label>
               <Input
                 id="city"
-                value={shippingInfo.city}
-                onChange={(e) => handleShippingChange('city', e.target.value)}
                 placeholder="New York"
-                required
+                className={errors.city ? 'border-red-500' : ''}
+                {...register('city')}
               />
+              {errors.city && (
+                <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="state">State</Label>
               <Input
                 id="state"
-                value={shippingInfo.state}
-                onChange={(e) => handleShippingChange('state', e.target.value)}
                 placeholder="NY"
-                required
+                className={errors.state ? 'border-red-500' : ''}
+                {...register('state')}
               />
+              {errors.state && (
+                <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -181,20 +238,25 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
               <Label htmlFor="zipCode">ZIP Code</Label>
               <Input
                 id="zipCode"
-                value={shippingInfo.zipCode}
-                onChange={(e) => handleShippingChange('zipCode', e.target.value)}
                 placeholder="10001"
-                required
+                className={errors.zipCode ? 'border-red-500' : ''}
+                {...register('zipCode')}
               />
+              {errors.zipCode && (
+                <p className="text-red-500 text-sm mt-1">{errors.zipCode.message}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="country">Country</Label>
               <Input
                 id="country"
-                value={shippingInfo.country}
-                onChange={(e) => handleShippingChange('country', e.target.value)}
-                required
+                placeholder="United States"
+                className={errors.country ? 'border-red-500' : ''}
+                {...register('country')}
               />
+              {errors.country && (
+                <p className="text-red-500 text-sm mt-1">{errors.country.message}</p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -211,23 +273,13 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
         <CardContent>
           <div className="mb-4">
             <Label>Card Details</Label>
-            <div className="mt-2 p-3 border rounded-lg">
+            <div className="mt-2 p-3 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700">
               <CardElement
-                options={{
-                  style: {
-                    base: {
-                      fontSize: '16px',
-                      color: '#424770',
-                      '::placeholder': {
-                        color: '#aab7c4',
-                      },
-                    },
-                  },
-                }}
+                options={cardElementOptions}
               />
             </div>
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
             <Lock className="w-4 h-4" />
             Your payment information is secure and encrypted
           </div>
@@ -237,11 +289,18 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
       {/* Submit Button */}
       <Button
         type="submit"
-        disabled={!stripe || isProcessing}
+        disabled={!stripe || isProcessing || !isValid}
         className="w-full"
         size="lg"
       >
-        {isProcessing ? 'Processing...' : `Pay $${orderData.total?.toFixed(2) || '0.00'}`}
+        {isProcessing ? (
+          <span className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            Processing...
+          </span>
+        ) : (
+          `Pay $${orderData.total?.toFixed(2) || '0.00'}`
+        )}
       </Button>
     </form>
   );
@@ -321,7 +380,14 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <>
+      <SEOHelmet
+        title="Checkout - CureBay Online Pharmacy"
+        description="Complete your purchase securely with CureBay. Fast checkout process with secure payment options for your medicines and healthcare products."
+        keywords="checkout, buy medicines online, secure payment, online pharmacy checkout"
+        url={window.location.href}
+      />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Checkout</h1>
@@ -426,6 +492,7 @@ const CheckoutPage = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

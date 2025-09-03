@@ -48,17 +48,17 @@ const ExtraSection1 = () => {
   };
 
   return (
-    <section className="py-16 bg-white">
+    <section className="py-16 bg-white dark:bg-gray-900 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
             <BookOpen className="w-6 h-6 text-blue-600 mr-2" />
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white transition-colors">
               Health Tips & Guides
             </h2>
           </div>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto transition-colors">
             Stay informed with expert advice and essential health information from our medical professionals
           </p>
         </div>
@@ -88,7 +88,7 @@ const ExtraSection1 = () => {
                 {/* Content */}
                 <div className="p-6">
                   {/* Meta Info */}
-                  <div className="flex items-center text-sm text-gray-500 mb-3">
+                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-3 transition-colors">
                     <User className="w-4 h-4 mr-1" />
                     <span className="mr-4">{tip.author}</span>
                     <Clock className="w-4 h-4 mr-1" />
@@ -96,24 +96,24 @@ const ExtraSection1 = () => {
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors line-clamp-2">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                     {tip.title}
                   </h3>
 
                   {/* Excerpt */}
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3 transition-colors">
                     {tip.excerpt}
                   </p>
 
                   {/* Footer */}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 transition-colors">
                       {tip.publishedAt}
                     </span>
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-blue-600 hover:text-blue-700 p-0 h-auto font-medium"
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 p-0 h-auto font-medium transition-colors"
                     >
                       Read More
                       <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
@@ -127,7 +127,7 @@ const ExtraSection1 = () => {
 
         {/* View All Button */}
         <div className="text-center mt-12">
-          <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+          <Button size="lg" className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-8 py-3">
             <BookOpen className="w-5 h-5 mr-2" />
             View All Health Tips
           </Button>

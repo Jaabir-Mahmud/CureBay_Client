@@ -26,24 +26,80 @@ import { Label } from '../../../components/ui/label';
 import { useAuth } from '../../../contexts/AuthContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+
+// Validation schema for medicine form
+const medicineSchema = yup.object({
+  name: yup
+    .string()
+    .min(2, 'Medicine name must be at least 2 characters')
+    .max(100, 'Medicine name must be less than 100 characters')
+    .required('Medicine name is required'),
+  genericName: yup
+    .string()
+    .min(2, 'Generic name must be at least 2 characters')
+    .max(100, 'Generic name must be less than 100 characters')
+    .required('Generic name is required'),
+  description: yup
+    .string()
+    .min(10, 'Description must be at least 10 characters')
+    .max(500, 'Description must be less than 500 characters')
+    .required('Description is required'),
+  category: yup
+    .string()
+    .required('Category is required'),
+  company: yup
+    .string()
+    .min(2, 'Company name must be at least 2 characters')
+    .max(50, 'Company name must be less than 50 characters')
+    .required('Company name is required'),
+  massUnit: yup
+    .string()
+    .required('Mass unit is required'),
+  price: yup
+    .number()
+    .positive('Price must be a positive number')
+    .max(10000, 'Price must be less than $10,000')
+    .required('Price is required'),
+  discountPercentage: yup
+    .number()
+    .min(0, 'Discount percentage cannot be negative')
+    .max(100, 'Discount percentage cannot exceed 100%')
+    .default(0),
+});
 
 const SellerDashboard = () => {
   const { user, profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddMedicineOpen, setIsAddMedicineOpen] = useState(false);
 
-  // Medicine form state
-  const [medicineForm, setMedicineForm] = useState({
-    name: '',
-    genericName: '',
-    description: '',
-    category: '',
-    company: '',
-    massUnit: 'mg',
-    price: '',
-    discountPercentage: 0,
-    image: null
+  // React Hook Form setup
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+    setValue,
+    watch,
+  } = useForm({
+    resolver: yupResolver(medicineSchema),
+    defaultValues: {
+      name: '',
+      genericName: '',
+      description: '',
+      category: '',
+      company: '',
+      massUnit: 'mg',
+      price: '',
+      discountPercentage: 0,
+    },
   });
+
+  // Watch the category value for controlled component
+  const selectedCategory = watch('category');
+  const selectedMassUnit = watch('massUnit');
 
   const sellerId = profile?.id || user?.uid;
 
@@ -105,15 +161,18 @@ const SellerDashboard = () => {
   const totalMedicines = medicines.length;
   const activeMedicines = medicines.filter(m => m.isActive !== false).length;
 
-  const handleAddMedicine = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (data) => {
     try {
       const formData = new FormData();
-      Object.keys(medicineForm).forEach(key => {
-        if (medicineForm[key] !== null && medicineForm[key] !== '') {
-          formData.append(key, medicineForm[key]);
+      
+      // Add all form fields to FormData
+      Object.keys(data).forEach(key => {
+        if (data[key] !== null && data[key] !== '') {
+          formData.append(key, data[key]);
         }
       });
+      
+      // Add seller ID
       formData.append('seller', sellerId);
 
       const response = await fetch('/api/medicines', {
@@ -125,17 +184,7 @@ const SellerDashboard = () => {
       
       toast.success('Medicine added successfully');
       setIsAddMedicineOpen(false);
-      setMedicineForm({
-        name: '',
-        genericName: '',
-        description: '',
-        category: '',
-        company: '',
-        massUnit: 'mg',
-        price: '',
-        discountPercentage: 0,
-        image: null
-      });
+      reset(); // Reset form using React Hook Form
       refetchMedicines();
     } catch (error) {
       toast.error('Failed to add medicine');
@@ -278,42 +327,49 @@ const SellerDashboard = () => {
                         <DialogHeader>
                           <DialogTitle>Add New Medicine</DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={handleAddMedicine} className="space-y-4">
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                           <div>
                             <Label htmlFor="name">Medicine Name</Label>
                             <Input
                               id="name"
-                              value={medicineForm.name}
-                              onChange={(e) => setMedicineForm(prev => ({ ...prev, name: e.target.value }))}
-                              required
+                              className={errors.name ? 'border-red-500' : ''}
+                              {...register('name')}
                             />
+                            {errors.name && (
+                              <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+                            )}
                           </div>
                           <div>
                             <Label htmlFor="genericName">Generic Name</Label>
                             <Input
                               id="genericName"
-                              value={medicineForm.genericName}
-                              onChange={(e) => setMedicineForm(prev => ({ ...prev, genericName: e.target.value }))}
-                              required
+                              className={errors.genericName ? 'border-red-500' : ''}
+                              {...register('genericName')}
                             />
+                            {errors.genericName && (
+                              <p className="text-red-500 text-sm mt-1">{errors.genericName.message}</p>
+                            )}
                           </div>
                           <div>
                             <Label htmlFor="description">Description</Label>
                             <Textarea
                               id="description"
-                              value={medicineForm.description}
-                              onChange={(e) => setMedicineForm(prev => ({ ...prev, description: e.target.value }))}
                               rows={3}
+                              className={errors.description ? 'border-red-500' : ''}
+                              {...register('description')}
                             />
+                            {errors.description && (
+                              <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
+                            )}
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <Label htmlFor="category">Category</Label>
                               <Select 
-                                value={medicineForm.category} 
-                                onValueChange={(value) => setMedicineForm(prev => ({ ...prev, category: value }))}
+                                value={selectedCategory} 
+                                onValueChange={(value) => setValue('category', value)}
                               >
-                                <SelectTrigger>
+                                <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
                                   <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -324,15 +380,20 @@ const SellerDashboard = () => {
                                   ))}
                                 </SelectContent>
                               </Select>
+                              {errors.category && (
+                                <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>
+                              )}
                             </div>
                             <div>
                               <Label htmlFor="company">Company</Label>
                               <Input
                                 id="company"
-                                value={medicineForm.company}
-                                onChange={(e) => setMedicineForm(prev => ({ ...prev, company: e.target.value }))}
-                                required
+                                className={errors.company ? 'border-red-500' : ''}
+                                {...register('company')}
                               />
+                              {errors.company && (
+                                <p className="text-red-500 text-sm mt-1">{errors.company.message}</p>
+                              )}
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
@@ -342,10 +403,12 @@ const SellerDashboard = () => {
                                 id="price"
                                 type="number"
                                 step="0.01"
-                                value={medicineForm.price}
-                                onChange={(e) => setMedicineForm(prev => ({ ...prev, price: e.target.value }))}
-                                required
+                                className={errors.price ? 'border-red-500' : ''}
+                                {...register('price', { valueAsNumber: true })}
                               />
+                              {errors.price && (
+                                <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>
+                              )}
                             </div>
                             <div>
                               <Label htmlFor="discountPercentage">Discount %</Label>
@@ -354,10 +417,31 @@ const SellerDashboard = () => {
                                 type="number"
                                 min="0"
                                 max="100"
-                                value={medicineForm.discountPercentage}
-                                onChange={(e) => setMedicineForm(prev => ({ ...prev, discountPercentage: Number(e.target.value) }))}
+                                className={errors.discountPercentage ? 'border-red-500' : ''}
+                                {...register('discountPercentage', { valueAsNumber: true })}
                               />
+                              {errors.discountPercentage && (
+                                <p className="text-red-500 text-sm mt-1">{errors.discountPercentage.message}</p>
+                              )}
                             </div>
+                          </div>
+                          <div>
+                            <Label htmlFor="massUnit">Mass Unit</Label>
+                            <Select 
+                              value={selectedMassUnit} 
+                              onValueChange={(value) => setValue('massUnit', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select mass unit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="mg">mg</SelectItem>
+                                <SelectItem value="g">g</SelectItem>
+                                <SelectItem value="ml">ml</SelectItem>
+                                <SelectItem value="tablets">tablets</SelectItem>
+                                <SelectItem value="capsules">capsules</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div>
                             <Label htmlFor="image">Medicine Image</Label>
@@ -365,14 +449,32 @@ const SellerDashboard = () => {
                               id="image"
                               type="file"
                               accept="image/*"
-                              onChange={(e) => setMedicineForm(prev => ({ ...prev, image: e.target.files[0] }))}
                             />
                           </div>
                           <div className="flex justify-end space-x-2">
-                            <Button type="button" variant="outline" onClick={() => setIsAddMedicineOpen(false)}>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => {
+                                setIsAddMedicineOpen(false);
+                                reset();
+                              }}
+                            >
                               Cancel
                             </Button>
-                            <Button type="submit">Add Medicine</Button>
+                            <Button 
+                              type="submit"
+                              disabled={isSubmitting}
+                            >
+                              {isSubmitting ? (
+                                <span className="flex items-center gap-2">
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  Adding...
+                                </span>
+                              ) : (
+                                'Add Medicine'
+                              )}
+                            </Button>
                           </div>
                         </form>
                       </DialogContent>

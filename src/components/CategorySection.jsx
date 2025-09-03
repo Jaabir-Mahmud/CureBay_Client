@@ -69,14 +69,14 @@ const CategorySection = () => {
   ];
 
   return (
-    <section className="py-16 bg-white">
+    <section className="py-16 bg-white dark:bg-gray-900 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4 transition-colors">
             Browse by Category
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto transition-colors">
             Find the right medication for your needs from our comprehensive categories
           </p>
         </div>
@@ -104,13 +104,13 @@ const CategorySection = () => {
                       <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-10 transition-all duration-300"></div>
                       
                       {/* Icon Overlay */}
-                      <div className={`absolute top-4 left-4 w-12 h-12 ${category.bgColor} rounded-full flex items-center justify-center`}>
-                        <IconComponent className={`w-6 h-6 ${category.color.replace('bg-', 'text-')}`} />
+                      <div className={`absolute top-4 left-4 w-12 h-12 ${category.bgColor} dark:bg-gray-700 rounded-full flex items-center justify-center transition-colors`}>
+                        <IconComponent className={`w-6 h-6 ${category.color.replace('bg-', 'text-')} dark:text-gray-300`} />
                       </div>
 
                       {/* Count Badge */}
                       <div className="absolute top-4 right-4">
-                        <Badge variant="secondary" className="bg-white/90 text-gray-700">
+                        <Badge variant="secondary" className="bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-300">
                           {category.count} items
                         </Badge>
                       </div>
@@ -119,21 +119,21 @@ const CategorySection = () => {
                     {/* Content */}
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {category.name}
                         </h3>
                       </div>
                       
-                      <p className="text-gray-600 text-sm mb-4">
+                      <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 transition-colors">
                         {category.description}
                       </p>
 
                       {/* Stats */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-gray-500 dark:text-gray-400 transition-colors">
                           {category.count} medicines available
                         </span>
-                        <div className="flex items-center text-blue-600 text-sm font-medium group-hover:text-blue-700">
+                        <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm font-medium group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
                           View All
                           <svg className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -151,7 +151,7 @@ const CategorySection = () => {
         {/* View All Categories Button */}
         <div className="text-center mt-12">
           <Link to="/shop">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center">
+            <button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center">
               View All Categories
               <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
