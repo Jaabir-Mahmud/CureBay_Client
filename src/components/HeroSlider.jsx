@@ -37,99 +37,29 @@ const HeroSlider = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Mock data for admin-managed slides - this would come from API
-  const mockSlides = [
-    {
-      id: 1,
-      title: 'Quality Healthcare Solutions',
-      subtitle: 'Your trusted partner for medical needs',
-      description: 'Discover our comprehensive range of medicines and healthcare products with verified quality and competitive pricing.',
-      image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=1200&h=600&fit=crop&auto=format',
-      buttonText: 'Shop Now',
-      buttonLink: '/shop',
-      isActive: true,
-      backgroundColor: 'from-blue-500 to-blue-700',
-      textColor: 'text-white',
-      lightBackground: 'from-blue-50 to-blue-100',
-      lightTextColor: 'text-gray-800',
-      featured: {
-        medicine: {
-          name: 'Paracetamol 500mg',
-          price: 19.99,
-          originalPrice: 25.99,
-          discount: 23,
-          rating: 4.5,
-          image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=200&h=200&fit=crop&auto=format'
-        }
-      }
-    },
-    {
-      id: 2,
-      title: 'Premium Vitamins & Supplements',
-      subtitle: 'Boost your immunity naturally',
-      description: 'Explore our premium collection of vitamins and supplements to support your daily health and wellness journey.',
-      image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=1200&h=600&fit=crop&auto=format',
-      buttonText: 'Browse Supplements',
-      buttonLink: '/category/supplements',
-      isActive: true,
-      backgroundColor: 'from-green-500 to-green-700',
-      textColor: 'text-white',
-      lightBackground: 'from-green-50 to-green-100',
-      lightTextColor: 'text-gray-800',
-      featured: {
-        medicine: {
-          name: 'Vitamin D3 1000 IU',
-          price: 24.99,
-          originalPrice: 32.00,
-          discount: 22,
-          rating: 4.7,
-          image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=200&fit=crop&auto=format'
-        }
-      }
-    },
-    {
-      id: 3,
-      title: 'Fast & Reliable Delivery',
-      subtitle: 'Get your medicines delivered safely',
-      description: 'Experience our quick delivery service with proper packaging and temperature control for all your medical needs.',
-      image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=1200&h=600&fit=crop&auto=format',
-      buttonText: 'Learn More',
-      buttonLink: '/about',
-      isActive: true,
-      backgroundColor: 'from-purple-500 to-purple-700',
-      textColor: 'text-white',
-      lightBackground: 'from-purple-50 to-purple-100',
-      lightTextColor: 'text-gray-800',
-      featured: {
-        medicine: {
-          name: 'Insulin Pen',
-          price: 45.99,
-          originalPrice: 52.00,
-          discount: 12,
-          rating: 4.8,
-          image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=200&h=200&fit=crop&auto=format'
-        }
-      }
-    }
-  ];
-
   useEffect(() => {
-    // Simulate API call to fetch admin-managed slides
+    // Fetch hero slides from API
     const fetchSlides = async () => {
       try {
         setLoading(true);
-        // In real implementation, this would be:
-        // const response = await fetch('/api/admin/hero-slides');
-        // const data = await response.json();
-        // setSlides(data.filter(slide => slide.isActive));
-        
-        // For now, use mock data
-        setTimeout(() => {
-          setSlides(mockSlides.filter(slide => slide.isActive));
-          setLoading(false);
-        }, 1000);
+        const response = await fetch('/api/hero-slides?active=true');
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch hero slides: ${response.status} ${response.statusText}. ${errorText}`);
+        }
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          console.error('Failed to parse JSON response:', jsonError);
+          data = [];
+        }
+        setSlides(data);
       } catch (error) {
         console.error('Error fetching hero slides:', error);
+        // Fallback to empty slides - will show default welcome message
+        setSlides([]);
+      } finally {
         setLoading(false);
       }
     };
@@ -160,7 +90,7 @@ const HeroSlider = () => {
         </div>
 
         <div className="flex items-center justify-center space-x-2">
-          <span className="text-2xl font-bold text-blue-600">${medicine.price}</span>
+          <span className="text-2xl font-bold text-cyan-500">${medicine.price}</span>
           {medicine.originalPrice && (
             <span className="text-lg text-gray-500 line-through">${medicine.originalPrice}</span>
           )}
@@ -169,7 +99,7 @@ const HeroSlider = () => {
           )}
         </div>
 
-        <Button className="w-full bg-blue-600 hover:bg-blue-700">
+        <Button className="w-full bg-cyan-500 hover:bg-cyan-600">
           <ShoppingCart className="w-4 h-4 mr-2" />
           Add to Cart
         </Button>
@@ -187,11 +117,11 @@ const HeroSlider = () => {
 
   if (slides.length === 0) {
     return (
-      <div className="relative h-[600px] bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center transition-colors duration-300">
+      <div className="relative h-[600px] bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center transition-colors duration-300">
         <div className="text-center text-gray-900 dark:text-white transition-colors">
           <h2 className="text-3xl font-bold mb-4">Welcome to CureBay</h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6 transition-colors">Your trusted healthcare partner</p>
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button className="bg-cyan-500 hover:bg-cyan-600">
             Browse Products
           </Button>
         </div>
@@ -229,7 +159,7 @@ const HeroSlider = () => {
           const textColor = isDarkMode ? slide.textColor : slide.lightTextColor;
           
           return (
-          <SwiperSlide key={slide.id}>
+          <SwiperSlide key={slide._id}>
             <div 
               className={`relative h-full overflow-hidden transition-colors duration-300`}
               style={{
@@ -240,9 +170,13 @@ const HeroSlider = () => {
             >
               {/* Theme-based overlay */}
               <div 
-                className={`absolute inset-0 bg-gradient-to-r ${backgroundGradient} transition-all duration-300`}
+                className={`absolute inset-0 transition-all duration-300 ${
+                  isDarkMode 
+                    ? 'bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900' 
+                    : `bg-gradient-to-r ${backgroundGradient}`
+                }`}
                 style={{
-                  backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.92)'
+                  backgroundColor: isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.92)'
                 }}
               ></div>
               
@@ -332,7 +266,7 @@ const HeroSlider = () => {
                             </div>
                             
                             <div className="flex items-center justify-center space-x-2 mb-4">
-                              <span className="text-xl font-bold text-blue-600">
+                              <span className="text-xl font-bold text-cyan-500">
                                 ${slide.featured.medicine.price}
                               </span>
                               {slide.featured.medicine.originalPrice && (
@@ -358,7 +292,7 @@ const HeroSlider = () => {
                                 <MedicineModal medicine={slide.featured.medicine} />
                               </Dialog>
                               
-                              <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700">
+                              <Button size="sm" className="flex-1 bg-cyan-500 hover:bg-cyan-600">
                                 <ShoppingCart className="w-4 h-4 mr-1" />
                                 Add to Cart
                               </Button>

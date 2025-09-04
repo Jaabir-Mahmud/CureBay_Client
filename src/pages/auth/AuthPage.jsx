@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, Upload, Github } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Upload, Github, Camera, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -56,6 +56,10 @@ const AuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showResend, setShowResend] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
@@ -87,6 +91,12 @@ const AuthPage = () => {
     reset(); // Reset form when switching modes
     setShowResend(false);
     setPendingEmail("");
+    // Clear photo when switching modes
+    setProfilePhoto(null);
+    setProfilePhotoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleInputChange = (e) => {
@@ -95,6 +105,84 @@ const AuthPage = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  // Handle photo upload
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Profile photo must be less than 2MB');
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+      }
+      
+      setProfilePhoto(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfilePhotoPreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  // Remove photo
+  const removePhoto = () => {
+    setProfilePhoto(null);
+    setProfilePhotoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+  
+  // Upload photo to server
+  const uploadPhoto = async () => {
+    if (!profilePhoto) return null;
+    
+    setIsUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('photo', profilePhoto);
+      
+      const response = await fetch('/api/upload/profile', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          console.error('Failed to parse JSON error response:', jsonError);
+          throw new Error(`Failed to upload photo: ${response.status} ${response.statusText}`);
+        }
+        throw new Error(errorData.message || 'Failed to upload photo');
+      }
+      
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError);
+        throw new Error('Failed to upload photo - Invalid server response');
+      }
+      return data.url; // Return the file URL
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      toast.error(error.message || 'Failed to upload profile photo');
+      return null;
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   const onSubmit = async (data) => {
@@ -141,11 +229,52 @@ const AuthPage = () => {
       } else {
         // Signup
         const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-        await sendEmailVerification(userCredential.user);
+        const user = userCredential.user;
+        
+        // Upload profile photo if provided
+        let profilePictureUrl = null;
+        if (profilePhoto) {
+          profilePictureUrl = await uploadPhoto();
+          if (!profilePictureUrl) {
+            // Photo upload failed, but continue with signup
+            toast('Profile photo upload failed, but account was created successfully', {
+              icon: '⚠️'
+            });
+          }
+        }
+        
+        // Get ID token and send to backend for enhanced signup
+        const idToken = await user.getIdToken();
+        
+        const signupResponse = await fetch('/api/auth/firebase-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idToken,
+            username: data.username,
+            role: data.role,
+            profilePicture: profilePictureUrl
+          })
+        });
+        
+        let signupData;
+        try {
+          signupData = await signupResponse.json();
+        } catch (jsonError) {
+          console.error('Failed to parse JSON response:', jsonError);
+          throw new Error('Failed to create account - Invalid server response');
+        }
+        
+        if (!signupResponse.ok) {
+          throw new Error(signupData.error || 'Failed to create account');
+        }
+        
+        // Send email verification
+        await sendEmailVerification(user);
         
         Swal.fire({
-          icon: 'info',
-          title: 'Verify Your Email',
+          icon: 'success',
+          title: 'Account Created!',
           text: 'A verification link has been sent to your email. Please verify your email before logging in.'
         });
         
@@ -153,8 +282,16 @@ const AuthPage = () => {
         setPendingEmail(data.email);
         setIsLogin(true); // Switch to login after signup
         reset(); // Reset form after successful signup
+        
+        // Clear photo after successful signup
+        setProfilePhoto(null);
+        setProfilePhotoPreview(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     } catch (err) {
+      console.error('Authentication error:', err);
       Swal.fire({
         icon: 'error',
         title: 'Authentication Error',
@@ -259,7 +396,7 @@ const AuthPage = () => {
         keywords={isLogin ? "login, sign in, pharmacy account, CureBay login" : "sign up, create account, register, pharmacy registration"}
         url={window.location.href}
       />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4 transition-colors duration-300">
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4 transition-colors duration-300">
       <Card className="w-full max-w-md shadow-xl dark:bg-gray-800 dark:border-gray-700">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -351,16 +488,48 @@ const AuthPage = () => {
 
             {!isLogin && (
               <div className="space-y-2">
-                <Label htmlFor="photo">Profile Photo</Label>
-                <div className="relative">
-                  <Upload className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="photo"
-                    name="photo"
-                    type="file"
-                    accept="image/*"
-                    className="pl-10"
-                  />
+                <Label htmlFor="photo">Profile Photo (Optional)</Label>
+                <div className="space-y-3">
+                  {profilePhotoPreview ? (
+                    <div className="flex items-center space-x-4">
+                      <div className="relative">
+                        <img
+                          src={profilePhotoPreview}
+                          alt="Profile preview"
+                          className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={removePhoto}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-600">{profilePhoto?.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {(profilePhoto?.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Upload className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        ref={fileInputRef}
+                        id="photo"
+                        name="photo"
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                        className="pl-10"
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Upload a profile picture (max 2MB). Supported formats: JPG, PNG, GIF, WebP
+                  </p>
                 </div>
               </div>
             )}
@@ -415,7 +584,7 @@ const AuthPage = () => {
               {isLogin && (
                 <button
                   type="button"
-                  className="text-blue-600 hover:underline text-sm"
+                  className="text-cyan-600 hover:underline text-sm"
                   onClick={handleForgotPassword}
                 >
                   Forgot Password?
@@ -424,13 +593,13 @@ const AuthPage = () => {
             </div>
             <Button 
               type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700"
-              disabled={isSubmitting}
+              className="w-full bg-cyan-500 hover:bg-cyan-600"
+              disabled={isSubmitting || isUploadingPhoto}
             >
-              {isSubmitting ? (
+              {isSubmitting || isUploadingPhoto ? (
                 <span className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  {isLogin ? 'Signing In...' : 'Signing Up...'}
+                  {isUploadingPhoto ? 'Uploading photo...' : (isLogin ? 'Signing In...' : 'Creating Account...')}
                 </span>
               ) : (
                 isLogin ? 'Sign In' : 'Sign Up'
@@ -440,7 +609,7 @@ const AuthPage = () => {
               <div className="text-center mt-2">
                 <button
                   type="button"
-                  className="text-blue-600 hover:underline text-sm"
+                  className="text-cyan-600 hover:underline text-sm"
                   onClick={handleResendVerification}
                 >
                   Resend Verification Email
@@ -455,7 +624,7 @@ const AuthPage = () => {
               <button
                 type="button"
                 onClick={toggleMode}
-                className="ml-1 text-blue-600 hover:text-blue-700 font-medium"
+                className="ml-1 text-cyan-600 hover:text-cyan-700 font-medium"
               >
                 {isLogin ? 'Sign up' : 'Sign in'}
               </button>

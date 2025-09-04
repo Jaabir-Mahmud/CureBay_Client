@@ -95,7 +95,14 @@ const CategoryMedicines = () => {
       console.log('Fetching categories...');
       const res = await fetch('/api/categories');
       if (res.ok) {
-        const data = await res.json();
+        // Handle potential empty or invalid JSON responses
+        let data;
+        try {
+          data = await res.json();
+        } catch (jsonError) {
+          console.error('Failed to parse JSON response:', jsonError);
+          data = []; // Use empty array as fallback
+        }
         console.log('Categories fetched:', data);
         setCategories(data);
         
@@ -382,7 +389,7 @@ const CategoryMedicines = () => {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Loading medicines...</p>
         </div>
       </div>
@@ -425,7 +432,7 @@ const CategoryMedicines = () => {
           </div>
           
           <div className="flex items-center gap-4 mb-2">
-            <Package className="w-8 h-8 text-blue-600" />
+            <Package className="w-8 h-8 text-cyan-500" />
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                 {category?.name || 'Category'} Medicines

@@ -6,6 +6,9 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { useCart } from '../contexts/CartContext';
+import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -21,32 +24,10 @@ const DiscountSection = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [timeLeft, setTimeLeft] = useState({ hours: 23, minutes: 45, seconds: 30 });
   const [wishlist, setWishlist] = useState(new Set());
+  const { addToCart } = useCart();
 
-  // Countdown timer effect
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
-        return prev;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, []);
-  // Enhanced discount products with more realistic data
-  const discountProducts = [
+  // Fallback mock data in case API fails
+  const fallbackDiscountProducts = [
     {
       id: 1,
       name: 'Paracetamol 500mg',
@@ -212,9 +193,64 @@ const DiscountSection = () => {
     }
   ];
 
+  // Fetch discount products using TanStack Query
+  const { data: discountData, isLoading, error } = useQuery({
+    queryKey: ['discountedMedicines'],
+    queryFn: async () => {
+      const response = await fetch('/api/medicines/discounted?limit=8');
+      if (!response.ok) {
+        throw new Error('Failed to fetch discounted medicines');
+      }
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
+  });
+
+  // Use real data or fallback to mock data
+  const discountProducts = discountData?.medicines || fallbackDiscountProducts;
+
+  // Countdown timer effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 };
+        } else if (prev.minutes > 0) {
+          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        } else if (prev.hours > 0) {
+          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        }
+        return prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Simulate loading
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleAddToCart = (product) => {
-    // Add to cart logic here
-    console.log('Adding to cart:', product);
+    // Convert product to cart format
+    const cartProduct = {
+      id: product.id,
+      name: product.name,
+      company: product.company,
+      price: product.discountPrice,
+      originalPrice: product.originalPrice,
+      discount: product.discount,
+      image: product.image,
+      category: typeof product.category === 'object' ? product.category.name : product.category,
+      genericName: product.genericName,
+      massUnit: product.massUnit,
+      inStock: product.inStock,
+    };
+    
+    addToCart(cartProduct, 1, product.massUnit);
   };
 
   const toggleWishlist = (productId) => {
@@ -222,8 +258,10 @@ const DiscountSection = () => {
       const newWishlist = new Set(prev);
       if (newWishlist.has(productId)) {
         newWishlist.delete(productId);
+        toast.success('Removed from wishlist');
       } else {
         newWishlist.add(productId);
+        toast.success('Added to wishlist');
       }
       return newWishlist;
     });
@@ -259,7 +297,7 @@ const DiscountSection = () => {
         </div>
         <div className="space-y-4">
           <div>
-            <Badge variant="outline">{product.category}</Badge>
+            <Badge variant="outline">{typeof product.category === 'object' ? product.category.name : product.category}</Badge>
             <h3 className="text-xl font-semibold mt-2">{product.name}</h3>
             <p className="text-gray-600">by {product.company}</p>
           </div>
@@ -279,7 +317,7 @@ const DiscountSection = () => {
           </div>
 
           <div className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-blue-600">${product.discountPrice}</span>
+            <span className="text-2xl font-bold text-cyan-600">${product.discountPrice}</span>
             <span className="text-lg text-gray-500 line-through">${product.originalPrice}</span>
             <Badge className="bg-red-500">-{product.discount}%</Badge>
           </div>
@@ -291,7 +329,7 @@ const DiscountSection = () => {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                className="bg-cyan-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${getStockPercentage(product.soldCount, product.totalStock)}%` }}
               ></div>
             </div>
@@ -300,7 +338,7 @@ const DiscountSection = () => {
           <Button
             onClick={() => handleAddToCart(product)}
             disabled={!product.inStock}
-            className="w-full bg-blue-600 hover:bg-blue-700"
+            className="w-full bg-cyan-600 hover:bg-cyan-700"
           >
             <ShoppingCart className="w-4 h-4 mr-2" />
             {product.inStock ? 'Add to Cart' : 'Out of Stock'}
@@ -441,7 +479,7 @@ const DiscountSection = () => {
                       
                       <Dialog>
                         <DialogTrigger asChild>
-                          <button className="p-2 rounded-full bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-500 transition-all duration-300 shadow-lg">
+                          <button className="p-2 rounded-full bg-white text-gray-600 hover:bg-cyan-50 hover:text-cyan-500 transition-all duration-300 shadow-lg">
                             <Eye className="w-4 h-4" />
                           </button>
                         </DialogTrigger>
@@ -467,7 +505,7 @@ const DiscountSection = () => {
                   <div className="p-4">
                     {/* Category */}
                     <Badge variant="outline" className="mb-2 text-xs">
-                      {product.category}
+                      {typeof product.category === 'object' ? product.category.name : product.category}
                     </Badge>
 
                     {/* Product Name */}
@@ -505,7 +543,7 @@ const DiscountSection = () => {
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                           <div 
-                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+                            className="bg-gradient-to-r from-cyan-500 to-cyan-600 h-2 rounded-full transition-all duration-500 ease-out"
                             style={{ width: `${getStockPercentage(product.soldCount, product.totalStock)}%` }}
                           ></div>
                         </div>
@@ -519,7 +557,7 @@ const DiscountSection = () => {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex flex-col">
                         <div className="flex items-center space-x-2">
-                          <span className="text-xl font-bold text-blue-600">
+                          <span className="text-xl font-bold text-cyan-500">
                             ${product.discountPrice}
                           </span>
                           <span className="text-sm text-gray-500 line-through">
@@ -537,7 +575,7 @@ const DiscountSection = () => {
                       <Button
                         onClick={() => handleAddToCart(product)}
                         disabled={!product.inStock}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 transition-all duration-300 hover:shadow-lg"
+                        className="flex-1 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-300 transition-all duration-300 hover:shadow-lg"
                       >
                         <ShoppingCart className="w-4 h-4 mr-2" />
                         {product.inStock ? 'Add to Cart' : 'Out of Stock'}

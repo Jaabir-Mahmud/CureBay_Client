@@ -9,8 +9,8 @@ const ExtraSection2 = () => {
       icon: Shield,
       title: 'Verified Quality',
       description: 'All medicines are sourced from licensed manufacturers and undergo strict quality checks.',
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-50'
     },
     {
       id: 2,
@@ -62,7 +62,7 @@ const ExtraSection2 = () => {
   ];
 
   return (
-    <section className="py-16 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
+    <section className="py-16 bg-gradient-to-br from-gray-50 to-cyan-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -116,7 +116,7 @@ const ExtraSection2 = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="text-3xl lg:text-4xl font-bold text-blue-600 mb-2">
+                <div className="text-3xl lg:text-4xl font-bold text-cyan-600 mb-2">
                   {stat.value}
                 </div>
                 <div className="text-gray-600 dark:text-gray-300 font-medium transition-colors">
@@ -129,19 +129,19 @@ const ExtraSection2 = () => {
 
         {/* Call to Action */}
         <div className="text-center mt-16">
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 lg:p-12 text-white">
+          <div className="bg-gradient-to-r from-cyan-600 to-purple-600 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-8 lg:p-12 text-white dark:text-gray-100 border border-gray-200/20 dark:border-gray-600/30 transition-all duration-300">
             <h3 className="text-2xl lg:text-3xl font-bold mb-4">
               Ready to Experience Better Healthcare?
             </h3>
-            <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
+            <p className="text-cyan-100 dark:text-gray-300 mb-8 max-w-2xl mx-auto transition-colors duration-300">
               Join thousands of satisfied customers who trust CureBay for their medicine needs. 
               Start your journey to better health today.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-medium transition-colors">
+              <button className="bg-white text-cyan-600 hover:bg-gray-100 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500 px-8 py-3 rounded-lg font-medium transition-all duration-300">
                 Browse Medicines
               </button>
-              <button className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 rounded-lg font-medium transition-colors">
+              <button className="border-2 border-white text-white hover:bg-white hover:text-cyan-600 dark:border-gray-400 dark:text-gray-100 dark:hover:bg-gray-400 dark:hover:text-gray-900 px-8 py-3 rounded-lg font-medium transition-all duration-300">
                 Contact Support
               </button>
             </div>

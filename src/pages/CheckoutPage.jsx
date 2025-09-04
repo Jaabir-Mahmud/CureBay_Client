@@ -480,8 +480,8 @@ const CheckoutPage = () => {
 
                 {/* Free Shipping Notice */}
                 {orderData.subtotal < 50 && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <div className="bg-cyan-50 dark:bg-cyan-900/20 p-3 rounded-lg">
+                    <p className="text-sm text-cyan-700 dark:text-cyan-300">
                       Add ${(50 - orderData.subtotal).toFixed(2)} more for free shipping!
                     </p>
                   </div>

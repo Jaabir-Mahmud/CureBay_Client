@@ -31,20 +31,27 @@ export const AuthProvider = ({ children }) => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        const data = await res.json();
-        setProfile(data);
-        
-        // Check if user is active
-        if (data.isActive === false) {
-          console.log('User account is inactive, logging out...');
-          setProfile(null);
-          await signOut(auth);
-          if (typeof window !== 'undefined') {
-            toast.error('Your account has been deactivated by an administrator. You have been logged out.', {
-              duration: 6000,
-              position: 'top-center',
-            });
+        try {
+          const data = await res.json();
+          setProfile(data);
+          
+          // Check if user is active
+          if (data.isActive === false) {
+            console.log('User account is inactive, logging out...');
+            setProfile(null);
+            await signOut(auth);
+            if (typeof window !== 'undefined') {
+              toast.error('Your account has been deactivated by an administrator. You have been logged out.', {
+                duration: 6000,
+                position: 'top-center',
+              });
+            }
+            return;
           }
+        } catch (jsonError) {
+          console.error('Failed to parse JSON response:', jsonError);
+          // Handle case where response is not valid JSON
+          setProfile(null);
           return;
         }
       } else if (res.status === 404) {

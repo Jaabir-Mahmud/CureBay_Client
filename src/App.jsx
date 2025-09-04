@@ -10,6 +10,7 @@ import AuthPage from './pages/auth/AuthPage';
 import ShopPage from './pages/shop/ShopPage';
 import CategoryPage from './pages/CategoryPage';
 import CartPage from './pages/cart/CartPage';
+import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/dashboard/admin/AdminDashboard';
 import CategoryMedicines from './pages/dashboard/admin/CategoryMedicines';
 import UserDashboard from './pages/dashboard/user/UserDashboard';
@@ -60,6 +61,7 @@ function App() {
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/shop" element={<ShopPage />} />
                 <Route path="/cart" element={<CartPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/dashboard/admin" element={<AdminDashboard />} />
                 <Route path="/dashboard/admin/categories/:categoryId/medicines" element={<CategoryMedicines />} />

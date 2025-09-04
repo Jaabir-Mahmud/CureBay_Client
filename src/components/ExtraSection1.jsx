@@ -42,7 +42,7 @@ const ExtraSection1 = () => {
     const colors = {
       'Nutrition': 'bg-green-100 text-green-700',
       'Safety': 'bg-red-100 text-red-700',
-      'Education': 'bg-blue-100 text-blue-700'
+      'Education': 'bg-cyan-100 text-cyan-700'
     };
     return colors[category] || 'bg-gray-100 text-gray-700';
   };
@@ -53,7 +53,7 @@ const ExtraSection1 = () => {
         {/* Section Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
-            <BookOpen className="w-6 h-6 text-blue-600 mr-2" />
+            <BookOpen className="w-6 h-6 text-cyan-600 mr-2" />
             <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white transition-colors">
               Health Tips & Guides
             </h2>
@@ -96,7 +96,7 @@ const ExtraSection1 = () => {
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors line-clamp-2">
                     {tip.title}
                   </h3>
 
@@ -113,7 +113,7 @@ const ExtraSection1 = () => {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 p-0 h-auto font-medium transition-colors"
+                      className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 p-0 h-auto font-medium transition-colors"
                     >
                       Read More
                       <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
@@ -127,7 +127,7 @@ const ExtraSection1 = () => {
 
         {/* View All Button */}
         <div className="text-center mt-12">
-          <Button size="lg" className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-8 py-3">
+          <Button size="lg" className="bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-500 dark:hover:bg-cyan-600 text-white px-8 py-3">
             <BookOpen className="w-5 h-5 mr-2" />
             View All Health Tips
           </Button>

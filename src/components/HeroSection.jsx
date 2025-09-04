@@ -8,7 +8,7 @@ const HeroSection = () => {
     <div className="relative min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 overflow-hidden transition-colors duration-300">
       {/* Background Pattern */}
       <div className="absolute inset-0">
-        <div className="absolute top-20 left-10 w-96 h-96 bg-blue-100 dark:bg-blue-900/30 rounded-full opacity-20 blur-3xl"></div>
+        <div className="absolute top-20 left-10 w-96 h-96 bg-cyan-100 dark:bg-cyan-900/30 rounded-full opacity-20 blur-3xl"></div>
         <div className="absolute bottom-20 right-10 w-80 h-80 bg-purple-100 dark:bg-purple-900/30 rounded-full opacity-20 blur-3xl"></div>
       </div>
 
@@ -18,7 +18,7 @@ const HeroSection = () => {
           <div className="space-y-8">
             {/* Badge */}
             <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50">
+              <Badge variant="secondary" className="bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800/50">
                 <Heart className="w-3 h-3 mr-1" />
                 Checkup
               </Badge>
@@ -103,7 +103,7 @@ const HeroSection = () => {
             <div className="flex items-center justify-center">
               <div className="relative">
                 {/* Large Circle Background */}
-                <div className="w-96 h-96 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-full flex items-center justify-center transition-colors duration-300">
+                <div className="w-96 h-96 bg-gradient-to-br from-cyan-50 to-purple-50 dark:from-cyan-900/20 dark:to-purple-900/20 rounded-full flex items-center justify-center transition-colors duration-300">
                   {/* Inner Circle */}
                   <div className="w-80 h-80 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center transition-colors duration-300">
                     {/* Play Button */}
@@ -118,8 +118,8 @@ const HeroSection = () => {
 
                 {/* Floating Elements */}
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
+                  <div className="w-12 h-12 bg-cyan-100 dark:bg-cyan-900/30 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-cyan-500 dark:bg-cyan-400 rounded-full"></div>
                   </div>
                 </div>
 

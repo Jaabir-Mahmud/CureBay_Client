@@ -32,7 +32,7 @@ const CartPage = () => {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Your cart is empty</h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6">Add some medicines to get started</p>
           <Link to="/shop">
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className="bg-cyan-600 hover:bg-cyan-700">
               Continue Shopping
             </Button>
           </Link>
@@ -84,7 +84,7 @@ const CartPage = () => {
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-white">{item.name}</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-300">by {item.company}</p>
-                      <p className="text-lg font-bold text-blue-600">${item.price}</p>
+                      <p className="text-lg font-bold text-cyan-500">${item.price}</p>
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -161,15 +161,15 @@ const CartPage = () => {
                 </div>
 
                 {shipping > 0 && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg transition-colors">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <div className="bg-cyan-50 dark:bg-cyan-900/20 p-3 rounded-lg transition-colors">
+                    <p className="text-sm text-cyan-700 dark:text-cyan-300">
                       Add ${(50 - subtotal).toFixed(2)} more for free shipping!
                     </p>
                   </div>
                 )}
 
                 <Link to="/checkout" className="block">
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3">
+                  <Button className="w-full bg-cyan-500 hover:bg-cyan-600 text-lg py-3">
                     Proceed to Checkout
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>

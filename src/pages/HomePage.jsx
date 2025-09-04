@@ -1,6 +1,7 @@
 import React from 'react';
 import SEOHelmet from '../components/SEOHelmet';
 import HeroSlider from '../components/HeroSlider';
+import BannerSlider from '../components/BannerSlider';
 import CategorySection from '../components/CategorySection';
 import DiscountSection from '../components/DiscountSection';
 import ExtraSection1 from '../components/ExtraSection1';
@@ -17,6 +18,7 @@ const HomePage = () => {
       />
       <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
         <HeroSlider />
+        <BannerSlider />
         <CategorySection />
         <DiscountSection />
         <ExtraSection1 />
