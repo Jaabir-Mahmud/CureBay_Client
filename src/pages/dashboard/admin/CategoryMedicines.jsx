@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Search, Filter, Grid, List, Eye, Edit, Trash2, Package, ShoppingCart, Plus, X, Upload, ImageIcon } from 'lucide-react';
+import { useAuth } from '../../../contexts/AuthContext';
+import { AlertTriangle, ArrowLeft, Search, Filter, Grid, List, Eye, Edit, Trash2, Package, ShoppingCart, Plus, X, Upload, ImageIcon } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -22,7 +23,8 @@ const CategoryMedicines = () => {
   const { categoryId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+  const { user: firebaseUser } = useAuth();
+
   const [category, setCategory] = useState(null);
   const [medicines, setMedicines] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -31,6 +33,13 @@ const CategoryMedicines = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [sortBy, setSortBy] = useState('name');
   const [filterInStock, setFilterInStock] = useState('all');
+
+  // Medicine action states
+  const [editingMedicine, setEditingMedicine] = useState(null);
+  const [viewingMedicine, setViewingMedicine] = useState(null);
+  const [deletingMedicine, setDeletingMedicine] = useState(null);
+  const [medicineActionModalOpen, setMedicineActionModalOpen] = useState(false);
+  const [medicineActionType, setMedicineActionType] = useState(''); // 'edit', 'view', 'delete'
 
   // Get the tab to return to from URL params
   const fromTab = searchParams.get('fromTab') || 'categories';
@@ -60,26 +69,18 @@ const CategoryMedicines = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  // Helper function to upload image file
-  const uploadImageFile = async (file) => {
-    const formData = new FormData();
-    formData.append('image', file);
-
-    const response = await fetch('/api/upload/image', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to upload image');
-    }
-
-    return await response.json();
-  };
-
   useEffect(() => {
     console.log('CategoryMedicines mounted with categoryId:', categoryId);
+    
+    // Validate categoryId format (basic MongoDB ObjectId check)
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    if (!categoryId || !objectIdRegex.test(categoryId)) {
+      console.error('Invalid or missing categoryId:', categoryId);
+      toast.error('Invalid category ID. Please select a valid category.');
+      setLoading(false);
+      return;
+    }
+    
     fetchCategoryMedicines();
     fetchAllCategories();
   }, [categoryId]);
@@ -124,6 +125,12 @@ const CategoryMedicines = () => {
       setLoading(true);
       console.log('Fetching medicines for category:', categoryId);
       
+      // Validate categoryId before making API calls
+      const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+      if (!categoryId || !objectIdRegex.test(categoryId)) {
+        throw new Error('Invalid category ID');
+      }
+      
       // Fetch category details
       const categoryRes = await fetch(`/api/categories/${categoryId}`);
       if (categoryRes.ok) {
@@ -132,6 +139,8 @@ const CategoryMedicines = () => {
         setCategory(categoryData);
       } else {
         console.error('Failed to fetch category:', categoryRes.status);
+        toast.error('Failed to load category details');
+        return;
       }
       
       // Fetch medicines in this category
@@ -156,7 +165,7 @@ const CategoryMedicines = () => {
       }
     } catch (error) {
       console.error('Error fetching category medicines:', error);
-      toast.error('Error loading data');
+      toast.error('Error loading data: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -202,6 +211,227 @@ const CategoryMedicines = () => {
   // Debug log to check medicines state
   console.log('Total medicines in state:', medicines.length);
   console.log('Filtered medicines count:', filteredMedicines.length);
+
+  // Medicine action handlers
+  const handleViewMedicine = (medicine) => {
+    setViewingMedicine(medicine);
+    setMedicineActionType('view');
+    setMedicineActionModalOpen(true);
+  };
+
+  const handleEditMedicine = (medicine) => {
+    setEditingMedicine(medicine);
+    setMedicineForm({
+      name: medicine.name || '',
+      genericName: medicine.genericName || '',
+      description: medicine.description || '',
+      image: medicine.image || '',
+      category: medicine.category?._id || medicine.category || categoryId || '',
+      company: medicine.company || '',
+      massUnit: medicine.massUnit || '',
+      price: medicine.price || '',
+      unitPrice: medicine.unitPrice || '',
+      stripPrice: medicine.stripPrice || '',
+      discountPercentage: medicine.discountPercentage || '0',
+      stockQuantity: medicine.stockQuantity || '',
+      isAdvertised: medicine.isAdvertised || false
+    });
+    setMedicineActionType('edit');
+    setMedicineActionModalOpen(true);
+  };
+
+  const handleDeleteMedicine = (medicine) => {
+    setDeletingMedicine(medicine);
+    setMedicineActionType('delete');
+    setMedicineActionModalOpen(true);
+  };
+
+  const confirmDeleteMedicine = async () => {
+    if (!deletingMedicine) return;
+    
+    try {
+      // Add authentication header
+      const token = await firebaseUser.getIdToken(true);
+      
+      const res = await fetch(`/api/medicines/${deletingMedicine._id || deletingMedicine.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}` // Add authentication header
+        }
+      });
+      
+      if (res.ok) {
+        // Remove the medicine from the state
+        setMedicines(prevMedicines => 
+          prevMedicines.filter(m => 
+            m._id !== deletingMedicine._id && m.id !== deletingMedicine.id
+          )
+        );
+        toast.success('Medicine deleted successfully!');
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.message || 'Failed to delete medicine');
+      }
+    } catch (error) {
+      console.error('Error deleting medicine:', error);
+      toast.error('Error deleting medicine: ' + error.message);
+    } finally {
+      setDeletingMedicine(null);
+      setMedicineActionModalOpen(false);
+    }
+  };
+
+  const handleUpdateMedicine = async (e) => {
+    e.preventDefault();
+    
+    if (!editingMedicine) return;
+    
+    // Validate required fields
+    if (!medicineForm.name.trim()) {
+      toast.error('Medicine name is required');
+      return;
+    }
+    if (!medicineForm.genericName.trim()) {
+      toast.error('Generic name is required');
+      return;
+    }
+    if (!medicineForm.description.trim()) {
+      toast.error('Description is required');
+      return;
+    }
+    if (!medicineForm.category) {
+      toast.error('Category is required');
+      return;
+    }
+    if (!medicineForm.company.trim()) {
+      toast.error('Company name is required');
+      return;
+    }
+    if (!medicineForm.massUnit.trim()) {
+      toast.error('Mass unit is required');
+      return;
+    }
+    if (!medicineForm.price || isNaN(medicineForm.price) || parseFloat(medicineForm.price) <= 0) {
+      toast.error('Valid price is required');
+      return;
+    }
+    if (!medicineForm.stockQuantity || isNaN(medicineForm.stockQuantity) || parseInt(medicineForm.stockQuantity) < 0) {
+      toast.error('Valid stock quantity is required');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Handle image upload if a file was selected - REMOVED since there's no upload endpoint
+      // let imageUrl = medicineForm.image || '';
+      
+      // if (medicineForm.imageFile) {
+      //   try {
+      //     setIsUploadingImage(true);
+      //     const uploadToast = toast.loading('Uploading image...');
+          
+      //     const uploadResult = await uploadImageFile(medicineForm.imageFile);
+      //     imageUrl = uploadResult.url;
+          
+      //     toast.dismiss(uploadToast);
+      //     toast.success('Image uploaded successfully!');
+      //   } catch (uploadError) {
+      //     toast.error(`Image upload failed: ${uploadError.message}`);
+      //     // Continue with form submission even if image upload fails
+      //     console.error('Image upload error:', uploadError);
+      //   } finally {
+      //     setIsUploadingImage(false);
+      //   }
+      // }
+
+      const formData = {
+        ...medicineForm,
+        // image: imageUrl, // Use uploaded image URL or provided URL - REMOVED
+        price: parseFloat(medicineForm.price),
+        unitPrice: parseFloat(medicineForm.unitPrice) || 0,
+        stripPrice: parseFloat(medicineForm.stripPrice) || 0,
+        discountPercentage: parseFloat(medicineForm.discountPercentage) || 0,
+        stockQuantity: parseInt(medicineForm.stockQuantity) || 0,
+      };
+
+      // Remove imageFile from the data being sent to server
+      delete formData.imageFile;
+
+      // Add authentication header
+      const token = await firebaseUser.getIdToken(true);
+
+      const res = await fetch(`/api/medicines/${editingMedicine._id || editingMedicine.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // Add authentication header
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const responseText = await res.text();
+
+      if (res.ok) {
+        const updatedMedicine = JSON.parse(responseText);
+        // Update the medicine in the state
+        setMedicines(prevMedicines => 
+          prevMedicines.map(medicine => 
+            (medicine._id === updatedMedicine._id || medicine.id === updatedMedicine.id) 
+              ? updatedMedicine 
+              : medicine
+          )
+        );
+        
+        toast.success('Medicine updated successfully!');
+        setMedicineActionModalOpen(false);
+        setEditingMedicine(null);
+      } else {
+        let errorMessage = 'Failed to update medicine';
+        try {
+          const errorData = JSON.parse(responseText);
+          console.error('Server error response:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // If response is not JSON, use the raw text or status text
+          console.error('Non-JSON error response:', responseText);
+          errorMessage = responseText || res.statusText || errorMessage;
+        }
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Error updating medicine:', error);
+      toast.error('Failed to update medicine. Please check your connection and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const closeMedicineActionModal = () => {
+    setMedicineActionModalOpen(false);
+    setEditingMedicine(null);
+    setViewingMedicine(null);
+    setDeletingMedicine(null);
+    setMedicineActionType('');
+    
+    // Reset form if it was an edit
+    if (medicineActionType === 'edit') {
+      setMedicineForm({
+        name: '',
+        genericName: '',
+        description: '',
+        image: '',
+        category: '',
+        company: '',
+        massUnit: '',
+        price: '',
+        unitPrice: '',
+        stripPrice: '',
+        discountPercentage: '',
+        stockQuantity: '',
+        isAdvertised: false
+      });
+    }
+  };
 
   const openAddMedicineModal = () => {
     // Validate that we have a valid categoryId
@@ -337,10 +567,14 @@ const CategoryMedicines = () => {
       console.log('Original form data:', medicineForm);
       console.log('Processed form data being sent:', formData);
 
+      // Add authentication header
+      const token = await firebaseUser.getIdToken(true);
+
       const res = await fetch('/api/medicines', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // Add authentication header
         },
         body: JSON.stringify(formData),
       });
@@ -384,6 +618,45 @@ const CategoryMedicines = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Handle invalid categoryId by showing an error message
+  if (!categoryId) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Invalid Category</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            No category ID provided. Please select a valid category.
+          </p>
+          <Button onClick={handleBackNavigation} className="flex items-center gap-2 mx-auto">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Validate categoryId format (ensure it's a string before testing with regex)
+  const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+  if (typeof categoryId !== 'string' || !objectIdRegex.test(categoryId)) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Invalid Category ID</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            The category ID "{categoryId}" is invalid. Please select a valid category.
+          </p>
+          <Button onClick={handleBackNavigation} className="flex items-center gap-2 mx-auto">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -537,58 +810,72 @@ const CategoryMedicines = () => {
                 <CardContent className="p-6">
                   <div className="mb-4">
                     <img
-                      src={medicine.image}
-                      alt={medicine.name}
+                      src={medicine.image || 'https://placehold.co/400x300?text=No+Image'}
+                      alt={medicine.name || 'Medicine'}
                       className="w-full h-40 object-cover rounded-lg mb-3"
                     />
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-tight">
                         {medicine.name}
                       </h3>
-                      <Badge variant={medicine.inStock ? 'default' : 'secondary'} className="ml-2">
-                        {medicine.inStock ? 'In Stock' : 'Out of Stock'}
+                      <Badge variant={(medicine.inStock || false) ? 'default' : 'secondary'} className="ml-2">
+                        {(medicine.inStock || false) ? 'In Stock' : 'Out of Stock'}
                       </Badge>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                      {medicine.genericName}
+                      {medicine.genericName || ''}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {medicine.company} • {medicine.massUnit}
+                      {(medicine.company || '')} • {(medicine.massUnit || '')}
                     </p>
                   </div>
 
                   <div className="mb-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        {medicine.discountPercentage > 0 && (
+                        {(medicine.discountPercentage || 0) > 0 && (
                           <span className="text-xs text-gray-500 line-through">
-                            ${medicine.price.toFixed(2)}
+                            ${(medicine.price || 0).toFixed(2)}
                           </span>
                         )}
                         <span className="text-lg font-bold text-green-600">
-                          ${medicine.finalPrice.toFixed(2)}
+                          ${(medicine.finalPrice || medicine.price || 0).toFixed(2)}
                         </span>
-                        {medicine.discountPercentage > 0 && (
+                        {(medicine.discountPercentage || 0) > 0 && (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded ml-2">
-                            {medicine.discountPercentage}% OFF
+                            {(medicine.discountPercentage || 0)}% OFF
                           </span>
                         )}
                       </div>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      Stock: {medicine.stockQuantity} units
+                      Stock: {medicine.stockQuantity || 0} units
                     </p>
                   </div>
 
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => handleViewMedicine(medicine)}
+                    >
                       <Eye className="w-3 h-3 mr-1" />
                       View
                     </Button>
-                    <Button size="sm" variant="outline">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleEditMedicine(medicine)}
+                    >
                       <Edit className="w-3 h-3" />
                     </Button>
-                    <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => handleDeleteMedicine(medicine)}
+                    >
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
@@ -617,52 +904,65 @@ const CategoryMedicines = () => {
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <img
-                              src={medicine.image}
-                              alt={medicine.name}
+                              src={medicine.image || 'https://placehold.co/400x300?text=No+Image'}
+                              alt={medicine.name || 'Medicine'}
                               className="w-12 h-12 object-cover rounded"
                             />
                             <div>
                               <p className="font-medium text-gray-900 dark:text-white">
-                                {medicine.name}
+                                {medicine.name || 'Unnamed Medicine'}
                               </p>
                               <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {medicine.genericName}
+                                {medicine.genericName || ''}
                               </p>
                             </div>
                           </div>
                         </td>
                         <td className="p-4 text-gray-600 dark:text-gray-400">
-                          {medicine.company}
+                          {medicine.company || 'Unknown Company'}
                         </td>
                         <td className="p-4">
                           <div className="flex flex-col">
                             <span className="font-bold text-green-600">
-                              ${medicine.finalPrice.toFixed(2)}
+                              ${(medicine.finalPrice || medicine.price || 0).toFixed(2)}
                             </span>
-                            {medicine.discountPercentage > 0 && (
+                            {(medicine.discountPercentage || 0) > 0 && (
                               <span className="text-xs text-gray-500 line-through">
-                                ${medicine.price.toFixed(2)}
+                                ${(medicine.price || 0).toFixed(2)}
                               </span>
                             )}
                           </div>
                         </td>
                         <td className="p-4 text-gray-600 dark:text-gray-400">
-                          {medicine.stockQuantity} units
+                          {medicine.stockQuantity || 0} units
                         </td>
                         <td className="p-4">
-                          <Badge variant={medicine.inStock ? 'default' : 'secondary'}>
-                            {medicine.inStock ? 'In Stock' : 'Out of Stock'}
+                          <Badge variant={(medicine.inStock || false) ? 'default' : 'secondary'}>
+                            {(medicine.inStock || false) ? 'In Stock' : 'Out of Stock'}
                           </Badge>
                         </td>
                         <td className="p-4">
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleViewMedicine(medicine)}
+                            >
                               <Eye className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditMedicine(medicine)}
+                            >
                               <Edit className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleDeleteMedicine(medicine)}
+                            >
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </div>
@@ -676,6 +976,386 @@ const CategoryMedicines = () => {
           </Card>
         )}
       </div>
+
+      {/* Medicine Action Modal (View/Edit/Delete) */}
+      <Dialog open={medicineActionModalOpen} onOpenChange={closeMedicineActionModal}>
+        <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">
+              {medicineActionType === 'view' && 'Medicine Details'}
+              {medicineActionType === 'edit' && 'Edit Medicine'}
+              {medicineActionType === 'delete' && 'Delete Medicine'}
+            </DialogTitle>
+            <DialogDescription>
+              {medicineActionType === 'view' && 'View the details of this medicine'}
+              {medicineActionType === 'edit' && 'Update the details of this medicine'}
+              {medicineActionType === 'delete' && 'Are you sure you want to delete this medicine?'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {medicineActionType === 'view' && viewingMedicine && (
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <img
+                  src={viewingMedicine.image || 'https://placehold.co/400x300?text=No+Image'}
+                  alt={viewingMedicine.name || 'Medicine'}
+                  className="w-32 h-32 object-cover rounded-lg"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Name</h4>
+                  <p className="text-gray-600 dark:text-gray-400">{viewingMedicine.name || 'N/A'}</p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Generic Name</h4>
+                  <p className="text-gray-600 dark:text-gray-400">{viewingMedicine.genericName || 'N/A'}</p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Company</h4>
+                  <p className="text-gray-600 dark:text-gray-400">{viewingMedicine.company || 'N/A'}</p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Category</h4>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {viewingMedicine.category?.name || 'N/A'}
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Mass Unit</h4>
+                  <p className="text-gray-600 dark:text-gray-400">{viewingMedicine.massUnit || 'N/A'}</p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Price</h4>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    ${(viewingMedicine.price || 0).toFixed(2)}
+                  </p>
+                </div>
+                
+                {viewingMedicine.discountPercentage > 0 && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white">Discount</h4>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {viewingMedicine.discountPercentage}% OFF
+                    </p>
+                  </div>
+                )}
+                
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Final Price</h4>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    ${(viewingMedicine.finalPrice || viewingMedicine.price || 0).toFixed(2)}
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Stock</h4>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {viewingMedicine.stockQuantity || 0} units
+                  </p>
+                </div>
+                
+                <div className="col-span-2">
+                  <h4 className="font-medium text-gray-900 dark:text-white">Description</h4>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {viewingMedicine.description || 'No description available'}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={closeMedicineActionModal}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {medicineActionType === 'edit' && editingMedicine && (
+            <form onSubmit={handleUpdateMedicine} className="space-y-4">
+              {/* Medicine Name */}
+              <div>
+                <Label htmlFor="edit-name" className="text-sm font-medium">
+                  Medicine Name *
+                </Label>
+                <Input
+                  id="edit-name"
+                  type="text"
+                  value={medicineForm.name}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter medicine name"
+                  required
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Generic Name */}
+              <div>
+                <Label htmlFor="edit-genericName" className="text-sm font-medium">
+                  Generic Name
+                </Label>
+                <Input
+                  id="edit-genericName"
+                  type="text"
+                  value={medicineForm.genericName}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, genericName: e.target.value }))}
+                  placeholder="Enter generic name"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Category Selection */}
+              <div>
+                <Label htmlFor="edit-category" className="text-sm font-medium">
+                  Category *
+                </Label>
+                <Select 
+                  value={medicineForm.category} 
+                  onValueChange={(value) => setMedicineForm(prev => ({ ...prev, category: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat._id || cat.id} value={cat._id || cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <Label htmlFor="edit-description" className="text-sm font-medium">
+                  Brief Description
+                </Label>
+                <Textarea
+                  id="edit-description"
+                  value={medicineForm.description}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter medicine description"
+                  rows={3}
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Company */}
+              <div>
+                <Label htmlFor="edit-company" className="text-sm font-medium">
+                  Company
+                </Label>
+                <Input
+                  id="edit-company"
+                  type="text"
+                  value={medicineForm.company}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, company: e.target.value }))}
+                  placeholder="Enter company name"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Mass Unit */}
+              <div>
+                <Label htmlFor="edit-massUnit" className="text-sm font-medium">
+                  Mass Unit
+                </Label>
+                <Input
+                  id="edit-massUnit"
+                  type="text"
+                  value={medicineForm.massUnit}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, massUnit: e.target.value }))}
+                  placeholder="e.g., 500mg, 10ml"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Price */}
+              <div>
+                <Label htmlFor="edit-price" className="text-sm font-medium">
+                  Price (৳) *
+                </Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={medicineForm.price}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, price: e.target.value }))}
+                  placeholder="Enter price"
+                  required
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Unit Price */}
+              <div>
+                <Label htmlFor="edit-unitPrice" className="text-sm font-medium">
+                  Unit Price (৳)
+                </Label>
+                <Input
+                  id="edit-unitPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={medicineForm.unitPrice}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, unitPrice: e.target.value }))}
+                  placeholder="Enter unit price"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Strip Price */}
+              <div>
+                <Label htmlFor="edit-stripPrice" className="text-sm font-medium">
+                  Strip Price (৳)
+                </Label>
+                <Input
+                  id="edit-stripPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={medicineForm.stripPrice}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, stripPrice: e.target.value }))}
+                  placeholder="Enter strip price"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Discount Percentage */}
+              <div>
+                <Label htmlFor="edit-discountPercentage" className="text-sm font-medium">
+                  Discount Percentage (%)
+                </Label>
+                <Input
+                  id="edit-discountPercentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={medicineForm.discountPercentage}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, discountPercentage: e.target.value }))}
+                  placeholder="Enter discount percentage"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Stock Quantity */}
+              <div>
+                <Label htmlFor="edit-stockQuantity" className="text-sm font-medium">
+                  How many want to add *
+                </Label>
+                <Input
+                  id="edit-stockQuantity"
+                  type="number"
+                  min="0"
+                  value={medicineForm.stockQuantity}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, stockQuantity: e.target.value }))}
+                  placeholder="Enter quantity"
+                  required
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Medicine Image Section */}
+              <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <h4 className="text-sm font-medium text-gray-900">Medicine Image</h4>
+                
+                {/* Image URL */}
+                <div>
+                  <Label htmlFor="edit-image" className="text-sm font-medium">
+                    Medicine Image URL
+                  </Label>
+                  <Input
+                    id="edit-image"
+                    type="url"
+                    value={medicineForm.image}
+                    onChange={(e) => setMedicineForm(prev => ({ ...prev, image: e.target.value }))}
+                    placeholder="Enter image URL (e.g., https://example.com/medicine-image.jpg)"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Provide a direct URL to the medicine image.
+                  </p>
+                </div>
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeMedicineActionModal}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Updating Medicine...
+                    </>
+                  ) : (
+                    'Update Medicine'
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
+          
+          {medicineActionType === 'delete' && deletingMedicine && (
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <img
+                  src={deletingMedicine.image || 'https://placehold.co/400x300?text=No+Image'}
+                  alt={deletingMedicine.name || 'Medicine'}
+                  className="w-24 h-24 object-cover rounded-lg"
+                />
+              </div>
+              
+              <div className="text-center">
+                <h3 className="font-medium text-gray-900 dark:text-white">
+                  {deletingMedicine.name || 'Unnamed Medicine'}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  Are you sure you want to delete this medicine? This action cannot be undone.
+                </p>
+              </div>
+              
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={closeMedicineActionModal}>
+                  Cancel
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={confirmDeleteMedicine}
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Medicine'
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Add Medicine Modal */}
       <Dialog open={addMedicineModalOpen} onOpenChange={closeAddMedicineModal}>
@@ -943,13 +1623,13 @@ const CategoryMedicines = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || isUploadingImage}
+                disabled={isSubmitting}
                 className="flex items-center gap-2"
               >
-                {isSubmitting || isUploadingImage ? (
+                {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    {isUploadingImage ? 'Uploading Image...' : 'Adding Medicine...'}
+                    Adding Medicine...
                   </>
                 ) : (
                   <>

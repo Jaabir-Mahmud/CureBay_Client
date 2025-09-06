@@ -137,8 +137,23 @@ function CategoriesTab({
   };
 
   const viewCategoryMedicines = (category) => {
+    // Check if category has a valid MongoDB ObjectId
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    const hasValidId = category._id && objectIdRegex.test(category._id);
+    
+    // Also check for id field (in case it's using id instead of _id)
+    const hasValidIdAlt = category.id && objectIdRegex.test(category.id);
+    
+    if (!hasValidId && !hasValidIdAlt) {
+      toast.error('This category does not have medicines yet. Please create it first.');
+      return;
+    }
+    
+    // Use _id if available, otherwise use id
+    const categoryId = category._id || category.id;
+    
     // Preserve current tab in the URL for proper back navigation
-    navigate(`/dashboard/admin/categories/${category.id}/medicines?fromTab=${activeTab}`);
+    navigate(`/dashboard/admin/categories/${categoryId}/medicines?fromTab=${activeTab}`);
   };
 
   const closeCategoryModal = () => {
@@ -169,11 +184,13 @@ function CategoriesTab({
     try {
       let res;
       if (editingCategory) {
-        // Check if this is a default category (numeric ID) that doesn't exist in backend
-        const isDefaultCategory = typeof editingCategory.id === 'number' || !isNaN(editingCategory.id);
+        // Validate that editingCategory has a valid MongoDB ObjectId
+        const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+        const hasValidId = (editingCategory._id && objectIdRegex.test(editingCategory._id)) || 
+                           (editingCategory.id && objectIdRegex.test(editingCategory.id));
         
-        if (isDefaultCategory) {
-          // Create new category for default ones
+        if (!hasValidId) {
+          // For default categories (non-MongoDB ObjectIds), create a new one instead of updating
           res = await fetch('/api/categories', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -181,20 +198,22 @@ function CategoriesTab({
           });
         } else {
           // Update existing category with valid MongoDB ObjectId
-          res = await fetch(`/api/categories/${editingCategory.id}`, {
+          const categoryId = editingCategory._id || editingCategory.id;
+          res = await fetch(`/api/categories/${categoryId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(categoryForm),
           });
         }
       } else {
+        // Create new category
         res = await fetch('/api/categories', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(categoryForm),
         });
       }
-
+      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || `Failed to ${editingCategory ? 'update' : 'create'} category`);
@@ -211,9 +230,12 @@ function CategoriesTab({
       
       // Update the local categories state
       if (editingCategory) {
-        const isDefaultCategory = typeof editingCategory.id === 'number' || !isNaN(editingCategory.id);
+        // Validate that editingCategory has a valid MongoDB ObjectId
+        const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+        const hasValidId = (editingCategory._id && objectIdRegex.test(editingCategory._id)) || 
+                           (editingCategory.id && objectIdRegex.test(editingCategory.id));
         
-        if (isDefaultCategory) {
+        if (!hasValidId) {
           // Replace the default category with the new one from backend
           setCategories(prevCategories => 
             prevCategories.map(cat => 
@@ -224,24 +246,18 @@ function CategoriesTab({
           );
         } else {
           // Update existing category
+          const categoryId = editingCategory._id || editingCategory.id;
           setCategories(prevCategories => 
             prevCategories.map(cat => 
-              cat.id === editingCategory.id 
-                ? { ...cat, ...categoryForm, updatedAt: new Date().toISOString() }
+              cat._id === categoryId || cat.id === categoryId
+                ? { ...updatedCategory }
                 : cat
             )
           );
         }
       } else {
-        // Use the actual category data from backend response if available
-        const newCategory = updatedCategory.id ? updatedCategory : {
-          ...categoryForm,
-          id: Date.now(), // Fallback temporary ID
-          count: 0,
-          status: 'active',
-          createdAt: new Date().toISOString()
-        };
-        setCategories(prevCategories => [...prevCategories, newCategory]);
+        // Add new category to state
+        setCategories(prevCategories => [...prevCategories, updatedCategory]);
       }
       
       closeCategoryModal();
@@ -267,18 +283,21 @@ function CategoriesTab({
     
     setIsDeletingCategory(true);
     try {
-      // Check if this is a default category (numeric ID) that doesn't exist in backend
-      const isDefaultCategory = typeof categoryToDelete.id === 'number' || !isNaN(categoryToDelete.id);
+      // Validate that categoryToDelete has a valid MongoDB ObjectId
+      const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+      const hasValidId = (categoryToDelete._id && objectIdRegex.test(categoryToDelete._id)) || 
+                         (categoryToDelete.id && objectIdRegex.test(categoryToDelete.id));
       
-      if (isDefaultCategory) {
-        // For default categories, just remove from local state
+      if (!hasValidId) {
+        // For default categories (non-MongoDB ObjectIds), just remove from local state
         setCategories(prevCategories => 
           prevCategories.filter(cat => cat.id !== categoryToDelete.id)
         );
         toast.success('Default category removed from view!');
       } else {
-        // Delete from backend for real categories
-        const res = await fetch(`/api/categories/${categoryToDelete.id}`, { 
+        // Delete from backend for real categories (with valid MongoDB ObjectIds)
+        const categoryId = categoryToDelete._id || categoryToDelete.id;
+        const res = await fetch(`/api/categories/${categoryId}`, { 
           method: 'DELETE' 
         });
         
@@ -288,7 +307,7 @@ function CategoriesTab({
         
         // Remove from local state
         setCategories(prevCategories => 
-          prevCategories.filter(cat => cat.id !== categoryToDelete.id)
+          prevCategories.filter(cat => cat._id !== categoryId && cat.id !== categoryId)
         );
         
         toast.success('Category deleted successfully!');
@@ -306,11 +325,12 @@ function CategoriesTab({
 
   const toggleCategoryStatus = async (categoryId) => {
     try {
-      // Check if this is a default category (numeric ID) that doesn't exist in backend
-      const isDefaultCategory = typeof categoryId === 'number' || !isNaN(categoryId);
+      // Validate that categoryId is a valid MongoDB ObjectId
+      const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+      const isValidObjectId = objectIdRegex.test(categoryId);
       
-      if (isDefaultCategory) {
-        // For default categories, just update local state
+      if (!isValidObjectId) {
+        // For default categories (non-MongoDB ObjectIds), just update local state
         setCategories(prevCategories => 
           prevCategories.map(cat => 
             cat.id === categoryId 
@@ -321,7 +341,7 @@ function CategoriesTab({
         return;
       }
 
-      // Update status in backend for real categories
+      // Update status in backend for real categories (with valid MongoDB ObjectIds)
       const res = await fetch(`/api/categories/${categoryId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -337,7 +357,7 @@ function CategoriesTab({
       // Update local state
       setCategories(prevCategories => 
         prevCategories.map(cat => 
-          cat.id === categoryId 
+          cat.id === categoryId || cat._id === categoryId
             ? { ...cat, status: updatedCategory.status }
             : cat
         )
@@ -410,7 +430,7 @@ function CategoriesTab({
                 
                 return (
                   <div 
-                    key={category.id} 
+                    key={category.id || category._id} 
                     className={`relative group rounded-lg border-2 ${colorClasses.border} ${colorClasses.bg} p-3 sm:p-6 transition-all duration-300 hover:shadow-lg hover:scale-105`}
                   >
                     <div className="flex items-start justify-between mb-3 sm:mb-4">
@@ -439,10 +459,10 @@ function CategoriesTab({
                       </p>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 text-xs sm:text-sm">
                         <span className={`font-medium ${colorClasses.text}`}>
-                          {category.count.toLocaleString()} medicines
+                          {category.count?.toLocaleString() || 0} medicines
                         </span>
                         <span className="text-gray-500 dark:text-gray-400">
-                          Created {new Date(category.createdAt).toLocaleDateString()}
+                          Created {category.createdAt ? new Date(category.createdAt).toLocaleDateString() : 'N/A'}
                         </span>
                       </div>
                     </div>
@@ -489,7 +509,7 @@ function CategoriesTab({
                 
                 return (
                   <div 
-                    key={category.id} 
+                    key={category.id || category._id} 
                     className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:shadow-md transition-shadow gap-3 sm:gap-4"
                   >
                     <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
@@ -518,7 +538,7 @@ function CategoriesTab({
                         </p>
                         <div className="sm:hidden mt-2">
                           <div className={`font-medium ${colorClasses.text} text-sm`}>
-                            {category.count.toLocaleString()} medicines
+                            {category.count?.toLocaleString() || 0} medicines
                           </div>
                         </div>
                       </div>
@@ -527,7 +547,7 @@ function CategoriesTab({
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
                       <div className="hidden sm:block text-right">
                         <div className={`font-medium ${colorClasses.text}`}>
-                          {category.count.toLocaleString()}
+                          {category.count?.toLocaleString() || 0}
                         </div>
                         <div className="text-xs text-gray-500">medicines</div>
                       </div>
@@ -711,7 +731,7 @@ function CategoriesTab({
                       </p>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getColorClasses(categoryToDelete.color).bg} ${getColorClasses(categoryToDelete.color).text}`}>
-                          {categoryToDelete.count} medicines
+                          {categoryToDelete.count || 0} medicines
                         </span>
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold
                           ${categoryToDelete.status === 'active'

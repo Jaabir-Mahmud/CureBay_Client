@@ -41,11 +41,11 @@ const ExtraSection1 = () => {
 
   const getCategoryColor = (category) => {
     const colors = {
-      'Nutrition': 'bg-green-100 text-green-700',
-      'Safety': 'bg-red-100 text-red-700',
-      'Education': 'bg-cyan-100 text-cyan-700'
+      'Nutrition': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+      'Safety': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+      'Education': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
     };
-    return colors[category] || 'bg-gray-100 text-gray-700';
+    return colors[category] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
   };
 
   return (
@@ -162,4 +162,3 @@ const ExtraSection1 = () => {
 };
 
 export default ExtraSection1;
-

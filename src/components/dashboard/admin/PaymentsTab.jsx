@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../../ui/dialog';
+import { useAuth } from '../../../contexts/AuthContext'; // Add AuthContext import
 import toast from 'react-hot-toast';
 
 function PaymentsTab({ 
@@ -34,6 +35,7 @@ function PaymentsTab({
   stats, 
   setStats 
 }) {
+  const { user: firebaseUser } = useAuth(); // Use AuthContext
   const [paymentSearch, setPaymentSearch] = useState('');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all'); // all, pending, accepted, rejected
   const [paymentDateFilter, setPaymentDateFilter] = useState('all'); // all, today, week, month
@@ -86,10 +88,11 @@ function PaymentsTab({
   };
 
   const processPayment = async () => {
-    if (!selectedPayment) return;
+    if (!selectedPayment || !firebaseUser) return;
     
     setIsProcessingPayment(true);
     try {
+      const token = await firebaseUser.getIdToken();
       const endpoint = paymentAction === 'accept' 
         ? `/api/admin/payments/${selectedPayment.id}/accept`
         : `/api/admin/payments/${selectedPayment.id}/reject`;
@@ -100,7 +103,10 @@ function PaymentsTab({
       
       const res = await fetch(endpoint, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // Add authorization header
+        },
         body
       });
       
@@ -140,7 +146,7 @@ function PaymentsTab({
   };
 
   const handleBulkPaymentAction = async (action) => {
-    if (selectedPayments.size === 0) {
+    if (selectedPayments.size === 0 || !firebaseUser) {
       toast.error('Please select payments to process.');
       return;
     }
@@ -153,9 +159,13 @@ function PaymentsTab({
     
     setIsProcessingPayment(true);
     try {
+      const token = await firebaseUser.getIdToken();
       const promises = Array.from(selectedPayments).map(paymentId => {
         const endpoint = `/api/admin/payments/${paymentId}/${action}`;
-        return fetch(endpoint, { method: 'PATCH' });
+        return fetch(endpoint, { 
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}` } // Add authorization header
+        });
       });
       
       await Promise.all(promises);

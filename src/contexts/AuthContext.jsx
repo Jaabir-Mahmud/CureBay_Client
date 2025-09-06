@@ -76,26 +76,40 @@ export const AuthProvider = ({ children }) => {
     if (!user) return;
 
     const interval = setInterval(async () => {
-      const validationResult = await validateUserSession(user);
-      if (!validationResult.isValid) {
-        console.log('User session invalid:', validationResult.reason);
+      try {
+        // Force token refresh to ensure we have a valid token
+        const token = await user.getIdToken(true);
+        
+        const validationResult = await validateUserSession(user);
+        if (!validationResult.isValid) {
+          console.log('User session invalid:', validationResult.reason);
+          setProfile(null);
+          await signOut(auth);
+          
+          if (validationResult.reason === 'User account is inactive') {
+            toast.error('Your account has been deactivated by an administrator. You have been logged out.', {
+              duration: 6000,
+              position: 'top-center',
+            });
+          } else {
+            toast.error('Session expired. Please log in again.', {
+              duration: 4000,
+              position: 'top-center',
+            });
+          }
+        } else if (validationResult.user) {
+          // Update profile with latest data
+          setProfile(validationResult.user);
+        }
+      } catch (error) {
+        console.error('Error during session validation:', error);
+        // If token refresh fails, sign out the user
         setProfile(null);
         await signOut(auth);
-        
-        if (validationResult.reason === 'User account is inactive') {
-          toast.error('Your account has been deactivated by an administrator. You have been logged out.', {
-            duration: 6000,
-            position: 'top-center',
-          });
-        } else {
-          toast.error('Session expired. Please log in again.', {
-            duration: 4000,
-            position: 'top-center',
-          });
-        }
-      } else if (validationResult.user) {
-        // Update profile with latest data
-        setProfile(validationResult.user);
+        toast.error('Session expired. Please log in again.', {
+          duration: 4000,
+          position: 'top-center',
+        });
       }
     }, 2 * 60 * 1000); // 2 minutes for more responsive updates
 

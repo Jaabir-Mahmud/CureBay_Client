@@ -10,7 +10,8 @@ export async function syncUserProfile(firebaseUser) {
   try {
     if (!firebaseUser) return null;
     
-    const token = await firebaseUser.getIdToken();
+    // Force refresh the token to ensure it's valid
+    const token = await firebaseUser.getIdToken(true);
     const res = await fetch('/api/users/me', {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -39,7 +40,8 @@ export async function validateUserSession(firebaseUser) {
       return { isValid: false, reason: 'No user provided' };
     }
     
-    const token = await firebaseUser.getIdToken();
+    // Force refresh the token to ensure it's valid
+    const token = await firebaseUser.getIdToken(true);
     const res = await fetch('/api/users/me', {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -74,7 +76,8 @@ export async function forceSyncUser(firebaseUser) {
       return { success: false, reason: 'No user provided' };
     }
     
-    const token = await firebaseUser.getIdToken();
+    // Force refresh the token to ensure it's valid
+    const token = await firebaseUser.getIdToken(true);
     
     // Try to get user profile first
     const res = await fetch('/api/users/me', {
