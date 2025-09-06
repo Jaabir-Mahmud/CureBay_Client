@@ -25,32 +25,35 @@ const CategoryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Fetch the current category by name
-  const { data: currentCategory, isLoading: categoryLoading } = useQuery({
-    queryKey: ['category', categoryName],
+  // Fetch all categories to find the matching category by name
+  const { data: allCategories = [], isLoading: categoriesLoading } = useQuery({
+    queryKey: ['allCategories'],
     queryFn: async () => {
-      if (!categoryName) return null;
-      const response = await fetch(`/api/categories/name/${encodeURIComponent(categoryName)}`);
+      const response = await fetch('/api/categories');
       if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Category not found');
-        }
-        throw new Error('Failed to fetch category');
+        throw new Error('Failed to fetch categories');
       }
       return response.json();
     },
-    enabled: !!categoryName,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Find the current category by name
+  const currentCategory = useMemo(() => {
+    if (!categoryName || allCategories.length === 0) return null;
+    return allCategories.find(cat => 
+      cat.name.toLowerCase() === categoryName.toLowerCase()
+    ) || null;
+  }, [categoryName, allCategories]);
 
   // Fetch medicines for the specific category
   const { 
     data: medicinesData, 
-    isLoading, 
+    isLoading: medicinesLoading, 
     error 
   } = useQuery({
     queryKey: ['medicines', {
-      category: currentCategory?.id,
+      category: currentCategory?.id || currentCategory?._id,
       search: searchTerm,
       sortBy,
       sortOrder,
@@ -58,10 +61,11 @@ const CategoryPage = () => {
       limit: itemsPerPage
     }],
     queryFn: async () => {
-      if (!currentCategory?.id) return { medicines: [], pagination: { totalItems: 0, totalPages: 0 } };
+      const categoryId = currentCategory?.id || currentCategory?._id;
+      if (!categoryId) return { medicines: [], pagination: { totalItems: 0, totalPages: 0 } };
       
       const params = new URLSearchParams({
-        category: currentCategory.id,
+        category: categoryId,
         page: currentPage.toString(),
         limit: itemsPerPage.toString(),
         sortBy,
@@ -78,7 +82,7 @@ const CategoryPage = () => {
       }
       return response.json();
     },
-    enabled: !!currentCategory?.id, // Only run when we have a category ID
+    enabled: !!(currentCategory?.id || currentCategory?._id), // Only run when we have a category ID
     staleTime: 2 * 60 * 1000,
     onError: (error) => {
       console.error('Error fetching medicines:', error);
@@ -89,6 +93,7 @@ const CategoryPage = () => {
   const medicines = medicinesData?.medicines || [];
   const totalItems = medicinesData?.pagination?.totalItems || 0;
   const totalPages = medicinesData?.pagination?.totalPages || 0;
+  const isLoading = categoriesLoading || medicinesLoading;
 
   // Handle sorting
   const handleSort = (field) => {
@@ -132,7 +137,7 @@ const CategoryPage = () => {
   };
 
   // Show loading state
-  if (categoryLoading || isLoading) {
+  if (isLoading) {
     return (
       <>
         <SEOHelmet
@@ -147,7 +152,7 @@ const CategoryPage = () => {
               <div className="text-center">
                 <Loader2 className="w-8 h-8 animate-spin text-cyan-600 mx-auto mb-4" />
                 <p className="text-gray-600 dark:text-gray-300">
-                  {categoryLoading ? 'Loading category...' : 'Loading medicines...'}
+                  Loading category and medicines...
                 </p>
               </div>
             </div>
@@ -159,7 +164,7 @@ const CategoryPage = () => {
 
   // Show error state or category not found
   if (error || !currentCategory) {
-    const isNotFound = !currentCategory && !categoryLoading;
+    const isNotFound = !currentCategory && !categoriesLoading;
     return (
       <>
         <SEOHelmet
@@ -238,7 +243,7 @@ const CategoryPage = () => {
             {/* Category Badge */}
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-200">
-                {medicine.category}
+                {medicine.category?.name || medicine.category}
               </Badge>
               {(medicine.tags || []).map((tag, index) => (
                 <Badge key={index} variant="outline" className="text-xs bg-gray-50 text-gray-700">
@@ -317,12 +322,12 @@ const CategoryPage = () => {
             {/* Price */}
             <div className="border-t pt-4">
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl font-bold text-cyan-500">${medicine.price}</span>
+                <span className="text-3xl font-bold text-cyan-500">{medicine.price}</span>
                 {medicine.originalPrice && (
-                  <span className="text-lg text-gray-500 line-through">${medicine.originalPrice}</span>
+                  <span className="text-lg text-gray-500 line-through">{medicine.originalPrice}</span>
                 )}
                 {medicine.discount && (
-                  <Badge className="bg-red-500 text-white">Save ${(medicine.originalPrice - medicine.price).toFixed(2)}</Badge>
+                  <Badge className="bg-red-500 text-white">Save {(medicine.originalPrice - medicine.price).toFixed(2)}</Badge>
                 )}
               </div>
               
@@ -350,7 +355,7 @@ const CategoryPage = () => {
                   </Button>
                 </div>
                 <span className="text-sm text-gray-500">
-                  Total: ${(medicine.price * quantity).toFixed(2)}
+                  Total: {(medicine.price * quantity).toFixed(2)}
                 </span>
               </div>
 
@@ -505,61 +510,101 @@ const CategoryPage = () => {
         </div>
 
         {/* Medicine Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {medicines.map((medicine) => (
-            <div key={medicine.id} className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <img
-                    className="h-12 w-12 rounded-lg object-cover"
-                    src={medicine.image}
-                    alt={medicine.name}
-                  />
-                  <div className="ml-4">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {medicine.name}
-                    </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-300">
-                      {medicine.genericName}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
-                      </Button>
-                    </DialogTrigger>
-                    <MedicineModal medicine={medicine} />
-                  </Dialog>
-                  
-                  <Button
-                    onClick={() => handleAddToCart(medicine)}
-                    disabled={!medicine.inStock}
-                    size="sm"
-                    className="bg-cyan-600 hover:bg-cyan-700"
-                  >
-                    <ShoppingCart className="w-4 h-4 mr-1" />
-                    Select
-                  </Button>
+            <div key={medicine.id || medicine._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full">
+              {/* Product Image and Discount Badge */}
+              <div className="relative">
+                <img
+                  className="w-full h-48 object-cover"
+                  src={medicine.image}
+                  alt={medicine.name}
+                />
+                <div className="absolute top-2 right-2 flex flex-col gap-2">
+                  {medicine.discountPercentage > 0 && (
+                    <Badge className="bg-red-500 text-white px-2 py-1 text-xs font-bold">
+                      -{medicine.discountPercentage}%
+                    </Badge>
+                  )}
+                  {!medicine.inStock && (
+                    <Badge className="bg-gray-500 text-white px-2 py-1 text-xs font-bold">
+                      Out of Stock
+                    </Badge>
+                  )}
                 </div>
               </div>
-              <div className="mt-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg font-semibold text-cyan-500">${medicine.finalPrice || medicine.price}</span>
-                  {medicine.price !== (medicine.finalPrice || medicine.price) && (
-                    <span className="text-sm text-gray-500 line-through">${medicine.price}</span>
-                  )}
-                  {medicine.discountPercentage > 0 && (
-                    <Badge className="bg-red-500">-{medicine.discountPercentage}%</Badge>
-                  )}
+              
+              {/* Product Info */}
+              <div className="p-4 flex-grow flex flex-col">
+                <div className="flex-grow">
+                  <h3 className="font-bold text-gray-900 dark:text-white line-clamp-2 mb-1">
+                    {medicine.name}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                    {medicine.genericName}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
+                    {medicine.company}
+                  </p>
+                  
+                  {/* Rating */}
+                  <div className="flex items-center mb-3">
+                    <div className="flex items-center">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          className={`w-4 h-4 ${
+                            i < Math.floor(medicine.rating || 4) 
+                              ? 'text-yellow-400 fill-current' 
+                              : 'text-gray-300'
+                          }`} 
+                        />
+                      ))}
+                    </div>
+                    <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">
+                      {medicine.rating || 4.0} ({medicine.reviews || 0})
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center mt-2">
-                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                  <span className="ml-1 text-sm font-medium">{medicine.rating || 4.0}</span>
-                  <span className="ml-1 text-sm text-gray-500">({medicine.reviews || 0})</span>
+                
+                {/* Price and Actions */}
+                <div className="mt-auto">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col">
+                      <span className="text-xl font-bold text-cyan-600 dark:text-cyan-400">
+                        ${medicine.finalPrice || medicine.price}
+                      </span>
+                      {medicine.price !== (medicine.finalPrice || medicine.price) && (
+                        <span className="text-sm text-gray-500 line-through">
+                          ${medicine.price}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="flex-1 text-sm py-2 px-3"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                      </DialogTrigger>
+                      <MedicineModal medicine={medicine} />
+                    </Dialog>
+                    
+                    <Button
+                      onClick={() => handleAddToCart(medicine)}
+                      disabled={!medicine.inStock}
+                      className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-sm py-2 px-3"
+                    >
+                      <ShoppingCart className="w-4 h-4 mr-1" />
+                      Add
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

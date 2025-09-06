@@ -104,7 +104,8 @@ const CategorySection = () => {
   }
 
   // Use real categories from API, with fallback if empty
-  const displayCategories = categories.length > 0 ? categories : [];
+  // Limit to 6 categories for homepage display
+  const displayCategories = categories.length > 0 ? categories.slice(0, 6) : [];
 
   // If no categories available, show message
   if (displayCategories.length === 0) {
@@ -239,4 +240,3 @@ const CategorySection = () => {
 };
 
 export default CategorySection;
-

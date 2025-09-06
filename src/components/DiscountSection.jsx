@@ -288,7 +288,7 @@ const DiscountSection = () => {
             className="w-full h-64 object-cover rounded-lg"
           />
           <div className="mt-4 flex flex-wrap gap-2">
-            {product.tags.map((tag, index) => (
+            {product.tags && product.tags.map((tag, index) => (
               <Badge key={index} variant="outline" className="text-xs">
                 {tag}
               </Badge>
