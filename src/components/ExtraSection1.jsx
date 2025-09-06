@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { BookOpen, Clock, User, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -110,14 +111,16 @@ const ExtraSection1 = () => {
                     <span className="text-xs text-gray-500 dark:text-gray-400 transition-colors">
                       {tip.publishedAt}
                     </span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 p-0 h-auto font-medium transition-colors"
-                    >
-                      Read More
-                      <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
-                    </Button>
+                    <Link to={`/health-tips/${tip.id}`}>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 p-0 h-auto font-medium transition-colors"
+                      >
+                        Read More
+                        <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </CardContent>
@@ -127,10 +130,12 @@ const ExtraSection1 = () => {
 
         {/* View All Button */}
         <div className="text-center mt-12">
-          <Button size="lg" className="bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-500 dark:hover:bg-cyan-600 text-white px-8 py-3">
-            <BookOpen className="w-5 h-5 mr-2" />
-            View All Health Tips
-          </Button>
+          <Link to="/health-tips">
+            <Button size="lg" className="bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-500 dark:hover:bg-cyan-600 text-white px-8 py-3">
+              <BookOpen className="w-5 h-5 mr-2" />
+              View All Health Tips
+            </Button>
+          </Link>
         </div>
       </div>
 

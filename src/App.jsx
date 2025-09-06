@@ -17,6 +17,9 @@ import UserDashboard from './pages/dashboard/user/UserDashboard';
 import SellerDashboard from './pages/dashboard/seller/SellerDashboard';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import InvoicePage from './pages/InvoicePage';
+import HealthTipsPage from './pages/HealthTipsPage';
+import HealthTipDetailPage from './pages/HealthTipDetailPage';
+import AllCategoriesPage from './pages/AllCategoriesPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { Switch } from './components/ui/switch';
@@ -71,6 +74,9 @@ function App() {
                 <Route path="/invoice" element={<InvoicePage />} />
                 <Route path="/seller/dashboard" element={<SellerDashboard />} />
                 <Route path="/user/dashboard" element={<UserDashboard />} />
+                <Route path="/health-tips" element={<HealthTipsPage />} />
+                <Route path="/health-tips/:id" element={<HealthTipDetailPage />} />
+                <Route path="/categories" element={<AllCategoriesPage />} />
               </Routes>
             </main>
             <Footer />

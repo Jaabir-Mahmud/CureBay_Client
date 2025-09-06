@@ -1,6 +1,7 @@
 import React from 'react';
 import { Shield, Truck, Clock, Award, Users, HeartHandshake } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
+import { Link } from 'react-router-dom';
 
 const ExtraSection2 = () => {
   const features = [
@@ -138,12 +139,16 @@ const ExtraSection2 = () => {
               Start your journey to better health today.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-cyan-600 hover:bg-gray-100 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500 px-8 py-3 rounded-lg font-medium transition-all duration-300">
-                Browse Medicines
-              </button>
-              <button className="border-2 border-white text-white hover:bg-white hover:text-cyan-600 dark:border-gray-400 dark:text-gray-100 dark:hover:bg-gray-400 dark:hover:text-gray-900 px-8 py-3 rounded-lg font-medium transition-all duration-300">
-                Contact Support
-              </button>
+              <Link to="/shop">
+                <button className="bg-white text-cyan-600 hover:bg-gray-100 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500 px-8 py-3 rounded-lg font-medium transition-all duration-300">
+                  Browse Medicines
+                </button>
+              </Link>
+              <Link to="/contact">
+                <button className="border-2 border-white text-white hover:bg-white hover:text-cyan-600 dark:border-gray-400 dark:text-gray-100 dark:hover:bg-gray-400 dark:hover:text-gray-900 px-8 py-3 rounded-lg font-medium transition-all duration-300">
+                  Contact Support
+                </button>
+              </Link>
             </div>
           </div>
         </div>

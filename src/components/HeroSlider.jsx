@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay, EffectFade } from 'swiper/modules';
-import { ChevronLeft, ChevronRight, Star, ShoppingCart, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, ShoppingCart, Eye, Sparkles, TrendingUp, Award } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
@@ -16,6 +16,23 @@ const HeroSlider = () => {
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
+
+  // Intersection Observer for scroll animations
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
+    const element = document.querySelector('.hero-slider-container');
+    if (element) observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
 
   // Check if dark mode is active and set up observer
   useEffect(() => {
@@ -24,10 +41,8 @@ const HeroSlider = () => {
       setIsDarkMode(isDark);
     };
     
-    // Initial check
     checkDarkMode();
     
-    // Set up observer for theme changes
     const observer = new MutationObserver(checkDarkMode);
     observer.observe(document.documentElement, {
       attributes: true,
@@ -38,7 +53,6 @@ const HeroSlider = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch hero slides from API
     const fetchSlides = async () => {
       try {
         setLoading(true);
@@ -57,7 +71,6 @@ const HeroSlider = () => {
         setSlides(data);
       } catch (error) {
         console.error('Error fetching hero slides:', error);
-        // Fallback to empty slides - will show default welcome message
         setSlides([]);
       } finally {
         setLoading(false);
@@ -67,70 +80,98 @@ const HeroSlider = () => {
     fetchSlides();
   }, []);
 
-  const MedicineModal = ({ medicine }) => (
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle>{medicine.name}</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-4">
-        <div className="text-center">
-          <img
-            src={medicine.image}
-            alt={medicine.name}
-            className="w-32 h-32 object-cover rounded-lg mx-auto mb-4"
-          />
-          <h3 className="text-lg font-semibold">{medicine.name}</h3>
+  const FloatingElements = () => (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Floating particles */}
+      {[...Array(6)].map((_, i) => (
+        <div
+          key={i}
+          className={`absolute animate-float opacity-20 ${isDarkMode ? 'text-cyan-300' : 'text-cyan-500'}`}
+          style={{
+            left: `${10 + i * 15}%`,
+            top: `${20 + (i % 3) * 20}%`,
+            animationDelay: `${i * 0.5}s`,
+            animationDuration: `${3 + (i % 2)}s`
+          }}
+        >
+          <Sparkles className="w-4 h-4" />
         </div>
-        
-        <div className="flex items-center justify-center space-x-2">
-          <div className="flex items-center">
-            <Star className="w-4 h-4 text-yellow-400 fill-current" />
-            <span className="ml-1 font-medium">{medicine.rating}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-center space-x-2">
-          <span className="text-2xl font-bold text-cyan-500">${medicine.price}</span>
-          {medicine.originalPrice && (
-            <span className="text-lg text-gray-500 line-through">${medicine.originalPrice}</span>
-          )}
-          {medicine.discount && (
-            <Badge className="bg-red-500">-{medicine.discount}%</Badge>
-          )}
-        </div>
-
-        <Button className="w-full bg-cyan-500 hover:bg-cyan-600">
-          <ShoppingCart className="w-4 h-4 mr-2" />
-          Add to Cart
-        </Button>
-      </div>
-    </DialogContent>
+      ))}
+      
+      {/* Gradient orbs */}
+      <div className="absolute top-10 right-20 w-32 h-32 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full mix-blend-multiply dark:mix-blend-lighten filter blur-xl opacity-70 animate-pulse"></div>
+      <div className="absolute bottom-20 left-20 w-24 h-24 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full mix-blend-multiply dark:mix-blend-lighten filter blur-xl opacity-60 animate-pulse" style={{animationDelay: '1s'}}></div>
+    </div>
   );
+
+  const AnimatedCounter = ({ end, label, duration = 2000 }) => {
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+      if (!isVisible) return;
+      
+      let startTime = null;
+      const animate = (currentTime) => {
+        if (startTime === null) startTime = currentTime;
+        const progress = Math.min((currentTime - startTime) / duration, 1);
+        setCount(Math.floor(progress * end));
+        
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        }
+      };
+      
+      requestAnimationFrame(animate);
+    }, [end, duration, isVisible]);
+
+    return (
+      <div className="text-center transform transition-all duration-500 hover:scale-110">
+        <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent">
+          {count.toLocaleString()}+
+        </div>
+        <div className="text-sm opacity-75">{label}</div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
-      <div className="relative h-[600px] bg-gray-100 dark:bg-gray-800 animate-pulse flex items-center justify-center transition-colors duration-300">
-        <div className="text-gray-500 dark:text-gray-400 transition-colors">Loading slides...</div>
+      <div className="relative h-[600px] bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-colors duration-300">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+          <div className="text-gray-500 dark:text-gray-400 animate-pulse">Loading amazing deals...</div>
+        </div>
       </div>
     );
   }
 
   if (slides.length === 0) {
     return (
-      <div className="relative h-[600px] bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center transition-colors duration-300">
-        <div className="text-center text-gray-900 dark:text-white transition-colors">
-          <h2 className="text-3xl font-bold mb-4">Welcome to CureBay</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6 transition-colors">Your trusted healthcare partner</p>
-          <Button className="bg-cyan-500 hover:bg-cyan-600">
-            Browse Products
-          </Button>
+      <div className="hero-slider-container relative h-[600px] bg-gradient-to-br from-cyan-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center transition-all duration-500 overflow-hidden">
+        <FloatingElements />
+        <div className="text-center text-gray-900 dark:text-white transition-colors relative z-10">
+          <div className="animate-fade-in-up">
+            <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+              Welcome to CureBay
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+              Your trusted healthcare partner for wellness and care
+            </p>
+            <Button 
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white px-8 py-4 text-lg font-medium transform transition-all duration-300 hover:scale-105 hover:shadow-lg animate-fade-in-up shadow-cyan-500/25"
+              style={{animationDelay: '0.4s'}}
+            >
+              <Sparkles className="w-5 h-5 mr-2" />
+              Browse Products
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative">
+    <div className="hero-slider-container relative overflow-hidden">
       <Swiper
         modules={[Navigation, Pagination, Autoplay, EffectFade]}
         spaceBetween={0}
@@ -144,7 +185,7 @@ const HeroSlider = () => {
           dynamicBullets: true,
         }}
         autoplay={{
-          delay: 5000,
+          delay: 6000,
           disableOnInteraction: false,
         }}
         effect="fade"
@@ -152,189 +193,291 @@ const HeroSlider = () => {
           crossFade: true,
         }}
         loop={slides.length > 1}
+        onSlideChange={(swiper) => setCurrentSlide(swiper.realIndex)}
         className="hero-slider h-[600px]"
       >
-        {slides.map((slide) => {
+        {slides.map((slide, index) => {
           const backgroundGradient = isDarkMode ? slide.backgroundColor : slide.lightBackground;
           const textColor = isDarkMode ? slide.textColor : slide.lightTextColor;
           
           return (
-          <SwiperSlide key={slide._id}>
-            <div 
-              className={`relative h-full overflow-hidden transition-colors duration-300`}
-              style={{
-                backgroundImage: `url(${slide.image})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-            >
-              {/* Theme-based overlay */}
+            <SwiperSlide key={slide._id}>
               <div 
-                className={`absolute inset-0 transition-all duration-300 ${
-                  isDarkMode 
-                    ? 'bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900' 
-                    : `bg-gradient-to-r ${backgroundGradient}`
-                }`}
+                className="relative h-full overflow-hidden transition-all duration-700"
                 style={{
-                  backgroundColor: isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.92)'
+                  backgroundImage: `url(${slide.image})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
                 }}
-              ></div>
-              
-              <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
-                <div className="grid lg:grid-cols-2 gap-12 items-center h-full">
-                  {/* Left Content */}
-                  <div className={`space-y-6 ${textColor} transition-colors duration-300`}>
-                    <div className="space-y-4">
-                      <h2 className="text-lg font-medium opacity-90">{slide.subtitle}</h2>
-                      <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
-                        {slide.title}
-                      </h1>
-                      <p className="text-xl opacity-90 max-w-lg">
-                        {slide.description}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <Button 
-                        size="lg" 
-                        className={`px-8 py-4 text-lg font-medium transition-colors duration-300 ${
-                          isDarkMode 
-                            ? 'bg-white text-gray-900 hover:bg-gray-100 border-white' 
-                            : 'bg-gray-900 text-white hover:bg-gray-800 border-gray-900'
-                        }`}
-                      >
-                        {slide.buttonText}
-                      </Button>
-                      <Button 
-                        size="lg" 
-                        variant="outline"
-                        className={`px-8 py-4 text-lg font-medium transition-colors duration-300 ${
-                          isDarkMode 
-                            ? 'border-white text-white hover:bg-white hover:text-gray-900' 
-                            : 'border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white bg-white'
-                        }`}
-                      >
-                        <Eye className="w-5 h-5 mr-2" />
-                        Learn More
-                      </Button>
-                    </div>
-
-                    {/* Trust indicators */}
-                    <div className="flex items-center space-x-6 pt-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold">1000+</div>
-                        <div className="text-sm opacity-75">Products</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold">50K+</div>
-                        <div className="text-sm opacity-75">Customers</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold">24/7</div>
-                        <div className="text-sm opacity-75">Support</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Content - Featured Medicine */}
-                  {slide.featured && slide.featured.medicine && (
-                    <div className="flex justify-center">
-                      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full transform hover:scale-105 transition-all duration-300">
-                        <div className="text-center mb-4">
-                          <Badge className="bg-red-500 text-white mb-2">
-                            Featured Product
-                          </Badge>
+              >
+                <FloatingElements />
+                
+                {/* Enhanced overlay with gradient mesh */}
+                <div className="absolute inset-0">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${
+                    isDarkMode 
+                      ? 'from-gray-900/95 via-gray-800/90 to-gray-900/95' 
+                      : 'from-white/95 via-cyan-50/90 to-blue-50/95'
+                  } transition-all duration-700`}></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/5 to-transparent"></div>
+                </div>
+                
+                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+                  <div className="grid lg:grid-cols-2 gap-12 items-center h-full">
+                    {/* Left Content with enhanced animations */}
+                    <div className={`space-y-8 ${textColor} transition-all duration-700`}>
+                      <div className="space-y-6">
+                        <div className="flex items-center space-x-2 animate-fade-in-up">
+                          <Award className="w-5 h-5 text-cyan-500" />
+                          <span className="text-lg font-medium opacity-90 tracking-wide uppercase text-cyan-600 dark:text-cyan-400">
+                            {slide.subtitle || "Premium Quality"}
+                          </span>
                         </div>
                         
-                        <div className="space-y-4">
-                          <img
-                            src={slide.featured.medicine.image}
-                            alt={slide.featured.medicine.name}
-                            className="w-24 h-24 object-cover rounded-lg mx-auto"
-                          />
-                          
-                          <div className="text-center">
-                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2 transition-colors">
-                              {slide.featured.medicine.name}
-                            </h3>
-                            
-                            <div className="flex items-center justify-center space-x-1 mb-3">
-                              <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
-                                {slide.featured.medicine.rating}
-                              </span>
-                            </div>
-                            
-                            <div className="flex items-center justify-center space-x-2 mb-4">
-                              <span className="text-xl font-bold text-cyan-500">
-                                ${slide.featured.medicine.price}
-                              </span>
-                              {slide.featured.medicine.originalPrice && (
-                                <span className="text-sm text-gray-500 line-through">
-                                  ${slide.featured.medicine.originalPrice}
-                                </span>
-                              )}
-                              {slide.featured.medicine.discount && (
-                                <Badge className="bg-red-100 text-red-700 text-xs">
-                                  -{slide.featured.medicine.discount}%
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            <div className="flex space-x-2">
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="outline" size="sm" className="flex-1">
-                                    <Eye className="w-4 h-4 mr-1" />
-                                    View
-                                  </Button>
-                                </DialogTrigger>
-                                <MedicineModal medicine={slide.featured.medicine} />
-                              </Dialog>
-                              
-                              <Button size="sm" className="flex-1 bg-cyan-500 hover:bg-cyan-600">
-                                <ShoppingCart className="w-4 h-4 mr-1" />
-                                Add to Cart
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
+                        <h1 className="text-5xl lg:text-7xl font-bold leading-tight animate-fade-in-up bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent" style={{animationDelay: '0.2s'}}>
+                          {slide.title}
+                        </h1>
+                        
+                        <p className="text-xl opacity-90 max-w-lg leading-relaxed animate-fade-in-up" style={{animationDelay: '0.4s'}}>
+                          {slide.description}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-4 animate-fade-in-up" style={{animationDelay: '0.6s'}}>
+                        <Button 
+                          size="lg" 
+                          className="px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white border-none shadow-lg shadow-cyan-500/25"
+                        >
+                          <TrendingUp className="w-5 h-5 mr-2" />
+                          {slide.buttonText || "Shop Now"}
+                        </Button>
+                        
+                        <Button 
+                          size="lg" 
+                          variant="outline"
+                          className={`px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-xl ${
+                            isDarkMode 
+                              ? 'border-white/30 text-white hover:bg-white hover:text-gray-900 bg-white/5 backdrop-blur-sm' 
+                              : 'border-gray-900/30 text-gray-900 hover:bg-gray-900 hover:text-white bg-white/80 backdrop-blur-sm'
+                          }`}
+                        >
+                          <Eye className="w-5 h-5 mr-2" />
+                          Learn More
+                        </Button>
+                      </div>
+
+                      {/* Enhanced trust indicators */}
+                      <div className="flex items-center space-x-8 pt-6 animate-fade-in-up" style={{animationDelay: '0.8s'}}>
+                        <AnimatedCounter end={1000} label="Products" />
+                        <AnimatedCounter end={50000} label="Customers" />
+                        <AnimatedCounter end={24} label="Support" />
                       </div>
                     </div>
-                  )}
+
+                    {/* Right Content with enhanced product showcase */}
+                    <div className="flex flex-col items-center justify-center h-full space-y-8 animate-fade-in-right">
+                      {slide.featured && slide.featured.image ? (
+                        <div className="relative group">
+                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl blur-xl opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
+                          <div className="relative bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/20 shadow-2xl">
+                            <img
+                              src={slide.featured.image}
+                              alt={slide.title}
+                              className="hero-slider-image rounded-xl transition-all duration-500 group-hover:scale-105"
+                            />
+                            {slide.featured.medicine && (
+                              <div className="absolute top-4 right-4 flex space-x-2">
+                                <Badge className="bg-green-500 text-white animate-pulse">
+                                  <Star className="w-3 h-3 mr-1" />
+                                  {slide.featured.medicine.rating || "4.8"}
+                                </Badge>
+                                {slide.featured.medicine.discount && (
+                                  <Badge className="bg-red-500 text-white animate-bounce">
+                                    -{slide.featured.medicine.discount}%
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : slide.image ? (
+                        <div className="relative group">
+                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl blur-xl opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
+                          <img
+                            src={slide.image}
+                            alt={slide.title}
+                            className="hero-slider-image rounded-2xl shadow-2xl transition-all duration-500 group-hover:scale-105 relative"
+                          />
+                        </div>
+                      ) : (
+                        <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border-2 border-dashed rounded-2xl w-full h-96 flex items-center justify-center transition-colors">
+                          <span className="text-gray-500 dark:text-gray-400">No image available</span>
+                        </div>
+                      )}
+                      
+                      {/* Enhanced pricing section */}
+                      {(slide.featured && (slide.featured.medicine || slide.featured.price)) || slide.title ? (
+                        <div className="flex flex-col items-center space-y-6 w-full max-w-md">
+                          <div className="flex items-center justify-center space-x-4 bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/20">
+                            {slide.featured && slide.featured.medicine ? (
+                              <>
+                                <span className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent">
+                                  ${slide.featured.medicine.price}
+                                </span>
+                                {slide.featured.medicine.originalPrice && (
+                                  <span className="text-xl text-gray-500 line-through opacity-75">
+                                    ${slide.featured.medicine.originalPrice}
+                                  </span>
+                                )}
+                              </>
+                            ) : slide.featured && slide.featured.price ? (
+                              <>
+                                <span className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent">
+                                  ${slide.featured.price}
+                                </span>
+                                {slide.featured.originalPrice && (
+                                  <span className="text-xl text-gray-500 line-through opacity-75">
+                                    ${slide.featured.originalPrice}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent">
+                                
+                              </span>
+                            )}
+                          </div>
+                          
+                          
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </SwiperSlide>
+            </SwiperSlide>
           );
         })}
       </Swiper>
 
-      {/* Custom Navigation Buttons */}
+      {/* Enhanced Navigation Buttons */}
       {slides.length > 1 && (
         <>
-          <button className="hero-slider-prev absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-white bg-opacity-80 hover:bg-opacity-100 dark:bg-black dark:bg-opacity-50 dark:hover:bg-opacity-75 text-gray-900 dark:text-white p-3 rounded-full transition-all duration-300 shadow-lg">
+          <button className="hero-slider-prev absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-white/20 backdrop-blur-sm hover:bg-white/30 dark:bg-black/20 dark:hover:bg-black/30 text-gray-900 dark:text-white p-4 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-110 border border-white/30">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <button className="hero-slider-next absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-white bg-opacity-80 hover:bg-opacity-100 dark:bg-black dark:bg-opacity-50 dark:hover:bg-opacity-75 text-gray-900 dark:text-white p-3 rounded-full transition-all duration-300 shadow-lg">
+          <button className="hero-slider-next absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-white/20 backdrop-blur-sm hover:bg-white/30 dark:bg-black/20 dark:hover:bg-black/30 text-gray-900 dark:text-white p-4 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-110 border border-white/30">
             <ChevronRight className="w-6 h-6" />
           </button>
         </>
       )}
 
-      {/* Custom Styles */}
+      {/* Enhanced Custom Styles */}
       <style dangerouslySetInnerHTML={{__html: `
         .hero-slider .swiper-pagination {
-          bottom: 20px;
+          bottom: 30px;
+          z-index: 10;
         }
         .hero-slider .swiper-pagination-bullet {
-          background: ${isDarkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.3)'};
-          width: 12px;
-          height: 12px;
-          transition: background-color 0.3s ease;
+          background: ${isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)'};
+          width: 14px;
+          height: 14px;
+          margin: 0 6px;
+          transition: all 0.3s ease;
+          border: 2px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
         }
         .hero-slider .swiper-pagination-bullet-active {
-          background: ${isDarkMode ? 'white' : '#1f2937'};
+          background: ${isDarkMode ? 'white' : '#0891b2'};
+          transform: scale(1.2);
+          border-color: ${isDarkMode ? 'white' : '#0891b2'};
+        }
+        .hero-slider .swiper-pagination-bullet:hover {
+          transform: scale(1.1);
+        }
+        .hero-slider-image {
+          max-width: 100%;
+          max-height: 500px;
+          object-fit: contain;
+          filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.15));
+        }
+        
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes fade-in-right {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-10px) rotate(180deg);
+          }
+        }
+        
+        .animate-fade-in-up {
+          animation: fade-in-up 0.8s ease-out forwards;
+          opacity: 0;
+        }
+        
+        .animate-fade-in-right {
+          animation: fade-in-right 0.8s ease-out forwards;
+          opacity: 0;
+        }
+        
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+        
+        /* Glassmorphism effects */
+        .backdrop-blur-sm {
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
+        
+        /* Smooth transitions for theme switching */
+        * {
+          transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+        
+        /* Hover effects */
+        .group:hover .hero-slider-image {
+          filter: drop-shadow(0 25px 50px rgba(6, 182, 212, 0.3));
+        }
+        
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${isDarkMode ? '#1f2937' : '#f1f5f9'};
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: ${isDarkMode ? '#374151' : '#cbd5e1'};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: ${isDarkMode ? '#4b5563' : '#94a3b8'};
         }
       `}} />
     </div>

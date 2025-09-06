@@ -224,28 +224,36 @@ const Footer = () => {
             <div className="flex items-center space-x-3">
               <span className="text-gray-600 dark:text-gray-400 text-sm mr-4">Follow us:</span>
               <a 
-                href="#" 
+                href="https://facebook.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-12 h-12 bg-cyan-100 dark:bg-cyan-900/30 hover:bg-cyan-600 dark:hover:bg-cyan-600 text-cyan-600 hover:text-white dark:text-cyan-400 dark:hover:text-white rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
                 aria-label="Facebook"
               >
                 <Facebook className="w-5 h-5" />
               </a>
               <a 
-                href="#" 
+                href="https://twitter.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 hover:bg-sky-500 dark:hover:bg-sky-500 text-sky-600 hover:text-white dark:text-sky-400 dark:hover:text-white rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
                 aria-label="Twitter"
               >
                 <Twitter className="w-5 h-5" />
               </a>
               <a 
-                href="#" 
+                href="https://instagram.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-12 h-12 bg-pink-100 dark:bg-pink-900/30 hover:bg-pink-600 dark:hover:bg-pink-600 text-pink-600 hover:text-white dark:text-pink-400 dark:hover:text-white rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
                 aria-label="Instagram"
               >
                 <Instagram className="w-5 h-5" />
               </a>
               <a 
-                href="#" 
+                href="https://linkedin.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-12 h-12 bg-cyan-100 dark:bg-cyan-900/30 hover:bg-cyan-700 dark:hover:bg-cyan-700 text-cyan-700 hover:text-white dark:text-cyan-400 dark:hover:text-white rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
                 aria-label="LinkedIn"
               >
