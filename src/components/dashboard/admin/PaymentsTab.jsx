@@ -90,18 +90,16 @@ function PaymentsTab({
     
     setIsProcessingPayment(true);
     try {
-      const endpoint = paymentAction === 'accept' 
-        ? `/api/admin/payments/${selectedPayment.id}/accept`
-        : `/api/admin/payments/${selectedPayment.id}/reject`;
-      
-      const body = paymentAction === 'reject' && rejectReason 
-        ? JSON.stringify({ reason: rejectReason })
-        : null;
+      // Update order payment status
+      const endpoint = `/api/orders/${selectedPayment.id}`;
+      const requestBody = JSON.stringify({
+        paymentStatus: paymentAction === 'accept' ? 'paid' : 'failed'
+      });
       
       const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body
+        body: requestBody
       });
       
       if (!res.ok) throw new Error(`Failed to ${paymentAction} payment`);
@@ -111,9 +109,8 @@ function PaymentsTab({
         payment.id === selectedPayment.id 
           ? { 
               ...payment, 
-              status: paymentAction === 'accept' ? 'accepted' : 'rejected',
-              [`${paymentAction}edAt`]: new Date().toISOString(),
-              ...(paymentAction === 'reject' && rejectReason ? { rejectReason } : {})
+              status: paymentAction === 'accept' ? 'paid' : 'failed',
+              [`${paymentAction}edAt`]: new Date().toISOString()
             }
           : payment
       );
@@ -154,8 +151,15 @@ function PaymentsTab({
     setIsProcessingPayment(true);
     try {
       const promises = Array.from(selectedPayments).map(paymentId => {
-        const endpoint = `/api/admin/payments/${paymentId}/${action}`;
-        return fetch(endpoint, { method: 'PATCH' });
+        const endpoint = `/api/orders/${paymentId}`;
+        const requestBody = JSON.stringify({
+          paymentStatus: action === 'accept' ? 'paid' : 'failed'
+        });
+        return fetch(endpoint, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: requestBody
+        });
       });
       
       await Promise.all(promises);
@@ -165,7 +169,7 @@ function PaymentsTab({
         selectedPayments.has(payment.id)
           ? { 
               ...payment, 
-              status: action === 'accept' ? 'accepted' : 'rejected',
+              status: action === 'accept' ? 'paid' : 'failed',
               [`${action}edAt`]: new Date().toISOString()
             }
           : payment

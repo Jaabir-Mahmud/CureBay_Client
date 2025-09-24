@@ -1,0 +1,85 @@
+// Simple translation utility
+const translations = {
+  EN: {
+    home: 'Home',
+    shop: 'Shop',
+    cart: 'Cart',
+    profile: 'Profile',
+    dashboard: 'Dashboard',
+    logout: 'Logout',
+    joinUs: 'Join Us',
+    welcome: 'Welcome',
+    // Home page translations
+    'home.hero.checkup': 'Checkup',
+    'home.hero.highQualityCheckup': 'High Quality Checkup',
+    'home.hero.makesYouHealthy': 'Makes You Healthy',
+    'home.hero.date': 'Date',
+    'home.hero.time': 'Time',
+    'home.hero.guides': 'Guides',
+    'home.hero.reserveCheckup': 'Reserve Checkup',
+    'home.hero.address.line1': '123 Healthcare Ave',
+    'home.hero.address.line2': 'Medical District, CA 90210',
+    'home.hero.patient.age': '24 Years',
+    'home.hero.heart': 'Heart',
+    'home.hero.heartRate': 'Heart Rate',
+    'home.hero.tuesday': 'Tuesday',
+    'home.hero.welcome': 'Welcome to Our Store',
+    'home.hero.description': 'Discover the best products for your health',
+    'home.hero.shopNow': 'Shop Now',
+    'home.hero.featured': 'Featured',
+    'home.hero.previousSlide': 'Previous slide',
+    'home.hero.nextSlide': 'Next slide',
+    'home.hero.goToSlide': 'Go to slide',
+    'home.hero.loading': 'Loading...',
+    'home.banner.noActiveBanners': 'No active banners available',
+    'home.banner.previousSlide': 'Previous slide',
+    'home.banner.nextSlide': 'Next slide',
+    'home.banner.goToSlide': 'Go to slide',
+    'home.banner.loading': 'Loading...',
+    // Add more translations as needed
+  },
+  BN: {
+    home: 'হোম',
+    shop: 'দোকান',
+    cart: 'কার্ট',
+    profile: 'প্রোফাইল',
+    dashboard: 'ড্যাশবোর্ড',
+    logout: 'লগআউট',
+    joinUs: 'যোগ দিন',
+    welcome: 'স্বাগতম',
+    // Home page translations
+    'home.hero.checkup': 'চেকআপ',
+    'home.hero.highQualityCheckup': 'উচ্চ মানের চেকআপ',
+    'home.hero.makesYouHealthy': 'আপনাকে সুস্থ রাখে',
+    'home.hero.date': 'তারিখ',
+    'home.hero.time': 'সময়',
+    'home.hero.guides': 'গাইড',
+    'home.hero.reserveCheckup': 'চেকআপ রিজার্ভ করুন',
+    'home.hero.address.line1': '123 হেলথকেয়ার অ্যাভিনিউ',
+    'home.hero.address.line2': 'মেডিকেল ডিস্ট্রিক্ট, সিএ 90210',
+    'home.hero.patient.age': '24 বছর',
+    'home.hero.heart': 'হৃদপিণ্ড',
+    'home.hero.heartRate': 'হৃদস্পন্দন মাত্রা',
+    'home.hero.tuesday': 'মঙ্গলবার',
+    'home.hero.welcome': 'আমাদের স্টোরে স্বাগতম',
+    'home.hero.description': 'আপনার স্বাস্থ্যের জন্য সেরা পণ্যগুলি আবিষ্কার করুন',
+    'home.hero.shopNow': 'এখনই কিনুন',
+    'home.hero.featured': 'বৈশিষ্ট্যযুক্ত',
+    'home.hero.previousSlide': 'পূর্ববর্তী স্লাইড',
+    'home.hero.nextSlide': 'পরবর্তী স্লাইড',
+    'home.hero.goToSlide': 'স্লাইডে যান',
+    'home.hero.loading': 'লোড হচ্ছে...',
+    'home.banner.noActiveBanners': 'কোন সক্রিয় ব্যানার নেই',
+    'home.banner.previousSlide': 'পূর্ববর্তী স্লাইড',
+    'home.banner.nextSlide': 'পরবর্তী স্লাইড',
+    'home.banner.goToSlide': 'স্লাইডে যান',
+    'home.banner.loading': 'লোড হচ্ছে...',
+    // Add more translations as needed
+  }
+};
+
+export const t = (key, language = 'EN') => {
+  return translations[language]?.[key] || translations.EN[key] || key;
+};
+
+export default translations;

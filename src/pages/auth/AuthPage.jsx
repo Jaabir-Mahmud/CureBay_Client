@@ -15,6 +15,8 @@ import SEOHelmet from '../../components/SEOHelmet';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { useLanguage } from '../../contexts/LanguageContext'; // Added LanguageContext import
+import { t } from '../../lib/i18n'; // Added translation import
 
 // Validation schemas
 const loginSchema = yup.object({
@@ -52,6 +54,7 @@ const signupSchema = yup.object({
 });
 
 const AuthPage = () => {
+  const { language } = useLanguage(); // Use language context
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showResend, setShowResend] = useState(false);
@@ -111,15 +114,15 @@ const AuthPage = () => {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file size (max 2MB)
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('Profile photo must be less than 2MB');
+      // Validate file size (max 5MB to match backend)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Profile photo must be less than 5MB');
         return;
       }
       
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file');
+        toast.error('Please select an image file (JPEG, PNG, etc.)');
         return;
       }
       
@@ -152,20 +155,26 @@ const AuthPage = () => {
       const formData = new FormData();
       formData.append('photo', profilePhoto);
       
-      const response = await fetch('/api/upload/profile', {
+      // For signup, we use the image endpoint which doesn't require authentication
+      // For profile updates after login, we use the profile endpoint which requires authentication
+      const endpoint = isLogin ? '/api/upload/profile' : '/api/upload/image';
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       });
       
       if (!response.ok) {
-        let errorData;
+        let errorMessage = `Failed to upload photo: ${response.status} ${response.statusText}`;
+        
         try {
-          errorData = await response.json();
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
         } catch (jsonError) {
           console.error('Failed to parse JSON error response:', jsonError);
-          throw new Error(`Failed to upload photo: ${response.status} ${response.statusText}`);
         }
-        throw new Error(errorData.message || 'Failed to upload photo');
+        
+        throw new Error(errorMessage);
       }
       
       let data;
@@ -175,11 +184,12 @@ const AuthPage = () => {
         console.error('Failed to parse JSON response:', jsonError);
         throw new Error('Failed to upload photo - Invalid server response');
       }
+      
       return data.url; // Return the file URL
     } catch (error) {
       console.error('Photo upload error:', error);
       toast.error(error.message || 'Failed to upload profile photo');
-      return null;
+      throw error; // Re-throw the error so it can be handled by the caller
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -195,37 +205,31 @@ const AuthPage = () => {
         const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
         const user = userCredential.user;
         
+        // Check if email is verified
         if (!user.emailVerified) {
           Swal.fire({
+            title: 'Email Verification Required',
+            text: 'Please verify your email address before logging in.',
             icon: 'warning',
-            title: 'Email Not Verified',
-            text: 'Please verify your email before logging in.',
-            showCancelButton: true,
             confirmButtonText: 'Resend Verification Email',
-            cancelButtonText: 'Close'
+            showCancelButton: true,
+            cancelButtonText: 'Cancel'
           }).then(async (result) => {
             if (result.isConfirmed) {
-              await sendEmailVerification(user);
-              Swal.fire({
-                icon: 'info',
-                title: 'Verification Email Sent',
-                text: 'A new verification link has been sent to your email.'
-              });
+              try {
+                await sendEmailVerification(user);
+                toast.success('Verification email sent! Please check your inbox.');
+              } catch (error) {
+                console.error('Error sending verification email:', error);
+                toast.error('Failed to send verification email. Please try again.');
+              }
             }
           });
-          setShowResend(true);
-          setPendingEmail(data.email);
-          await auth.signOut();
           return;
         }
         
-        // Show toast notification and navigate automatically
-        toast.success('Login Successful! Welcome back!', {
-          duration: 3000,
-          position: 'top-center',
-        });
+        toast.success('Login successful!');
         navigate(from, { replace: true });
-        
       } else {
         // Signup
         const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
@@ -234,90 +238,124 @@ const AuthPage = () => {
         // Upload profile photo if provided
         let profilePictureUrl = null;
         if (profilePhoto) {
-          profilePictureUrl = await uploadPhoto();
-          if (!profilePictureUrl) {
-            // Photo upload failed, but continue with signup
-            toast('Profile photo upload failed, but account was created successfully', {
-              icon: '⚠️'
-            });
+          try {
+            profilePictureUrl = await uploadPhoto();
+            if (!profilePictureUrl) {
+              toast.error('Failed to upload profile photo. Please try again.');
+              // Continue with signup even if photo upload fails
+            }
+          } catch (photoError) {
+            console.error('Photo upload failed:', photoError);
+            // Continue with signup even if photo upload fails
+            toast.error('Profile photo upload failed, but account was created. You can upload a photo later.');
           }
         }
         
-        // Get ID token and send to backend for enhanced signup
-        const idToken = await user.getIdToken();
+        // Send verification email
+        await sendEmailVerification(user);
         
-        const signupResponse = await fetch('/api/auth/firebase-signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            idToken,
+        // Save additional user data
+        try {
+          const userData = {
+            uid: user.uid,
+            email: data.email,
             username: data.username,
             role: data.role,
             profilePicture: profilePictureUrl
-          })
-        });
-        
-        let signupData;
-        try {
-          signupData = await signupResponse.json();
-        } catch (jsonError) {
-          console.error('Failed to parse JSON response:', jsonError);
-          throw new Error('Failed to create account - Invalid server response');
+          };
+          
+          const response = await fetch('/api/users/signup', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userData)
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to save user data');
+          }
+        } catch (error) {
+          console.error('Error saving user data:', error);
+          toast.error('Failed to save user data. Please contact support.');
         }
         
-        if (!signupResponse.ok) {
-          throw new Error(signupData.error || 'Failed to create account');
-        }
-        
-        // Send email verification
-        await sendEmailVerification(user);
-        
+        // Show success message
         Swal.fire({
+          title: 'Signup Successful!',
+          text: 'A verification email has been sent to your email address. Please verify your email before logging in.',
           icon: 'success',
-          title: 'Account Created!',
-          text: 'A verification link has been sent to your email. Please verify your email before logging in.'
+          confirmButtonText: 'OK'
+        }).then(() => {
+          toggleMode(); // Switch to login mode
         });
-        
-        setShowResend(true);
-        setPendingEmail(data.email);
-        setIsLogin(true); // Switch to login after signup
-        reset(); // Reset form after successful signup
-        
-        // Clear photo after successful signup
-        setProfilePhoto(null);
-        setProfilePhotoPreview(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
       }
-    } catch (err) {
-      console.error('Authentication error:', err);
-      Swal.fire({
-        icon: 'error',
-        title: 'Authentication Error',
-        text: err.message || 'An error occurred.'
-      });
+    } catch (error) {
+      console.error('Auth error:', error);
+      let errorMessage = 'An error occurred. Please try again.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please use a different email or login instead.';
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        errorMessage = 'Invalid email or password. Please try again.';
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email. Please check your email or sign up.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed login attempts. Please try again later.';
+      }
+      
+      toast.error(errorMessage);
     }
   };
 
-  const handleResendVerification = async () => {
-    const currentPassword = watch('password'); // Get current password from form
-    
+  const handleGoogleSignIn = async () => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, pendingEmail, currentPassword);
-      await sendEmailVerification(userCredential.user);
-      Swal.fire({
-        icon: 'info',
-        title: 'Verification Email Sent',
-        text: 'A new verification link has been sent to your email.'
-      });
-      await auth.signOut();
-    } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Resend Failed',
-        text: err.message || 'Could not resend verification email.'
-      });
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Check if this is a new user
+      if (user.metadata.creationTime === user.metadata.lastSignInTime) {
+        // New user - save additional data
+        try {
+          const userData = {
+            uid: user.uid,
+            email: user.email,
+            name: user.displayName,
+            profilePicture: user.photoURL
+          };
+          
+          const response = await fetch('/api/users/google', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userData)
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            // If user already exists, that's fine - continue with login
+            if (!errorData.userExists) {
+              throw new Error(errorData.error || 'Failed to save user data');
+            }
+          }
+          
+          // Wait a moment for the user to be fully created in the database
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (error) {
+          console.error('Error saving user data:', error);
+          toast.error('Failed to save user data. Please contact support.');
+          // Don't navigate if user creation failed
+          return;
+        }
+      }
+      
+      toast.success('Login successful!');
+      navigate(from, { replace: true });
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      toast.error('Google sign-in failed. Please try again.');
     }
   };
 
@@ -326,322 +364,245 @@ const AuthPage = () => {
       title: 'Reset Password',
       input: 'email',
       inputLabel: 'Enter your email address',
-      inputPlaceholder: 'Email',
+      inputPlaceholder: 'Enter your email',
       showCancelButton: true,
       confirmButtonText: 'Send Reset Link',
-      cancelButtonText: 'Cancel',
-      inputValidator: (value) => {
-        if (!value) {
-          return 'Please enter your email address';
-        }
-        return null;
-      }
+      cancelButtonText: 'Cancel'
     });
+    
     if (email) {
       try {
         await sendPasswordResetEmail(auth, email);
-        Swal.fire({
-          icon: 'success',
-          title: 'Reset Email Sent',
-          text: 'A password reset link has been sent to your email.'
-        });
-      } catch (err) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Reset Failed',
-          text: err.message || 'Could not send reset email.'
-        });
+        toast.success('Password reset email sent! Please check your inbox.');
+      } catch (error) {
+        console.error('Password reset error:', error);
+        toast.error('Failed to send password reset email. Please try again.');
       }
     }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      const idToken = await user.getIdToken();
-      
-      // Send ID token to backend
-      const response = await fetch('/api/auth/firebase-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken })
-      });
-      
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Login failed');
-      
-      // Handle successful login with toast notification and automatic navigation
-      toast.success('Login Successful! Welcome back!', {
-        duration: 3000,
-        position: 'top-center',
-      });
-      navigate(from, { replace: true });
-    } catch (err) {
-      toast.error(err.message || 'Google login failed');
-    }
-  };
-
-  const handleGithubLogin = () => {
-    // GitHub authentication logic
-    console.log('GitHub login');
   };
 
   return (
     <>
-      <SEOHelmet
-        title={isLogin ? "Sign In - CureBay Online Pharmacy" : "Create Account - CureBay Online Pharmacy"}
-        description={isLogin ? "Sign in to your CureBay account to access your orders, prescriptions, and healthcare dashboard." : "Create your CureBay account to start shopping for medicines and healthcare products online."}
-        keywords={isLogin ? "login, sign in, pharmacy account, CureBay login" : "sign up, create account, register, pharmacy registration"}
-        url={window.location.href}
+      <SEOHelmet 
+        title={isLogin ? "Login - CureBay" : "Sign Up - CureBay"}
+        description={isLogin ? "Login to your CureBay account to access your pharmacy services." : "Create a new CureBay account to access our pharmacy services."}
+        keywords={isLogin ? "login, sign in, CureBay account, pharmacy login" : "sign up, register, create account, CureBay signup, pharmacy account"}
       />
-      <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4 transition-colors duration-300">
-      <Card className="w-full max-w-md shadow-xl dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isLogin ? 'Welcome Back' : 'Create Account'}
-          </CardTitle>
-          <p className="text-gray-600 dark:text-gray-300">
-            {isLogin ? 'Sign in to your CureBay account' : 'Join CureBay for better healthcare'}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Error Message */}
-          {Object.keys(errors).length > 0 && (
-            <div className="text-red-500 text-sm space-y-1">
-              {Object.entries(errors).map(([field, error]) => (
-                <div key={field}>{error.message}</div>
-              ))}
-            </div>
-          )}
-          {/* Social Login Buttons */}
-          <div className="space-y-3">
-            <Button
-              onClick={handleGoogleLogin}
-              variant="outline"
-              className="w-full flex items-center justify-center space-x-2"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              <span>Continue with Google</span>
-            </Button>
-            <Button
-              onClick={handleGithubLogin}
-              variant="outline"
-              className="w-full flex items-center justify-center space-x-2"
-            >
-              <Github className="w-5 h-5" />
-              <span>Continue with GitHub</span>
-            </Button>
-          </div>
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with email</span>
-            </div>
-          </div>
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Enter your username"
-                    className={`pl-10 ${errors.username ? 'border-red-500' : ''}`}
-                    {...register('username')}
-                  />
-                </div>
-                {errors.username && (
-                  <p className="text-red-500 text-sm">{errors.username.message}</p>
-                )}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
-                  autoComplete="username"
-                  {...register('email')}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-red-500 text-sm">{errors.email.message}</p>
-              )}
-            </div>
-
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="photo">Profile Photo (Optional)</Label>
-                <div className="space-y-3">
-                  {profilePhotoPreview ? (
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        <img
-                          src={profilePhotoPreview}
-                          alt="Profile preview"
-                          className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
-                        />
-                        <button
-                          type="button"
-                          onClick={removePhoto}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-600">{profilePhoto?.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {(profilePhoto?.size / 1024).toFixed(1)} KB
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4 transition-colors duration-300">
+        <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+          <CardHeader className="text-center">
+            <CardTitle className="text-3xl font-bold text-gray-900 dark:text-white">
+              {isLogin ? t('auth.login', language) : t('auth.signup', language)}
+            </CardTitle>
+            <p className="text-gray-600 dark:text-gray-300">
+              {isLogin ? 'Welcome back! Please sign in to continue.' : 'Create an account to get started.'}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {!isLogin && (
+                <>
+                  {/* Username Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-gray-700 dark:text-gray-300">
+                      {t('profile.username', language)}
+                    </Label>
                     <div className="relative">
-                      <Upload className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <Input
-                        ref={fileInputRef}
-                        id="photo"
-                        name="photo"
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoChange}
-                        className="pl-10"
+                        id="username"
+                        type="text"
+                        placeholder="Enter your username"
+                        className="pl-10 h-12"
+                        {...register('username')}
                       />
                     </div>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    Upload a profile picture (max 2MB). Supported formats: JPG, PNG, GIF, WebP
-                  </p>
-                </div>
-              </div>
-            )}
+                    {errors.username && (
+                      <p className="text-red-500 text-sm">{errors.username.message}</p>
+                    )}
+                  </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  className={`pl-10 pr-10 ${errors.password ? 'border-red-500' : ''}`}
-                  autoComplete="current-password"
-                  {...register('password')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-red-500 text-sm">{errors.password.message}</p>
+                  {/* Profile Photo Upload */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      Profile Photo (Optional)
+                    </Label>
+                    <div className="flex items-center space-x-4">
+                      <div className="relative">
+                        {profilePhotoPreview ? (
+                          <div className="relative">
+                            <img 
+                              src={profilePhotoPreview} 
+                              alt="Profile preview" 
+                              className="w-16 h-16 rounded-full object-cover border-2 border-cyan-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={removePhoto}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                            <User className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <label className="flex items-center justify-center px-4 py-2 bg-cyan-500 text-white rounded-lg cursor-pointer hover:bg-cyan-600 transition-colors">
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Photo
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept="image/*"
+                            onChange={handlePhotoChange}
+                            className="hidden"
+                          />
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1">Max 2MB, JPG/PNG</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Role Selection */}
+                  <div className="space-y-2">
+                    <Label htmlFor="role" className="text-gray-700 dark:text-gray-300">
+                      {t('profile.accountType', language)}
+                    </Label>
+                    <Select 
+                      value={selectedRole} 
+                      onValueChange={(value) => setValue('role', value)}
+                    >
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Select account type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">👤 {t('profile.customer', language)}</SelectItem>
+                        <SelectItem value="seller">🏪 {t('profile.seller', language)}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.role && (
+                      <p className="text-red-500 text-sm">{errors.role.message}</p>
+                    )}
+                  </div>
+                </>
               )}
-            </div>
 
-            {!isLogin && (
+              {/* Email Field */}
               <div className="space-y-2">
-                <Label htmlFor="role">Select Role</Label>
-                <Select 
-                  value={selectedRole} 
-                  onValueChange={(value) => setValue('role', value)}
-                >
-                  <SelectTrigger className={errors.role ? 'border-red-500' : ''}>
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="seller">Seller</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.role && (
-                  <p className="text-red-500 text-sm">{errors.role.message}</p>
+                <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">
+                  {t('auth.email', language)}
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    className="pl-10 h-12"
+                    {...register('email')}
+                  />
+                </div>
+                {errors.email && (
+                  <p className="text-red-500 text-sm">{errors.email.message}</p>
                 )}
               </div>
-            )}
 
-            <div className="flex justify-end">
-              {isLogin && (
-                <button
-                  type="button"
-                  className="text-cyan-600 hover:underline text-sm"
-                  onClick={handleForgotPassword}
-                >
-                  Forgot Password?
-                </button>
-              )}
-            </div>
-            <Button 
-              type="submit" 
-              className="w-full bg-cyan-500 hover:bg-cyan-600"
-              disabled={isSubmitting || isUploadingPhoto}
-            >
-              {isSubmitting || isUploadingPhoto ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  {isUploadingPhoto ? 'Uploading photo...' : (isLogin ? 'Signing In...' : 'Creating Account...')}
-                </span>
-              ) : (
-                isLogin ? 'Sign In' : 'Sign Up'
-              )}
-            </Button>
-            {showResend && (
-              <div className="text-center mt-2">
-                <button
-                  type="button"
-                  className="text-cyan-600 hover:underline text-sm"
-                  onClick={handleResendVerification}
-                >
-                  Resend Verification Email
-                </button>
+              {/* Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">
+                  {t('auth.password', language)}
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    className="pl-10 pr-10 h-12"
+                    {...register('password')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-red-500 text-sm">{errors.password.message}</p>
+                )}
+                {isLogin && (
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-sm text-cyan-600 hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300"
+                  >
+                    {t('auth.forgotPassword', language)}
+                  </button>
+                )}
               </div>
-            )}
-          </form>
-          {/* Toggle Login/Register */}
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}
+
+              {/* Submit Button */}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || isUploadingPhoto}
+                className="w-full h-12 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold"
+              >
+                {isSubmitting || isUploadingPhoto ? (
+                  <div className="flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    {isUploadingPhoto ? 'Uploading Photo...' : 'Processing...'}
+                  </div>
+                ) : (
+                  isLogin ? t('auth.login', language) : t('auth.signup', language)
+                )}
+              </Button>
+            </form>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            {/* Google Sign In */}
+            <Button
+              type="button"
+              onClick={handleGoogleSignIn}
+              variant="outline"
+              className="w-full h-12 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              <Github className="w-5 h-5 mr-2" />
+              Google
+            </Button>
+
+            {/* Toggle Mode */}
+            <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+              {isLogin ? t('auth.noAccount', language) : t('auth.alreadyHaveAccount', language)}{' '}
               <button
                 type="button"
                 onClick={toggleMode}
-                className="ml-1 text-cyan-600 hover:text-cyan-700 font-medium"
+                className="text-cyan-600 hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300 font-medium"
               >
-                {isLogin ? 'Sign up' : 'Sign in'}
+                {isLogin ? t('auth.signup', language) : t('auth.login', language)}
               </button>
-            </p>
-          </div>
-          {/* Back to Home */}
-          <div className="text-center">
-            <Link to="/" className="text-sm text-gray-500 hover:text-gray-700">
-              ← Back to Home
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 };
 
 export default AuthPage;
-

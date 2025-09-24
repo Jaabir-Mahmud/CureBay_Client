@@ -34,7 +34,14 @@ import {
   RotateCcw,
   Clock,
   Download,
-  Calendar
+  Calendar,
+  Home,
+  ShoppingCart,
+  Bell,
+  MessageSquare,
+  HelpCircle,
+  LogOut,
+  Menu
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -57,7 +64,7 @@ import moneyAnim from '../../../assets/money.json';
 import usersAnim from '../../../assets/users.json';
 import packageAnim from '../../../assets/package.json';
 import ordersAnim from '../../../assets/orders.json';
-import { CardBody, CardContainer, CardItem } from '@/components/ui/3d-card';
+import { CardBody, CardContainer, CardItem } from '../../../components/ui/3d-card';
 import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import {
@@ -66,6 +73,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../../../components/ui/tooltip';
+import { Separator } from '../../../components/ui/separator';
+import './dashboard-styles.css'; // Import custom styles
 
 // Import extracted components
 import ManageUsers from '../../../components/dashboard/admin/ManageUsers';
@@ -75,6 +84,7 @@ import PaymentsTab from '../../../components/dashboard/admin/PaymentsTab';
 import ReportsTab from '../../../components/dashboard/admin/ReportsTab';
 import BannersTab from '../../../components/dashboard/admin/BannersTab';
 import HeroSlidesTab from '../../../components/dashboard/admin/HeroSlidesTab';
+import MedicineSlidesManager from '../../../components/dashboard/admin/MedicineSlidesManager';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -85,76 +95,10 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [recentUsers, setRecentUsers] = useState([]);
   const [pendingPayments, setPendingPayments] = useState([]);
+  const { user, logout } = useAuth();
   
   // Categories state
-  const [categories, setCategories] = useState([
-    { 
-      id: 1, 
-      name: 'Tablets', 
-      count: 2450, 
-      description: 'Oral solid dosage forms for various medical conditions',
-      icon: 'Pill',
-      color: 'cyan',
-      status: 'active',
-      createdAt: '2024-01-15',
-      image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&h=200&fit=crop&auto=format'
-    },
-    { 
-      id: 2, 
-      name: 'Syrups', 
-      count: 1280, 
-      description: 'Liquid medications for easy administration',
-      icon: 'Heart',
-      color: 'pink',
-      status: 'active',
-      createdAt: '2024-01-10',
-      image: 'https://images.unsplash.com/photo-1576602976047-174e57a47881?w=300&h=200&fit=crop&auto=format'
-    },
-    { 
-      id: 3, 
-      name: 'Capsules', 
-      count: 1890, 
-      description: 'Encapsulated medications for controlled release',
-      icon: 'Circle',
-      color: 'green',
-      status: 'active',
-      createdAt: '2024-01-08',
-      image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=300&h=200&fit=crop&auto=format'
-    },
-    { 
-      id: 4, 
-      name: 'Injections', 
-      count: 890, 
-      description: 'Injectable medications for immediate effect',
-      icon: 'Syringe',
-      color: 'red',
-      status: 'active',
-      createdAt: '2024-01-05',
-      image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&h=200&fit=crop&auto=format'
-    },
-    { 
-      id: 5, 
-      name: 'Supplements', 
-      count: 1560, 
-      description: 'Nutritional supplements and vitamins',
-      icon: 'Stethoscope',
-      color: 'orange',
-      status: 'active',
-      createdAt: '2024-01-03',
-      image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=200&fit=crop&auto=format'
-    },
-    { 
-      id: 6, 
-      name: 'Others', 
-      count: 340, 
-      description: 'Miscellaneous medical products and devices',
-      icon: 'Tag',
-      color: 'gray',
-      status: 'inactive',
-      createdAt: '2024-01-01',
-      image: 'https://images.unsplash.com/photo-1576602976047-174e57a47881?w=300&h=200&fit=crop&auto=format'
-    }
-  ]);
+  const [categories, setCategories] = useState([]);
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryViewMode, setCategoryViewMode] = useState('grid'); // 'grid' or 'list'
 
@@ -224,6 +168,8 @@ const AdminDashboard = () => {
   const [deleteCategoryModalOpen, setDeleteCategoryModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Function to handle tab changes and update URL
   const handleTabChange = (newTab) => {
@@ -237,220 +183,106 @@ const AdminDashboard = () => {
     setActiveTab(tab);
   }, [searchParams]);
 
+  // Fetch data when component mounts or active tab changes
   useEffect(() => {
-    // Set default stats to prevent breaking when API fails
-    setStats({
-      totalRevenue: 125000,
-      revenueGrowth: 12.5,
-      paidTotal: 98000,
-      pendingTotal: 27000,
-      totalUsers: 2450,
-      userGrowth: 8.3,
-      totalSellers: 89,
-      totalMedicines: 6410,
-      totalOrders: 1890
-    });
-
-    fetch('/api/admin/overview')
-      .then(res => res.json())
-      .then(data => setStats(data))
-      .catch(err => {
-        console.error('Error fetching overview:', err);
-        // Keep default stats if API fails
-      });
+    const fetchData = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      
+      try {
+        // Fetch overview stats
+        const statsResponse = await fetch('/api/admin/overview');
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setStats(statsData);
+        } else {
+          // Set default stats if API fails
+          setStats({
+            totalRevenue: 125000,
+            revenueGrowth: 12.5,
+            paidTotal: 98000,
+            pendingTotal: 27000,
+            totalUsers: 2450,
+            userGrowth: 8.3,
+            totalSellers: 89,
+            totalMedicines: 6410,
+            totalOrders: 1890
+          });
+        }
+        
+        // Fetch recent users
+        const usersResponse = await fetch('/api/admin/recent-users');
+        if (usersResponse.ok) {
+          const usersData = await usersResponse.json();
+          setRecentUsers(Array.isArray(usersData) ? usersData : []);
+        } else {
+          setRecentUsers([]);
+        }
+        
+        // Fetch pending payments
+        const paymentsResponse = await fetch('/api/admin/pending-payments');
+        if (paymentsResponse.ok) {
+          const paymentsData = await paymentsResponse.json();
+          setPendingPayments(Array.isArray(paymentsData) ? paymentsData : []);
+        } else {
+          setPendingPayments([]);
+        }
+        
+        // Fetch categories
+        const categoriesResponse = await fetch('/api/categories');
+        if (categoriesResponse.ok) {
+          const categoriesData = await categoriesResponse.json();
+          setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+        } else {
+          setCategories([]);
+        }
+        
+        // Fetch all payments (orders with payment information)
+        const allPaymentsResponse = await fetch('/api/orders');
+        if (allPaymentsResponse.ok) {
+          const allPaymentsData = await allPaymentsResponse.json();
+          // Transform orders to payment format
+          const payments = Array.isArray(allPaymentsData) ? allPaymentsData.map(order => ({
+            id: order._id,
+            amount: order.totalAmount,
+            customer: order.user?.name || order.user?.email || 'Unknown',
+            email: order.user?.email || '',
+            date: order.createdAt,
+            status: order.paymentStatus
+          })) : [];
+          setPayments(payments);
+        } else {
+          setPayments([]);
+        }
+        
+        // Fetch hero slides
+        const heroSlidesResponse = await fetch('/api/hero-slides');
+        if (heroSlidesResponse.ok) {
+          const heroSlidesData = await heroSlidesResponse.json();
+          setHeroSlides(Array.isArray(heroSlidesData) ? heroSlidesData : []);
+        } else {
+          setHeroSlides([]);
+        }
+        
+        // Fetch banners
+        const bannersResponse = await fetch('/api/banners');
+        if (bannersResponse.ok) {
+          const bannersData = await bannersResponse.json();
+          setBannerAds(Array.isArray(bannersData) ? bannersData : []);
+        } else {
+          setBannerAds([]);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error('Failed to load dashboard data. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    fetch('/api/admin/recent-users')
-      .then(res => res.json())
-      .then(data => setRecentUsers(Array.isArray(data) ? data : []))
-      .catch(err => {
-        console.error('Error fetching recent users:', err);
-        setRecentUsers([]);
-      });
-    
-    fetch('/api/admin/pending-payments')
-      .then(res => res.json())
-      .then(data => setPendingPayments(Array.isArray(data) ? data : []))
-      .catch(err => {
-        console.error('Error fetching pending payments:', err);
-        setPendingPayments([]);
-      });
-
-    // Fetch categories from backend
-    fetch('/api/categories')
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setCategories(data);
-        }
-      })
-      .catch(err => {
-        console.error('Error fetching categories:', err);
-        // Keep default categories if API fails - they will be used as fallback
-        toast.error('Failed to load categories from server. Using default data.', {
-          duration: 4000,
-          position: 'top-right',
-        });
-      });
-
-    // Fetch payments data
-    fetch('/api/admin/payments')
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (Array.isArray(data)) {
-          setPayments(data);
-        }
-      })
-      .catch(err => {
-        console.error('Error fetching payments:', err);
-        // Use mock data if API fails
-        setPayments([
-          {
-            id: 'PAY-001',
-            orderId: 'ORD-2024-001',
-            customerName: 'John Doe',
-            customerEmail: 'john@example.com',
-            amount: 45.99,
-            paymentMethod: 'Credit Card',
-            status: 'pending',
-            createdAt: '2024-01-15T10:30:00Z',
-            medicines: [
-              { name: 'Paracetamol 500mg', quantity: 2, price: 19.99 },
-              { name: 'Vitamin D3', quantity: 1, price: 24.99 }
-            ],
-            paymentDetails: {
-              cardLast4: '1234',
-              transactionId: 'TXN-ABC123'
-            }
-          },
-          {
-            id: 'PAY-002',
-            orderId: 'ORD-2024-002',
-            customerName: 'Jane Smith',
-            customerEmail: 'jane@example.com',
-            amount: 89.50,
-            paymentMethod: 'PayPal',
-            status: 'accepted',
-            createdAt: '2024-01-14T15:45:00Z',
-            acceptedAt: '2024-01-14T16:00:00Z',
-            medicines: [
-              { name: 'Antibiotic Capsules', quantity: 1, price: 34.99 },
-              { name: 'Cough Syrup', quantity: 2, price: 12.99 }
-            ],
-            paymentDetails: {
-              paypalEmail: 'jane@example.com',
-              transactionId: 'PP-XYZ789'
-            }
-          },
-          {
-            id: 'PAY-003',
-            orderId: 'ORD-2024-003',
-            customerName: 'Bob Johnson',
-            customerEmail: 'bob@example.com',
-            amount: 156.75,
-            paymentMethod: 'Bank Transfer',
-            status: 'rejected',
-            createdAt: '2024-01-13T09:20:00Z',
-            rejectedAt: '2024-01-13T11:30:00Z',
-            rejectReason: 'Insufficient bank verification documents',
-            medicines: [
-              { name: 'Insulin Pen', quantity: 2, price: 69.99 },
-              { name: 'Blood Glucose Strips', quantity: 1, price: 16.77 }
-            ],
-            paymentDetails: {
-              bankAccount: '****5678',
-              referenceNumber: 'BT-REF456'
-            }
-          },
-          {
-            id: 'PAY-004',
-            orderId: 'ORD-2024-004',
-            customerName: 'Alice Brown',
-            customerEmail: 'alice@example.com',
-            amount: 67.99,
-            paymentMethod: 'Credit Card',
-            status: 'pending',
-            createdAt: '2024-01-12T14:20:00Z',
-            medicines: [
-              { name: 'Multivitamin Tablets', quantity: 3, price: 21.99 }
-            ],
-            paymentDetails: {
-              cardLast4: '5678',
-              transactionId: 'TXN-DEF456'
-            }
-          }
-        ]);
-        toast.error('Failed to load payments from server. Using sample data.', {
-          duration: 4000,
-          position: 'top-right',
-        });
-      });
-
-    // Fetch hero slides from backend
-    fetch('/api/hero-slides')
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (Array.isArray(data)) {
-          // Convert _id to id for frontend compatibility
-          const slidesWithId = data.map(slide => ({
-            ...slide,
-            id: slide._id
-          }));
-          setHeroSlides(slidesWithId);
-        }
-      })
-      .catch(err => {
-        console.error('Error fetching hero slides:', err);
-        // Initialize with empty array if API fails
-        setHeroSlides([]);
-        toast.error('Failed to load hero slides from server.', {
-          duration: 4000,
-          position: 'top-right',
-        });
-      });
-
-    // Fetch banners from backend
-    fetch('/api/banners')
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (Array.isArray(data)) {
-          // Convert _id to id for frontend compatibility
-          const bannersWithId = data.map(banner => ({
-            ...banner,
-            id: banner._id
-          }));
-          setBannerAds(bannersWithId);
-        }
-      })
-      .catch(err => {
-        console.error('Error fetching banners:', err);
-        // Initialize with empty array if API fails
-        setBannerAds([]);
-        toast.error('Failed to load banners from server.', {
-          duration: 4000,
-          position: 'top-right',
-        });
-      });
-  }, []);
+    fetchData();
+  }, [user]);
 
   useEffect(() => {
     const setCardColors = () => {
@@ -502,6 +334,15 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/auth');
+    } catch (error) {
+      toast.error('Failed to logout. Please try again.');
+    }
+  };
+
   if (!stats) return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
       <div className="text-center">
@@ -510,6 +351,17 @@ const AdminDashboard = () => {
       </div>
     </div>
   );
+
+  const sidebarItems = [
+    { id: 'overview', label: 'Overview', icon: Home },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'categories', label: 'Categories', icon: Tag },
+    { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'banners', label: 'Banners', icon: Megaphone },
+    { id: 'hero-slides', label: 'Hero Slides', icon: Image },
+    { id: 'medicine-slides', label: 'Medicine Slides', icon: Pill },
+  ];
 
   return (
     <>
@@ -532,106 +384,177 @@ const AdminDashboard = () => {
             height: 2px;
           }
         }
+        .sidebar-transition {
+          transition: all 0.3s ease-in-out;
+        }
       `}</style>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Manage your CureBay platform</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 flex">
+        {/* Sidebar */}
+        <div className={`bg-white dark:bg-gray-800 shadow-lg z-10 sidebar-transition ${sidebarOpen ? 'w-64' : 'w-20'} flex flex-col`}>
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              {sidebarOpen && (
+                <h1 className="text-xl font-bold text-cyan-600 dark:text-cyan-400">CureBay Admin</h1>
+              )}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="ml-auto"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+          
+          <nav className="flex-1 py-4">
+            <ul className="space-y-1 px-2">
+              {sidebarItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <li key={item.id}>
+                    <Button
+                      variant={isActive ? "default" : "ghost"}
+                      className={`w-full justify-start ${sidebarOpen ? 'px-4' : 'px-2'} py-2 h-auto rounded-lg transition-all duration-200 ${
+                        isActive 
+                          ? 'bg-cyan-500 text-white hover:bg-cyan-600' 
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                      onClick={() => handleTabChange(item.id)}
+                    >
+                      <Icon className={`h-5 w-5 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
+                      {sidebarOpen && <span>{item.label}</span>}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+          
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-start ${sidebarOpen ? 'px-4' : 'px-2'} py-2 h-auto rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700`}
+              onClick={handleLogout}
+            >
+              <LogOut className={`h-5 w-5 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
+              {sidebarOpen && <span>Logout</span>}
+            </Button>
+          </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <div className="w-full overflow-x-auto pb-2 tab-scroll">
-            <TabsList className="flex h-10 items-center gap-1 rounded-md bg-muted p-1 text-muted-foreground" style={{ minWidth: 'max-content' }}>
-              <TabsTrigger value="overview" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="users" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
-                Users
-              </TabsTrigger>
-              <TabsTrigger value="categories" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
-                Categories
-              </TabsTrigger>
-              <TabsTrigger value="payments" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
-                Payments
-              </TabsTrigger>
-              <TabsTrigger value="reports" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
-                Reports
-              </TabsTrigger>
-              <TabsTrigger value="banners" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
-                Banners
-              </TabsTrigger>
-              <TabsTrigger value="hero-slides" className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-sm">
-                Hero Slides
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Top Bar */}
+          <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Manage your CureBay platform</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <Bell className="h-5 w-5" />
+                </Button>
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <MessageSquare className="h-5 w-5" />
+                </Button>
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold">
+                    {user?.email?.charAt(0).toUpperCase() || 'A'}
+                  </div>
+                  <div className="hidden md:block">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {user?.email || 'Admin User'}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Administrator</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </header>
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
-            <OverviewTab 
-              stats={stats}
-              recentUsers={recentUsers}
-              pendingPayments={pendingPayments}
-              acceptPayment={acceptPayment}
-            />
-          </TabsContent>
+          {/* Content Area */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
+              {/* Overview Tab */}
+              <TabsContent value="overview" className="space-y-4 sm:space-y-6 mt-0">
+                <OverviewTab 
+                  stats={stats}
+                  recentUsers={recentUsers}
+                  pendingPayments={pendingPayments}
+                  acceptPayment={acceptPayment}
+                />
+              </TabsContent>
 
-          {/* Users Tab */}
-          <TabsContent value="users">
-            <Card>
-              <CardHeader>
-                <CardTitle>Manage Users</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ManageUsers />
-              </CardContent>
-            </Card>
-          </TabsContent>
+              {/* Users Tab */}
+              <TabsContent value="users" className="mt-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Manage Users</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ManageUsers />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          {/* Categories Tab */}
-          <TabsContent value="categories" className="space-y-4 sm:space-y-6">
-            <CategoriesTab 
-              categories={categories}
-              setCategories={setCategories}
-              activeTab={activeTab}
-            />
-          </TabsContent>
+              {/* Categories Tab */}
+              <TabsContent value="categories" className="space-y-4 sm:space-y-6 mt-0">
+                <CategoriesTab 
+                  categories={categories}
+                  setCategories={setCategories}
+                  activeTab={activeTab}
+                />
+              </TabsContent>
 
-          {/* Payments Tab */}
-          <TabsContent value="payments" className="space-y-4 sm:space-y-6">
-            <PaymentsTab 
-              payments={payments}
-              setPayments={setPayments}
-              stats={stats}
-              setStats={setStats}
-            />
-          </TabsContent>
+              {/* Payments Tab */}
+              <TabsContent value="payments" className="space-y-4 sm:space-y-6 mt-0">
+                <PaymentsTab 
+                  payments={payments}
+                  setPayments={setPayments}
+                  stats={stats}
+                  setStats={setStats}
+                />
+              </TabsContent>
 
-          {/* Reports Tab */}
-          <TabsContent value="reports" className="space-y-4 sm:space-y-6">
-            <ReportsTab />
-          </TabsContent>
+              {/* Reports Tab */}
+              <TabsContent value="reports" className="space-y-4 sm:space-y-6 mt-0">
+                <ReportsTab />
+              </TabsContent>
 
-          {/* Banners Tab */}
-          <TabsContent value="banners" className="space-y-4 sm:space-y-6">
-            <BannersTab 
-              bannerAds={bannerAds}
-              setBannerAds={setBannerAds}
-            />
-          </TabsContent>
+              {/* Banners Tab */}
+              <TabsContent value="banners" className="space-y-4">
+                <BannersTab 
+                  bannerAds={bannerAds}
+                  setBannerAds={setBannerAds}
+                  heroSlides={heroSlides}
+                  setHeroSlides={setHeroSlides}
+                />
+              </TabsContent>
 
-          {/* Hero Slides Tab */}
-          <TabsContent value="hero-slides">
-            <HeroSlidesTab 
-              heroSlides={heroSlides}
-              setHeroSlides={setHeroSlides}
-            />
-          </TabsContent>
-        </Tabs>
+              {/* Hero Slides Tab */}
+              <TabsContent value="hero-slides" className="mt-0">
+                <HeroSlidesTab 
+                  heroSlides={heroSlides}
+                  setHeroSlides={setHeroSlides}
+                />
+              </TabsContent>
+
+              {/* Medicine Slides Tab */}
+              <TabsContent value="medicine-slides" className="mt-0">
+                <MedicineSlidesManager 
+                  bannerAds={bannerAds}
+                  heroSlides={heroSlides}
+                  setBannerAds={setBannerAds}
+                  setHeroSlides={setHeroSlides}
+                />
+              </TabsContent>
+            </Tabs>
+          </main>
+        </div>
       </div>
-    </div>
     </>
   );
 };

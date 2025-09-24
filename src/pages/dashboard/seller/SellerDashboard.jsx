@@ -49,7 +49,11 @@ const medicineSchema = yup.object({
     .required('Description is required'),
   category: yup
     .string()
-    .required('Category is required'),
+    .required('Category is required')
+    .test('is-valid-category', 'Please select a valid category', function(value) {
+      // Validate that a valid category is selected (not placeholder values)
+      return value && !value.startsWith('__') && value !== '';
+    }),
   company: yup
     .string()
     .min(2, 'Company name must be at least 2 characters')
@@ -62,19 +66,37 @@ const medicineSchema = yup.object({
     .number()
     .positive('Price must be a positive number')
     .max(10000, 'Price must be less than $10,000')
-    .required('Price is required'),
+    .required('Price is required')
+    .typeError('Price must be a number'),
   discountPercentage: yup
     .number()
     .min(0, 'Discount percentage cannot be negative')
     .max(100, 'Discount percentage cannot exceed 100%')
-    .default(0),
+    .required('Discount percentage is required')
+    .typeError('Discount percentage must be a number'),
+}).test('image-required', 'Medicine image is required', function() {
+  // This custom test will always pass in yup validation
+  // We'll handle image validation in the submit function
+  return true;
 });
 
 const SellerDashboard = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddMedicineOpen, setIsAddMedicineOpen] = useState(false);
-
+  const [medicineImage, setMedicineImage] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [categorySearchTerm, setCategorySearchTerm] = useState('');
+  const [imageError, setImageError] = useState('');
+  
+  // Use the MongoDB ObjectId from profile as sellerId, not the Firebase UID
+  const sellerId = profile?._id;
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('Auth state:', { user, profile, loading, sellerId });
+  }, [user, profile, loading, sellerId]);
+  
   // React Hook Form setup
   const {
     register,
@@ -83,27 +105,26 @@ const SellerDashboard = () => {
     reset,
     setValue,
     watch,
+    trigger
   } = useForm({
     resolver: yupResolver(medicineSchema),
     defaultValues: {
       name: '',
       genericName: '',
       description: '',
-      category: '',
+      category: '',  // This should be an empty string initially
       company: '',
       massUnit: 'mg',
-      price: '',
+      price: 0,
       discountPercentage: 0,
     },
   });
-
+  
   // Watch the category value for controlled component
   const selectedCategory = watch('category');
   const selectedMassUnit = watch('massUnit');
+  // We'll track image separately using state
 
-  const sellerId = profile?.id || user?.uid;
-
-  // Fetch seller's medicines
   const { data: medicinesData, isLoading: medicinesLoading, refetch: refetchMedicines } = useQuery({
     queryKey: ['sellerMedicines', sellerId],
     queryFn: async () => {
@@ -112,7 +133,7 @@ const SellerDashboard = () => {
       if (!response.ok) throw new Error('Failed to fetch medicines');
       return response.json();
     },
-    enabled: !!sellerId
+    enabled: !!sellerId // Only enable when we have a valid sellerId
   });
 
   // Fetch seller's payment history
@@ -124,22 +145,52 @@ const SellerDashboard = () => {
       if (!response.ok) throw new Error('Failed to fetch payments');
       return response.json();
     },
-    enabled: !!sellerId
+    enabled: !!sellerId // Only enable when we have a valid sellerId
   });
 
   // Fetch categories for dropdown
-  const { data: categoriesData } = useQuery({
+  const { data: categoriesData, error: categoriesError, isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
       const response = await fetch('/api/categories');
       if (!response.ok) throw new Error('Failed to fetch categories');
-      return response.json();
+      const data = await response.json();
+      console.log('Categories API response:', data); // Debug log
+      return data;
     }
   });
 
+  // Log any category fetching errors
+  useEffect(() => {
+    if (categoriesError) {
+      console.error('Error fetching categories:', categoriesError);
+      toast.error('Failed to load categories');
+    }
+  }, [categoriesError]);
+
   const medicines = medicinesData?.medicines || [];
   const payments = paymentsData?.payments || [];
-  const categories = categoriesData?.categories || [];
+  const categories = Array.isArray(categoriesData) ? categoriesData : [];
+  
+  // Filter categories based on search term
+  const filteredCategories = categories.filter(category => 
+    category.name.toLowerCase().includes(categorySearchTerm.toLowerCase())
+  );
+  
+  // Debug log for categories
+  useEffect(() => {
+    console.log('Categories loaded:', categories);
+    if (categories && categories.length > 0) {
+      console.log('First category:', categories[0]);
+    }
+  }, [categories]);
+  
+  // Log when categories change
+  useEffect(() => {
+    if (categories && categories.length > 0) {
+      console.log('Categories updated, count:', categories.length);
+    }
+  }, [categories]);
 
   // Filter medicines based on search term
   const filteredMedicines = medicines.filter(medicine => {
@@ -161,33 +212,186 @@ const SellerDashboard = () => {
   const totalMedicines = medicines.length;
   const activeMedicines = medicines.filter(m => m.isActive !== false).length;
 
-  const onSubmit = async (data) => {
+  // Handle medicine image change
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Clear any previous image error
+      setImageError('');
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be less than 5MB');
+        setImageError('Image must be less than 5MB');
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        setImageError('Please select an image file');
+        return;
+      }
+      
+      setMedicineImage(file);
+    }
+  };
+
+  // Upload medicine image
+  const uploadMedicineImage = async () => {
+    if (!medicineImage) return null;
+    
+    setIsUploadingImage(true);
     try {
       const formData = new FormData();
+      formData.append('photo', medicineImage);
       
-      // Add all form fields to FormData
-      Object.keys(data).forEach(key => {
-        if (data[key] !== null && data[key] !== '') {
-          formData.append(key, data[key]);
-        }
+      console.log('Uploading image:', medicineImage);
+      
+      const response = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: formData,
       });
       
-      // Add seller ID
-      formData.append('seller', sellerId);
+      console.log('Upload response status:', response.status);
+      
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+          console.error('Upload error response:', errorData);
+        } catch (jsonError) {
+          console.error('Failed to parse JSON error response:', jsonError);
+          const errorText = await response.text();
+          console.error('Raw error response:', errorText);
+          throw new Error(`Failed to upload image: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+        throw new Error(errorData.error || errorData.message || 'Failed to upload image');
+      }
+      
+      let data;
+      try {
+        data = await response.json();
+        console.log('Upload success response:', data);
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError);
+        throw new Error('Failed to upload image - Invalid server response');
+      }
+      return data.url; // Return the file URL
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast.error(error.message || 'Failed to upload medicine image');
+      return null;
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const onSubmit = async (data) => {
+    try {
+      // Debug logging
+      console.log('Form submission started', { user, profile, sellerId });
+      
+      // Validate that category is selected
+      if (!data.category || data.category.startsWith('__') || data.category === '') {
+        toast.error('Please select a valid category');
+        return;
+      }
+      
+      // Validate that an image is provided
+      if (!medicineImage) {
+        toast.error('Medicine image is required');
+        setImageError('Medicine image is required');
+        return;
+      }
+      
+      // Validate that we have a sellerId
+      if (!sellerId) {
+        console.error('Seller ID not available', { user, profile, loading });
+        toast.error('Seller information not available. Please refresh the page.');
+        return;
+      }
+      
+      // Additional validation to ensure profile has required fields
+      if (!profile || !profile._id || !profile.role || profile.role !== 'seller') {
+        console.error('Invalid seller profile', { profile });
+        toast(
+          (t) => (
+            <div>
+              <p>Seller information is invalid. Try refreshing your profile.</p>
+              <div className="flex gap-2 mt-2">
+                <button 
+                  onClick={() => {
+                    refreshProfile();
+                    toast.dismiss(t.id);
+                  }}
+                  className="px-2 py-1 bg-blue-500 text-white rounded text-sm"
+                >
+                  Refresh
+                </button>
+                <button 
+                  onClick={() => toast.dismiss(t.id)}
+                  className="px-2 py-1 bg-gray-500 text-white rounded text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          ),
+          { duration: 10000 }
+        );
+        return;
+      }
+      
+      // Upload image first if provided
+      let imageUrl = null;
+      if (medicineImage) {
+        imageUrl = await uploadMedicineImage();
+        if (!imageUrl) {
+          toast.error('Failed to upload medicine image');
+          return;
+        }
+      }
+      
+      // Prepare medicine data - ensure proper data types
+      const medicineData = {
+        ...data,
+        seller: sellerId, // Use the MongoDB ObjectId
+        image: imageUrl, // Use uploaded image URL (now guaranteed to exist)
+        price: parseFloat(data.price), // Ensure price is a number
+        discountPercentage: parseInt(data.discountPercentage) || 0 // Ensure discount is an integer
+      };
 
       const response = await fetch('/api/medicines', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(medicineData)
       });
 
-      if (!response.ok) throw new Error('Failed to add medicine');
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to add medicine';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If not JSON, use the text as error message
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
       
+      const result = await response.json();
       toast.success('Medicine added successfully');
       setIsAddMedicineOpen(false);
       reset(); // Reset form using React Hook Form
+      setMedicineImage(null); // Clear image
+      setImageError(''); // Clear image error
       refetchMedicines();
     } catch (error) {
-      toast.error('Failed to add medicine');
+      toast.error(error.message || 'Failed to add medicine');
       console.error('Error adding medicine:', error);
     }
   };
@@ -226,10 +430,52 @@ const SellerDashboard = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-lg text-gray-600">Loading seller dashboard...</p>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-lg text-gray-600">Please log in to view your seller dashboard.</p>
+      </div>
+    );
+  }
+  
+  // Check if user is a seller
+  if (profile && profile.role !== 'seller') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-lg text-gray-600">Access denied. This dashboard is only available for sellers.</p>
+      </div>
+    );
+  }
+  
+  // Check if seller profile is complete
+  if (!profile || !profile._id) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">Seller profile not found or incomplete.</p>
+          <div className="mt-4 flex justify-center gap-4">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Refresh Page
+            </button>
+            <button 
+              onClick={refreshProfile}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              Refresh Profile
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -316,7 +562,15 @@ const SellerDashboard = () => {
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full sm:w-64"
                     />
-                    <Dialog open={isAddMedicineOpen} onOpenChange={setIsAddMedicineOpen}>
+                    <Dialog open={isAddMedicineOpen} onOpenChange={(open) => {
+                      setIsAddMedicineOpen(open);
+                      if (!open) {
+                        // Clear form and image when dialog is closed
+                        reset();
+                        setMedicineImage(null);
+                        setImageError('');
+                      }
+                    }}>
                       <DialogTrigger asChild>
                         <Button>
                           <Plus className="w-4 h-4 mr-2" />
@@ -327,7 +581,10 @@ const SellerDashboard = () => {
                         <DialogHeader>
                           <DialogTitle>Add New Medicine</DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <form onSubmit={handleSubmit((data) => {
+                          console.log('Form submitted with data:', data);
+                          return onSubmit(data);
+                        })} className="space-y-4">
                           <div>
                             <Label htmlFor="name">Medicine Name</Label>
                             <Input
@@ -364,20 +621,64 @@ const SellerDashboard = () => {
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor="category">Category</Label>
+                              <Label htmlFor="category">Category *</Label>
                               <Select 
-                                value={selectedCategory} 
-                                onValueChange={(value) => setValue('category', value)}
+                                value={selectedCategory || ""}
+                                onValueChange={(value) => {
+                                  setValue('category', value, { shouldValidate: true });
+                                  // Reset search when a category is selected
+                                  setCategorySearchTerm('');
+                                }}
+                                onOpenChange={(open) => {
+                                  // Reset search when dropdown is closed
+                                  if (!open) {
+                                    setCategorySearchTerm('');
+                                  }
+                                }}
                               >
                                 <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
-                                  <SelectValue placeholder="Select category" />
+                                  <SelectValue placeholder="Select a category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {categories.map(category => (
-                                    <SelectItem key={category._id} value={category._id}>
-                                      {category.name}
+                                  {categoriesLoading ? (
+                                    <SelectItem value="__loading__" disabled>
+                                      Loading categories...
                                     </SelectItem>
-                                  ))}
+                                  ) : categoriesError ? (
+                                    <SelectItem value="__error__" disabled>
+                                      Failed to load categories
+                                    </SelectItem>
+                                  ) : (
+                                    <>
+                                      <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+                                        <Input
+                                          placeholder="Search categories..."
+                                          value={categorySearchTerm}
+                                          onChange={(e) => setCategorySearchTerm(e.target.value)}
+                                          className="h-8 text-sm"
+                                        />
+                                      </div>
+                                      {filteredCategories.length === 0 ? (
+                                        <SelectItem value="__empty__" disabled>
+                                          No categories found
+                                        </SelectItem>
+                                      ) : (
+                                        <>
+                                          <SelectItem value="__placeholder__" disabled>
+                                            Select a category
+                                          </SelectItem>
+                                          {filteredCategories.map(category => (
+                                            <SelectItem 
+                                              key={category._id} 
+                                              value={category._id}
+                                            >
+                                              {category.name}
+                                            </SelectItem>
+                                          ))}
+                                        </>
+                                      )}
+                                    </>
+                                  )}
                                 </SelectContent>
                               </Select>
                               {errors.category && (
@@ -404,7 +705,7 @@ const SellerDashboard = () => {
                                 type="number"
                                 step="0.01"
                                 className={errors.price ? 'border-red-500' : ''}
-                                {...register('price', { valueAsNumber: true })}
+                                {...register('price')}
                               />
                               {errors.price && (
                                 <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>
@@ -418,7 +719,7 @@ const SellerDashboard = () => {
                                 min="0"
                                 max="100"
                                 className={errors.discountPercentage ? 'border-red-500' : ''}
-                                {...register('discountPercentage', { valueAsNumber: true })}
+                                {...register('discountPercentage')}
                               />
                               {errors.discountPercentage && (
                                 <p className="text-red-500 text-sm mt-1">{errors.discountPercentage.message}</p>
@@ -426,10 +727,12 @@ const SellerDashboard = () => {
                             </div>
                           </div>
                           <div>
-                            <Label htmlFor="massUnit">Mass Unit</Label>
+                            <Label htmlFor="massUnit">Mass Unit *</Label>
                             <Select 
                               value={selectedMassUnit} 
-                              onValueChange={(value) => setValue('massUnit', value)}
+                              onValueChange={(value) => {
+                                setValue('massUnit', value);
+                              }}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select mass unit" />
@@ -444,12 +747,20 @@ const SellerDashboard = () => {
                             </Select>
                           </div>
                           <div>
-                            <Label htmlFor="image">Medicine Image</Label>
+                            <Label htmlFor="image">Medicine Image *</Label>
                             <Input
                               id="image"
                               type="file"
                               accept="image/*"
+                              onChange={handleImageChange}
+                              className={imageError ? 'border-red-500' : ''}
                             />
+                            {imageError && (
+                              <p className="text-red-500 text-sm mt-1">{imageError}</p>
+                            )}
+                            {isUploadingImage && (
+                              <p className="text-sm text-gray-500 mt-1">Uploading image...</p>
+                            )}
                           </div>
                           <div className="flex justify-end space-x-2">
                             <Button 
@@ -458,18 +769,20 @@ const SellerDashboard = () => {
                               onClick={() => {
                                 setIsAddMedicineOpen(false);
                                 reset();
+                                setMedicineImage(null);
+                                setImageError('');
                               }}
                             >
                               Cancel
                             </Button>
                             <Button 
                               type="submit"
-                              disabled={isSubmitting}
+                              disabled={isSubmitting || isUploadingImage}
                             >
-                              {isSubmitting ? (
+                              {isSubmitting || isUploadingImage ? (
                                 <span className="flex items-center gap-2">
                                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                  Adding...
+                                  {isUploadingImage ? 'Uploading...' : 'Adding...'}
                                 </span>
                               ) : (
                                 'Add Medicine'
@@ -619,22 +932,22 @@ const SellerDashboard = () => {
                           <tr key={payment._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                             <td className="px-4 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                {payment.transactionId}
+                                {payment.transactionId || 'N/A'}
                               </div>
                             </td>
                             <td className="px-4 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900 dark:text-white">
-                                ${payment.amount.toFixed(2)}
+                                ${payment.amount ? payment.amount.toFixed(2) : '0.00'}
                               </div>
                             </td>
                             <td className="px-4 py-4 whitespace-nowrap">
-                              <Badge className={`text-xs ${getStatusColor(payment.status)}`}>
-                                {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                              <Badge className={`text-xs ${getStatusColor(payment.paymentStatus || payment.status)}`}>
+                                {payment.paymentStatus || payment.status || 'N/A'}
                               </Badge>
                             </td>
                             <td className="px-4 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900 dark:text-white">
-                                {format(new Date(payment.createdAt), 'MMM dd, yyyy')}
+                                {payment.createdAt ? format(new Date(payment.createdAt), 'MMM dd, yyyy') : 'N/A'}
                               </div>
                             </td>
                           </tr>

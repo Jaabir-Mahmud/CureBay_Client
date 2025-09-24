@@ -27,12 +27,17 @@ export const AuthProvider = ({ children }) => {
   const checkUserProfile = async (firebaseUser) => {
     try {
       const token = await firebaseUser.getIdToken();
+      // Use relative URL as Vite proxy should handle the routing
       const res = await fetch('/api/users/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         try {
           const data = await res.json();
+          // Fix profile picture URL if it's a relative path
+          if (data.profilePicture && data.profilePicture.startsWith('/uploads/')) {
+            data.profilePicture = `http://localhost:5000${data.profilePicture}`;
+          }
           setProfile(data);
           
           // Check if user is active
@@ -55,56 +60,92 @@ export const AuthProvider = ({ children }) => {
           return;
         }
       } else if (res.status === 404) {
-        // User not found in database - try to recreate the account
-        console.log('User not found in database, attempting to recreate account...');
-        try {
-          const loginResponse = await fetch('/api/auth/firebase-login', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ idToken: token }),
-          });
-          
-          console.log('Login response status:', loginResponse.status);
-          
-          if (loginResponse.ok) {
-            const userData = await loginResponse.json();
-            console.log('Account recreated successfully:', userData);
-            setProfile({
-              name: userData.user.username,
-              email: userData.user.email,
-              role: userData.user.role,
-              isActive: true,
-            });
-            toast.success('Account recreated successfully!', {
-              duration: 4000,
-              position: 'top-center',
-            });
-            return;
-          } else {
-            const errorData = await loginResponse.text();
-            console.error('Failed to recreate account:', loginResponse.status, errorData);
-          }
-        } catch (recreateError) {
-          console.error('Error recreating account:', recreateError);
+        // User not found in database - they may have been deleted or might be a new user
+        console.log('User not found in database');
+        
+        // Check if this might be a new user by looking at Firebase user metadata
+        // If creation time is very recent, it might be a new user still being processed
+        const creationTime = new Date(firebaseUser.metadata.creationTime).getTime();
+        const now = new Date().getTime();
+        const timeDiff = now - creationTime;
+        
+        // If user was created less than 10 seconds ago, wait a bit and try again
+        if (timeDiff < 10000) {
+          console.log('New user detected, waiting for profile creation...');
+          // Try again after a short delay
+          setTimeout(() => {
+            checkUserProfile(firebaseUser);
+          }, 2000);
+          return;
         }
         
-        // If recreation fails, show the deletion message and log out
+        // If it's been longer, treat as deleted user
+        console.log('User account appears to be deleted, logging out...');
         setProfile(null);
         await signOut(auth);
         if (typeof window !== 'undefined') {
-          toast.error('Your account has been deleted by an administrator. You have been logged out.', {
+          toast.error('Your account has been deleted by an administrator. You have been logged out. Please sign up again if you wish to use the service.', {
             duration: 6000,
             position: 'top-center',
           });
         }
       } else {
+        // Handle other error statuses
+        const errorData = await res.json().catch(() => ({}));
+        console.log('Profile check error:', errorData);
         setProfile(null);
       }
     } catch (error) {
       console.error('Error checking user profile:', error);
       setProfile(null);
+    }
+  };
+
+  // Function to update user profile
+  const updateProfile = async (profileData) => {
+    try {
+      const token = await user.getIdToken();
+      console.log('Making request to update profile with data:', profileData);
+      
+      // Use relative URL as Vite proxy should handle the routing
+      const response = await fetch('/api/users/update-profile', {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(profileData)
+      });
+      
+      console.log('Response received:', response.status, response.statusText);
+
+      // Check if response is OK before trying to parse JSON
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Profile update successful:', data);
+        // Update the profile picture URL to include the backend base URL if it's a relative path
+        if (data.user && data.user.profilePicture && data.user.profilePicture.startsWith('/uploads/')) {
+          data.user.profilePicture = `http://localhost:5000${data.user.profilePicture}`;
+        }
+        setProfile(data.user);
+        return { success: true, data };
+      } else {
+        // Try to parse error response, but handle case where it might not be JSON
+        let errorData;
+        const contentType = response.headers.get('content-type');
+        console.log('Response content type:', contentType);
+        
+        if (contentType && contentType.includes('application/json')) {
+          errorData = await response.json();
+        } else {
+          errorData = { error: `Server error: ${response.status} ${response.statusText}` };
+        }
+        console.log('Profile update failed with error:', errorData);
+        throw new Error(errorData.error || 'Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Profile update error:', error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -119,7 +160,15 @@ export const AuthProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [user]);
 
-  const logout = () => signOut(auth);
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setProfile(null);
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   // Function to validate user session (can be called from components)
   const validateSession = async () => {
@@ -128,11 +177,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Function to refresh user profile
+  const refreshProfile = async () => {
+    if (user) {
+      await checkUserProfile(user);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, logout, validateSession }}>
+    <AuthContext.Provider value={{ user, profile, loading, logout, validateSession, updateProfile, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext); 
+export const useAuth = () => useContext(AuthContext);

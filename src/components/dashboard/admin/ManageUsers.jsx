@@ -94,13 +94,22 @@ function ManageUsers() {
       setDeleteModalOpen(false);
       setUserToDelete(null);
       
+      toast.success('User deleted successfully. If they are currently logged in, they will be logged out on their next action.', {
+        duration: 5000,
+        position: 'top-right',
+      });
+      
       // Trigger session validation for all connected users
       // This will help log out the deleted user if they're currently online
       setTimeout(() => {
         validateSession();
       }, 1000);
-    } catch {
-      alert('Failed to delete user');
+    } catch (error) {
+      console.error('Delete user error:', error);
+      toast.error('Failed to delete user: ' + error.message, {
+        duration: 5000,
+        position: 'top-right',
+      });
     } finally {
       setIsDeleting(false);
     }

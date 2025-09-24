@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Search, Filter, Grid, List, Eye, Edit, Trash2, Package, ShoppingCart, Plus, X, Upload, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Search, Filter, Grid, List, Eye, Edit, Trash2, Package, ShoppingCart, Plus, X, Upload, ImageIcon, Check, XCircle } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -42,6 +42,8 @@ const CategoryMedicines = () => {
 
   // Add Medicine Modal State
   const [addMedicineModalOpen, setAddMedicineModalOpen] = useState(false);
+  // Edit Medicine Modal State
+  const [editMedicineModalOpen, setEditMedicineModalOpen] = useState(false);
   const [medicineForm, setMedicineForm] = useState({
     name: '',
     genericName: '',
@@ -57,6 +59,7 @@ const CategoryMedicines = () => {
     stockQuantity: '',
     isAdvertised: false
   });
+  const [editingMedicine, setEditingMedicine] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
@@ -247,6 +250,46 @@ const CategoryMedicines = () => {
     });
   };
 
+  const openEditMedicineModal = (medicine) => {
+    setEditingMedicine(medicine);
+    setMedicineForm({
+      name: medicine.name || '',
+      genericName: medicine.genericName || '',
+      description: medicine.description || '',
+      image: medicine.image || '',
+      category: medicine.category?._id || medicine.category || '',
+      company: medicine.company || '',
+      massUnit: medicine.massUnit || '',
+      price: medicine.price || '',
+      unitPrice: medicine.unitPrice || '',
+      stripPrice: medicine.stripPrice || '',
+      discountPercentage: medicine.discountPercentage || '0',
+      stockQuantity: medicine.stockQuantity || '0',
+      isAdvertised: medicine.isAdvertised || false
+    });
+    setEditMedicineModalOpen(true);
+  };
+
+  const closeEditMedicineModal = () => {
+    setEditMedicineModalOpen(false);
+    setEditingMedicine(null);
+    setMedicineForm({
+      name: '',
+      genericName: '',
+      description: '',
+      image: '',
+      category: '',
+      company: '',
+      massUnit: '',
+      price: '',
+      unitPrice: '',
+      stripPrice: '',
+      discountPercentage: '',
+      stockQuantity: '',
+      isAdvertised: false
+    });
+  };
+
   const handleAddMedicine = async (e) => {
     e.preventDefault();
     
@@ -382,6 +425,185 @@ const CategoryMedicines = () => {
       toast.error('Failed to add medicine. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateMedicine = async (e) => {
+    e.preventDefault();
+    
+    // Validate required fields
+    if (!medicineForm.name.trim()) {
+      toast.error('Medicine name is required');
+      return;
+    }
+    if (!medicineForm.genericName.trim()) {
+      toast.error('Generic name is required');
+      return;
+    }
+    if (!medicineForm.description.trim()) {
+      toast.error('Description is required');
+      return;
+    }
+    if (!medicineForm.category) {
+      toast.error('Category is required');
+      return;
+    }
+    if (!medicineForm.company.trim()) {
+      toast.error('Company name is required');
+      return;
+    }
+    if (!medicineForm.massUnit.trim()) {
+      toast.error('Mass unit is required');
+      return;
+    }
+    if (!medicineForm.price || isNaN(medicineForm.price) || parseFloat(medicineForm.price) <= 0) {
+      toast.error('Valid price is required');
+      return;
+    }
+    if (!medicineForm.stockQuantity || isNaN(medicineForm.stockQuantity) || parseInt(medicineForm.stockQuantity) < 0) {
+      toast.error('Valid stock quantity is required');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Handle image upload if a file was selected
+      let imageUrl = medicineForm.image || '';
+      
+      if (medicineForm.imageFile) {
+        try {
+          setIsUploadingImage(true);
+          const uploadToast = toast.loading('Uploading image...');
+          
+          const uploadResult = await uploadImageFile(medicineForm.imageFile);
+          imageUrl = uploadResult.url;
+          
+          toast.dismiss(uploadToast);
+          toast.success('Image uploaded successfully!');
+        } catch (uploadError) {
+          toast.error(`Image upload failed: ${uploadError.message}`);
+          // Continue with form submission even if image upload fails
+          console.error('Image upload error:', uploadError);
+        } finally {
+          setIsUploadingImage(false);
+        }
+      }
+
+      const formData = {
+        ...medicineForm,
+        image: imageUrl, // Use uploaded image URL or provided URL
+        price: parseFloat(medicineForm.price),
+        unitPrice: parseFloat(medicineForm.unitPrice) || 0,
+        stripPrice: parseFloat(medicineForm.stripPrice) || 0,
+        discountPercentage: parseFloat(medicineForm.discountPercentage) || 0,
+        stockQuantity: parseInt(medicineForm.stockQuantity) || 0,
+      };
+
+      // Remove imageFile from the data being sent to server
+      delete formData.imageFile;
+
+      const res = await fetch(`/api/medicines/${editingMedicine._id || editingMedicine.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const responseText = await res.text();
+
+      if (res.ok) {
+        const updatedMedicine = JSON.parse(responseText);
+        console.log('Medicine updated successfully:', updatedMedicine);
+        
+        // Update the medicine in the state
+        setMedicines(prevMedicines => {
+          return prevMedicines.map(medicine => 
+            (medicine._id === editingMedicine._id || medicine.id === editingMedicine.id) 
+              ? updatedMedicine 
+              : medicine
+          );
+        });
+        
+        toast.success('Medicine updated successfully!');
+        closeEditMedicineModal();
+      } else {
+        let errorMessage = 'Failed to update medicine';
+        try {
+          const errorData = JSON.parse(responseText);
+          console.error('Server error response:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // If response is not JSON, use the raw text or status text
+          console.error('Non-JSON error response:', responseText);
+          errorMessage = responseText || res.statusText || errorMessage;
+        }
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Error updating medicine:', error);
+      toast.error('Failed to update medicine. Please check your connection and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const deleteMedicine = async (medicineId) => {
+    if (!window.confirm('Are you sure you want to delete this medicine?')) {
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/medicines/${medicineId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        // Remove the medicine from the state
+        setMedicines(prevMedicines => 
+          prevMedicines.filter(medicine => 
+            medicine._id !== medicineId && medicine.id !== medicineId
+          )
+        );
+        toast.success('Medicine deleted successfully!');
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.message || 'Failed to delete medicine');
+      }
+    } catch (error) {
+      console.error('Error deleting medicine:', error);
+      toast.error('Failed to delete medicine. Please check your connection and try again.');
+    }
+  };
+
+  const toggleMedicineStatus = async (medicineId, currentStatus) => {
+    try {
+      const res = await fetch(`/api/medicines/${medicineId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ inStock: !currentStatus }),
+      });
+
+      if (res.ok) {
+        const updatedMedicine = await res.json();
+        // Update the medicine in the state
+        setMedicines(prevMedicines => {
+          return prevMedicines.map(medicine => 
+            (medicine._id === medicineId || medicine.id === medicineId) 
+              ? updatedMedicine 
+              : medicine
+          );
+        });
+        toast.success(`Medicine ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.message || 'Failed to update medicine status');
+      }
+    } catch (error) {
+      console.error('Error updating medicine status:', error);
+      toast.error('Failed to update medicine status. Please check your connection and try again.');
     }
   };
 
@@ -585,10 +807,36 @@ const CategoryMedicines = () => {
                       <Eye className="w-3 h-3 mr-1" />
                       View
                     </Button>
-                    <Button size="sm" variant="outline">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => openEditMedicineModal(medicine)}
+                    >
                       <Edit className="w-3 h-3" />
                     </Button>
-                    <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                    <Button 
+                      size="sm" 
+                      variant={medicine.inStock ? "outline" : "default"}
+                      onClick={() => toggleMedicineStatus(medicine._id || medicine.id, medicine.inStock)}
+                    >
+                      {medicine.inStock ? (
+                        <>
+                          <XCircle className="w-3 h-3 mr-1" />
+                          Deactivate
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-3 h-3 mr-1" />
+                          Activate
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => deleteMedicine(medicine._id || medicine.id)}
+                    >
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
@@ -659,10 +907,30 @@ const CategoryMedicines = () => {
                             <Button size="sm" variant="outline">
                               <Eye className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => openEditMedicineModal(medicine)}
+                            >
                               <Edit className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                            <Button 
+                              size="sm" 
+                              variant={medicine.inStock ? "outline" : "default"}
+                              onClick={() => toggleMedicineStatus(medicine._id || medicine.id, medicine.inStock)}
+                            >
+                              {medicine.inStock ? (
+                                <XCircle className="w-3 h-3" />
+                              ) : (
+                                <Check className="w-3 h-3" />
+                              )}
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => deleteMedicine(medicine._id || medicine.id)}
+                            >
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </div>
@@ -955,6 +1223,295 @@ const CategoryMedicines = () => {
                   <>
                     <Plus className="w-4 h-4" />
                     Add Medicine
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Medicine Modal */}
+      <Dialog open={editMedicineModalOpen} onOpenChange={closeEditMedicineModal}>
+        <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Edit Medicine</DialogTitle>
+            <DialogDescription>
+              Update the details below to edit this medicine.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleUpdateMedicine} className="space-y-4">
+            {/* Medicine Name */}
+            <div>
+              <Label htmlFor="edit-name" className="text-sm font-medium">
+                Medicine Name *
+              </Label>
+              <Input
+                id="edit-name"
+                type="text"
+                value={medicineForm.name}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Enter medicine name"
+                required
+                className="mt-1"
+              />
+            </div>
+
+            {/* Generic Name */}
+            <div>
+              <Label htmlFor="edit-genericName" className="text-sm font-medium">
+                Generic Name
+              </Label>
+              <Input
+                id="edit-genericName"
+                type="text"
+                value={medicineForm.genericName}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, genericName: e.target.value }))}
+                placeholder="Enter generic name"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Category Selection */}
+            <div>
+              <Label htmlFor="edit-category" className="text-sm font-medium">
+                Category *
+              </Label>
+              <Select value={medicineForm.category} onValueChange={(value) => setMedicineForm(prev => ({ ...prev, category: value }))}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat._id || cat.id} value={cat._id || cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Description */}
+            <div>
+              <Label htmlFor="edit-description" className="text-sm font-medium">
+                Brief Description
+              </Label>
+              <Textarea
+                id="edit-description"
+                value={medicineForm.description}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Enter medicine description"
+                rows={3}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Company */}
+            <div>
+              <Label htmlFor="edit-company" className="text-sm font-medium">
+                Company
+              </Label>
+              <Input
+                id="edit-company"
+                type="text"
+                value={medicineForm.company}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, company: e.target.value }))}
+                placeholder="Enter company name"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Mass Unit */}
+            <div>
+              <Label htmlFor="edit-massUnit" className="text-sm font-medium">
+                Mass Unit
+              </Label>
+              <Input
+                id="edit-massUnit"
+                type="text"
+                value={medicineForm.massUnit}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, massUnit: e.target.value }))}
+                placeholder="e.g., 500mg, 10ml"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Price */}
+            <div>
+              <Label htmlFor="edit-price" className="text-sm font-medium">
+                Price (৳) *
+              </Label>
+              <Input
+                id="edit-price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={medicineForm.price}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, price: e.target.value }))}
+                placeholder="Enter price"
+                required
+                className="mt-1"
+              />
+            </div>
+
+            {/* Unit Price */}
+            <div>
+              <Label htmlFor="edit-unitPrice" className="text-sm font-medium">
+                Unit Price (৳)
+              </Label>
+              <Input
+                id="edit-unitPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                value={medicineForm.unitPrice}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, unitPrice: e.target.value }))}
+                placeholder="Enter unit price"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Strip Price */}
+            <div>
+              <Label htmlFor="edit-stripPrice" className="text-sm font-medium">
+                Strip Price (৳)
+              </Label>
+              <Input
+                id="edit-stripPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                value={medicineForm.stripPrice}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, stripPrice: e.target.value }))}
+                placeholder="Enter strip price"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Discount Percentage */}
+            <div>
+              <Label htmlFor="edit-discountPercentage" className="text-sm font-medium">
+                Discount Percentage (%)
+              </Label>
+              <Input
+                id="edit-discountPercentage"
+                type="number"
+                min="0"
+                max="100"
+                value={medicineForm.discountPercentage}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, discountPercentage: e.target.value }))}
+                placeholder="Enter discount percentage"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Stock Quantity */}
+            <div>
+              <Label htmlFor="edit-stockQuantity" className="text-sm font-medium">
+                Stock Quantity *
+              </Label>
+              <Input
+                id="edit-stockQuantity"
+                type="number"
+                min="0"
+                value={medicineForm.stockQuantity}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, stockQuantity: e.target.value }))}
+                placeholder="Enter quantity"
+                required
+                className="mt-1"
+              />
+            </div>
+
+            {/* Medicine Image Section */}
+            <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+              <h4 className="text-sm font-medium text-gray-900">Medicine Image</h4>
+              
+              {/* File Upload */}
+              <div>
+                <Label htmlFor="edit-imageFile" className="text-sm font-medium">
+                  Upload Image File
+                </Label>
+                <Input
+                  id="edit-imageFile"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, imageFile: e.target.files[0] }))}
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Upload an image file (JPEG, PNG, GIF, WebP). Maximum size: 5MB.
+                  {medicineForm.imageFile && (
+                    <span className="text-green-600 font-medium">
+                      {' '}Selected: {medicineForm.imageFile.name}
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              {/* OR Divider */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 border-t border-gray-300"></div>
+                <span className="text-xs text-gray-500 px-2 bg-gray-50">OR</span>
+                <div className="flex-1 border-t border-gray-300"></div>
+              </div>
+
+              {/* Image URL */}
+              <div>
+                <Label htmlFor="edit-image" className="text-sm font-medium">
+                  Medicine Image URL
+                </Label>
+                <Input
+                  id="edit-image"
+                  type="url"
+                  value={medicineForm.image}
+                  onChange={(e) => setMedicineForm(prev => ({ ...prev, image: e.target.value }))}
+                  placeholder="Enter image URL (e.g., https://example.com/medicine-image.jpg)"
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Provide a direct URL to the medicine image.
+                </p>
+              </div>
+            </div>
+
+            {/* Advertised Toggle */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isAdvertised"
+                checked={medicineForm.isAdvertised}
+                onChange={(e) => setMedicineForm(prev => ({ ...prev, isAdvertised: e.target.checked }))}
+                className="rounded text-cyan-600 focus:ring-cyan-500"
+              />
+              <Label htmlFor="isAdvertised" className="text-sm font-medium">
+                Advertised Medicine
+              </Label>
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeEditMedicineModal}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || isUploadingImage}
+                className="flex items-center gap-2"
+              >
+                {isSubmitting || isUploadingImage ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {isUploadingImage ? 'Uploading Image...' : 'Updating Medicine...'}
+                  </>
+                ) : (
+                  <>
+                    <Edit className="w-4 h-4" />
+                    Update Medicine
                   </>
                 )}
               </Button>

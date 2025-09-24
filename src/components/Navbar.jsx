@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X, Globe, LogOut, Settings, BarChart3, Clock } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '../components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-import { Badge } from './ui/badge';
+} from '../components/ui/dropdown-menu';
+import { Badge } from '../components/ui/badge';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
+import { useLanguage } from '../contexts/LanguageContext'; // Added LanguageContext import
+import { t } from '../lib/i18n'; // Added translation import
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const { itemCount } = useCart();
-  const [selectedLanguage, setSelectedLanguage] = useState('EN');
+  const { language, changeLanguage } = useLanguage(); // Use language context
   const { user, profile, logout } = useAuth();
   const location = useLocation();
 
@@ -47,11 +49,10 @@ const Navbar = () => {
     });
   };
 
+  // Updated languages array to only include Bangla and English
   const languages = [
     { code: 'EN', name: 'English' },
-    { code: 'ES', name: 'Español' },
-    { code: 'FR', name: 'Français' },
-    { code: 'DE', name: 'Deutsch' },
+    { code: 'BN', name: 'বাংলা' }, // Bangla
   ];
 
   const getDashboardLink = (role) => {
@@ -73,6 +74,11 @@ const Navbar = () => {
         role: profile?.role || 'user',
       }
     : null;
+
+  // Function to handle language change
+  const handleLanguageChange = (langCode) => {
+    changeLanguage(langCode); // Use context function
+  };
 
   return (
     <nav className="bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors duration-300 backdrop-blur-md sticky top-0 z-50">
@@ -97,7 +103,7 @@ const Navbar = () => {
               }
               end
             >
-              Home
+              {t('nav.home', language)} {/* Translated text */}
             </NavLink>
             <NavLink
               to="/shop"
@@ -105,7 +111,7 @@ const Navbar = () => {
                 `font-medium transition-colors px-2 py-1 rounded-lg ${isActive ? 'bg-cyan-600 text-white dark:bg-cyan-400 dark:text-gray-900 shadow' : 'text-gray-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400'}`
               }
             >
-              Shop
+              {t('nav.shop', language)} {/* Translated text */}
             </NavLink>
           </div>
 
@@ -125,17 +131,20 @@ const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="flex items-center space-x-1">
                   <Globe className="w-4 h-4" />
-                  <span className="text-sm">{selectedLanguage}</span>
+                  <span className="text-sm">{language}</span> {/* Use context language */}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent 
+                align="end" 
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+              >
                 {languages.map((lang) => (
                   <DropdownMenuItem
                     key={lang.code}
-                    onClick={() => setSelectedLanguage(lang.code)}
-                    className={selectedLanguage === lang.code ? 'bg-cyan-50' : ''}
+                    onClick={() => handleLanguageChange(lang.code)}
+                    className={`cursor-pointer ${language === lang.code ? 'bg-cyan-50 dark:bg-cyan-900/50 text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
                   >
-                    {lang.name}
+                    <span>{lang.name}</span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -166,41 +175,44 @@ const Navbar = () => {
                       alt={userProfile.name}
                       className="w-8 h-8 rounded-full object-cover"
                     />
-                    <span className="hidden sm:block text-sm font-medium">
+                    <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-200">
                       {userProfile.name}
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent 
+                  align="end" 
+                  className="w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                >
                   <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium">{userProfile.name}</p>
-                    <p className="text-xs text-gray-500">{userProfile.email}</p>
-                    <p className="text-xs text-cyan-600 font-semibold capitalize">{userProfile.role}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{userProfile.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{userProfile.email}</p>
+                    <p className="text-xs text-cyan-600 dark:text-cyan-400 font-semibold capitalize">{userProfile.role}</p>
                   </div>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
                   <DropdownMenuItem asChild>
-                    <Link to="/profile" className="flex items-center">
+                    <Link to="/profile" className="flex items-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
                       <Settings className="w-4 h-4 mr-2" />
-                      Update Profile
+                      {t('nav.profile', language)} {/* Translated text */}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to={getDashboardLink(userProfile.role)} className="flex items-center">
+                    <Link to={getDashboardLink(userProfile.role)} className="flex items-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
                       <BarChart3 className="w-4 h-4 mr-2" />
-                      Dashboard
+                      {t('nav.dashboard', language)} {/* Translated text */}
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="text-red-600">
+                  <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
+                  <DropdownMenuItem onClick={logout} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer">
                     <LogOut className="w-4 h-4 mr-2" />
-                    Logout
+                    {t('nav.logout', language)} {/* Translated text */}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Link to="/auth">
-                <Button className="bg-cyan-500 hover:bg-cyan-600">
-                  Join Us
+                <Button className="bg-cyan-500 hover:bg-cyan-600 text-white">
+                  {t('nav.joinUs', language)} {/* Translated text */}
                 </Button>
               </Link>
             )}
@@ -235,14 +247,14 @@ const Navbar = () => {
                 className="block px-3 py-2 text-gray-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Home
+                {t('nav.home', language)} {/* Translated text */}
               </Link>
               <Link
                 to="/shop"
                 className="block px-3 py-2 text-gray-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Shop
+                {t('nav.shop', language)} {/* Translated text */}
               </Link>
               {user && (
                 <>
@@ -251,14 +263,14 @@ const Navbar = () => {
                     className="block px-3 py-2 text-gray-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Update Profile
+                    {t('nav.profile', language)} {/* Translated text */}
                   </Link>
                   <Link
                     to={getDashboardLink(userProfile.role)}
                     className="block px-3 py-2 text-gray-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Dashboard
+                    {t('nav.dashboard', language)} {/* Translated text */}
                   </Link>
                   <button
                     onClick={() => {
@@ -267,7 +279,7 @@ const Navbar = () => {
                     }}
                     className="block w-full text-left px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                   >
-                    Logout
+                    {t('nav.logout', language)} {/* Translated text */}
                   </button>
                 </>
               )}
@@ -277,7 +289,7 @@ const Navbar = () => {
                   className="block px-3 py-2 text-cyan-600 dark:text-cyan-400 font-medium hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-md transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Join Us
+                  {t('nav.joinUs', language)} {/* Translated text */}
                 </Link>
               )}
             </div>
@@ -289,4 +301,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-

@@ -7,7 +7,12 @@ import {
   Trash2,
   Eye,
   TrendingUp,
-  Monitor
+  Monitor,
+  Calendar,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
@@ -31,7 +36,7 @@ function BannersTab({
   setBannerAds 
 }) {
   const [bannerSearch, setBannerSearch] = useState('');
-  const [bannerStatusFilter, setBannerStatusFilter] = useState('all'); // all, active, inactive, pending
+  const [bannerStatusFilter, setBannerStatusFilter] = useState('all'); // all, active, inactive, scheduled, expired
   const [bannerModalOpen, setBannerModalOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
   const [bannerForm, setBannerForm] = useState({
@@ -149,6 +154,12 @@ function BannersTab({
   };
 
   const deleteBanner = async (bannerId) => {
+    // Check if bannerId is valid
+    if (!bannerId) {
+      toast.error('Invalid banner ID');
+      return;
+    }
+    
     const banner = bannerAds.find(b => b._id === bannerId || b.id === bannerId);
     if (window.confirm(`Are you sure you want to delete "${banner?.title}"?`)) {
       try {
@@ -170,6 +181,12 @@ function BannersTab({
   };
 
   const toggleBannerStatus = async (bannerId) => {
+    // Check if bannerId is valid
+    if (!bannerId) {
+      toast.error('Invalid banner ID');
+      return;
+    }
+    
     try {
       const response = await fetch(`/api/banners/${bannerId}/toggle-status`, {
         method: 'PATCH',
@@ -203,6 +220,12 @@ function BannersTab({
   };
 
   const changeBannerPriority = async (bannerId, newPriority) => {
+    // Check if bannerId is valid
+    if (!bannerId) {
+      toast.error('Invalid banner ID');
+      return;
+    }
+    
     try {
       const response = await fetch(`/api/banners/${bannerId}/priority`, {
         method: 'PATCH',
@@ -242,8 +265,10 @@ function BannersTab({
                          banner.description.toLowerCase().includes(bannerSearch.toLowerCase());
     
     const matchesStatus = bannerStatusFilter === 'all' || 
-      (bannerStatusFilter === 'active' && banner.isActive) ||
-      (bannerStatusFilter === 'inactive' && !banner.isActive);
+      (bannerStatusFilter === 'active' && banner.isActive && isBannerActive(banner)) ||
+      (bannerStatusFilter === 'inactive' && !banner.isActive) ||
+      (bannerStatusFilter === 'scheduled' && banner.isActive && isBannerScheduled(banner)) ||
+      (bannerStatusFilter === 'expired' && banner.isActive && isBannerExpired(banner));
     
     return matchesSearch && matchesStatus;
 }).sort((a, b) => b.priority - a.priority); // Sort by priority (highest first)
@@ -257,37 +282,63 @@ const formatDate = (dateString) => {
   });
 };
 
-const getBannerStatusColor = (isActive, startDate, endDate) => {
-    const now = new Date();
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    
-    if (!isActive) return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-    if (start && now < start) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
-    if (end && now > end) return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
-    return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
-  };
+const isBannerActive = (banner) => {
+  const now = new Date();
+  const start = banner.startDate ? new Date(banner.startDate) : null;
+  const end = banner.endDate ? new Date(banner.endDate) : null;
+  
+  return banner.isActive && 
+         (!start || now >= start) && 
+         (!end || now <= end);
+};
 
-  const getBannerStatusText = (isActive, startDate, endDate) => {
-    const now = new Date();
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    
-    if (!isActive) return 'Inactive';
-    if (start && now < start) return 'Scheduled';
-    if (end && now > end) return 'Expired';
-    return 'Active';
-  };
+const isBannerScheduled = (banner) => {
+  const now = new Date();
+  const start = banner.startDate ? new Date(banner.startDate) : null;
+  
+  return banner.isActive && start && now < start;
+};
+
+const isBannerExpired = (banner) => {
+  const now = new Date();
+  const end = banner.endDate ? new Date(banner.endDate) : null;
+  
+  return banner.isActive && end && now > end;
+};
+
+const getBannerStatusColor = (banner) => {
+  if (!banner.isActive) return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+  if (isBannerScheduled(banner)) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
+  if (isBannerExpired(banner)) return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
+  return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
+};
+
+const getBannerStatusIcon = (banner) => {
+  if (!banner.isActive) return <XCircle className="w-4 h-4" />;
+  if (isBannerScheduled(banner)) return <Clock className="w-4 h-4" />;
+  if (isBannerExpired(banner)) return <AlertCircle className="w-4 h-4" />;
+  return <CheckCircle className="w-4 h-4" />;
+};
+
+const getBannerStatusText = (banner) => {
+  if (!banner.isActive) return 'Inactive';
+  if (isBannerScheduled(banner)) return 'Scheduled';
+  if (isBannerExpired(banner)) return 'Expired';
+  return 'Active';
+};
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-6">
+      {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Megaphone className="w-6 h-6" />
             Banner Advertisement Management
           </h2>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Manage homepage banner advertisements and promotions</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
+            Manage homepage banner advertisements and promotions
+          </p>
         </div>
         
         <Button onClick={() => openBannerModal()} className="w-full sm:w-auto">
@@ -297,7 +348,7 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
       </div>
 
       {/* Search and Filters */}
-      <Card>
+      <Card className="shadow-sm">
         <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row gap-4 items-center">
             <div className="relative flex-1 w-full">
@@ -318,6 +369,8 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="expired">Expired</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -326,29 +379,29 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
 
       {/* Banner Statistics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className="shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Banners</p>
-                <p className="text-2xl font-bold text-cyan-500">
+                <p className="text-2xl font-bold text-cyan-600">
                   {bannerAds.length}
                 </p>
               </div>
               <div className="p-3 bg-cyan-100 dark:bg-cyan-900/20 rounded-full">
-                <Megaphone className="w-6 h-6 text-cyan-500" />
+                <Megaphone className="w-6 h-6 text-cyan-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Active Banners</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {bannerAds.filter(b => b.isActive).length}
+                  {bannerAds.filter(b => b.isActive && isBannerActive(b)).length}
                 </p>
               </div>
               <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
@@ -358,13 +411,13 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Views</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {bannerAds.reduce((sum, banner) => sum + banner.views, 0).toLocaleString()}
+                  {bannerAds.reduce((sum, banner) => sum + (banner.views || 0), 0).toLocaleString()}
                 </p>
               </div>
               <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-full">
@@ -374,13 +427,13 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Clicks</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {bannerAds.reduce((sum, banner) => sum + banner.clicks, 0).toLocaleString()}
+                  {bannerAds.reduce((sum, banner) => sum + (banner.clicks || 0), 0).toLocaleString()}
                 </p>
               </div>
               <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-full">
@@ -392,9 +445,14 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
       </div>
 
       {/* Banners List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Banner Advertisements ({filteredBannerAds.length})</CardTitle>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center justify-between">
+            <span>Banner Advertisements ({filteredBannerAds.length})</span>
+            <Badge variant="secondary" className="text-sm">
+              Sorted by Priority
+            </Badge>
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {filteredBannerAds.length === 0 ? (
@@ -418,59 +476,94 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
           ) : (
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredBannerAds.map((banner) => (
-                <div key={banner.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <div 
+                  key={banner.id || banner._id} 
+                  className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                >
                   <div className="flex flex-col lg:flex-row gap-6">
                     {/* Banner Preview */}
-                    <div className="lg:w-1/3">
-                      <div className="relative group">
+                    <div className="lg:w-1/4">
+                      <div className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                         <img
                           src={banner.image}
                           alt={banner.title}
-                          className="w-full h-32 object-cover rounded-lg"
+                          className="w-full h-32 object-cover"
+                          onError={(e) => {
+                            e.target.src = 'https://placehold.co/400x200?text=No+Image';
+                          }}
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 rounded-lg flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
                           <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       </div>
                     </div>
                     
                     {/* Banner Details */}
-                    <div className="lg:w-2/3 space-y-4">
+                    <div className="lg:w-3/4 space-y-4">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="flex flex-wrap items-center gap-3 mb-2">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                               {banner.title}
                             </h3>
-                            <Badge className={getBannerStatusColor(banner.isActive, banner.startDate, banner.endDate)}>
-                              {getBannerStatusText(banner.isActive, banner.startDate, banner.endDate)}
+                            <Badge className={`${getBannerStatusColor(banner)} flex items-center gap-1`}>
+                              {getBannerStatusIcon(banner)}
+                              {getBannerStatusText(banner)}
                             </Badge>
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />
                               Priority: {banner.priority}
                             </Badge>
                           </div>
-                          <p className="text-gray-600 dark:text-gray-400 mb-3">
+                          
+                          <p className="text-gray-600 dark:text-gray-300 mb-3">
                             {banner.description}
                           </p>
-                          <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                            <span>Link: {banner.link}</span>
-                            <span>•</span>
-                            <span>Views: {banner.views.toLocaleString()}</span>
-                            <span>•</span>
-                            <span>Clicks: {banner.clicks.toLocaleString()}</span>
-                            <span>•</span>
-                            <span>CTR: {banner.views > 0 ? ((banner.clicks / banner.views) * 100).toFixed(2) : 0}%</span>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                              <Monitor className="w-4 h-4" />
+                              <span className="truncate">{banner.link || 'No link'}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                              <Eye className="w-4 h-4" />
+                              <span>Views: {banner.views?.toLocaleString() || 0}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                              <Monitor className="w-4 h-4" />
+                              <span>Clicks: {banner.clicks?.toLocaleString() || 0}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                              <TrendingUp className="w-4 h-4" />
+                              <span>
+                                CTR: {banner.views > 0 ? ((banner.clicks / banner.views) * 100).toFixed(2) : 0}%
+                              </span>
+                            </div>
                           </div>
+                          
                           {(banner.startDate || banner.endDate) && (
-                            <div className="flex gap-4 text-sm text-gray-500 mt-2">
-                              {banner.startDate && <span>Start: {formatDate(banner.startDate)}</span>}
-                              {banner.endDate && <span>End: {formatDate(banner.endDate)}</span>}
+                            <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400 mt-3">
+                              {banner.startDate && (
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>Start: {formatDate(banner.startDate)}</span>
+                                </div>
+                              )}
+                              {banner.endDate && (
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>End: {formatDate(banner.endDate)}</span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                         
                         {/* Actions */}
-                        <div className="flex flex-col gap-2 min-w-0 sm:min-w-[200px]">
+                        <div className="flex flex-col gap-2 min-w-0 sm:min-w-[180px]">
                           <div className="flex gap-2">
                             <Button
                               onClick={() => openBannerModal(banner)}
@@ -479,10 +572,10 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
                               className="flex-1"
                             >
                               <Edit className="w-4 h-4 mr-1" />
-                              Edit
+                              <span className="hidden sm:inline">Edit</span>
                             </Button>
                             <Button
-                              onClick={() => deleteBanner(banner.id)}
+                              onClick={() => deleteBanner(banner.id || banner._id)}
                               size="sm"
                               variant="outline"
                               className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
@@ -492,7 +585,7 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
                           </div>
                           
                           <Button
-                            onClick={() => toggleBannerStatus(banner.id)}
+                            onClick={() => toggleBannerStatus(banner.id || banner._id)}
                             size="sm"
                             className={`w-full ${
                               banner.isActive 
@@ -504,12 +597,12 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
                           </Button>
                           
                           <div className="flex items-center gap-2">
-                            <Label className="text-xs">Priority:</Label>
+                            <Label className="text-xs whitespace-nowrap">Priority:</Label>
                             <Select 
                               value={banner.priority.toString()} 
-                              onValueChange={(value) => changeBannerPriority(banner.id, parseInt(value))}
+                              onValueChange={(value) => changeBannerPriority(banner.id || banner._id, parseInt(value))}
                             >
-                              <SelectTrigger className="h-8 text-xs">
+                              <SelectTrigger className="h-8 text-xs flex-1">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -567,7 +660,7 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
                   <SelectContent>
                     <SelectItem value="1">1 (Lowest)</SelectItem>
                     <SelectItem value="2">2</SelectItem>
-                    <SelectItem value="3">3</SelectItem>
+                    <SelectItem value="3">3 (Default)</SelectItem>
                     <SelectItem value="4">4</SelectItem>
                     <SelectItem value="5">5 (Highest)</SelectItem>
                   </SelectContent>
@@ -633,7 +726,7 @@ const getBannerStatusColor = (isActive, startDate, endDate) => {
                 id="banner-active"
                 checked={bannerForm.isActive}
                 onChange={(e) => setBannerForm({...bannerForm, isActive: e.target.checked})}
-                className="rounded border-gray-300"
+                className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
               />
               <Label htmlFor="banner-active">Active (show on homepage)</Label>
             </div>

@@ -1,64 +1,68 @@
 import React from 'react';
 import { Shield, Truck, Clock, Award, Users, HeartHandshake } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
+import { useLanguage } from '../contexts/LanguageContext'; // Added LanguageContext import
+import { t } from '../lib/i18n'; // Added translations import
 
 const ExtraSection2 = () => {
+  const { language } = useLanguage(); // Use language context
+
   const features = [
     {
       id: 1,
       icon: Shield,
-      title: 'Verified Quality',
-      description: 'All medicines are sourced from licensed manufacturers and undergo strict quality checks.',
+      title: t('extra2.quality.title', language),
+      description: t('extra2.quality.description', language),
       color: 'text-cyan-600',
       bgColor: 'bg-cyan-50'
     },
     {
       id: 2,
       icon: Truck,
-      title: 'Fast Delivery',
-      description: 'Quick and secure delivery to your doorstep with real-time tracking.',
+      title: t('extra2.delivery.title', language),
+      description: t('extra2.delivery.description', language),
       color: 'text-green-600',
       bgColor: 'bg-green-50'
     },
     {
       id: 3,
       icon: Clock,
-      title: '24/7 Support',
-      description: 'Round-the-clock customer support and pharmacist consultation available.',
+      title: t('extra2.support.title', language),
+      description: t('extra2.support.description', language),
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
     },
     {
       id: 4,
       icon: Award,
-      title: 'Best Prices',
-      description: 'Competitive pricing with regular discounts and special offers for members.',
+      title: t('extra2.prices.title', language),
+      description: t('extra2.prices.description', language),
       color: 'text-orange-600',
       bgColor: 'bg-orange-50'
     },
     {
       id: 5,
       icon: Users,
-      title: 'Trusted by Thousands',
-      description: 'Over 50,000 satisfied customers trust us for their healthcare needs.',
+      title: t('extra2.trusted.title', language),
+      description: t('extra2.trusted.description', language),
       color: 'text-red-600',
       bgColor: 'bg-red-50'
     },
     {
       id: 6,
       icon: HeartHandshake,
-      title: 'Expert Care',
-      description: 'Professional pharmacists and healthcare experts to guide your choices.',
+      title: t('extra2.expert.title', language),
+      description: t('extra2.expert.description', language),
       color: 'text-teal-600',
       bgColor: 'bg-teal-50'
     }
   ];
 
   const stats = [
-    { label: 'Happy Customers', value: '50,000+' },
-    { label: 'Medicines Available', value: '10,000+' },
-    { label: 'Partner Pharmacies', value: '500+' },
-    { label: 'Cities Served', value: '100+' }
+    { label: t('extra2.stats.customers', language), value: '50,000+' },
+    { label: t('extra2.stats.medicines', language), value: '10,000+' },
+    { label: t('extra2.stats.pharmacies', language), value: '500+' },
+    { label: t('extra2.stats.cities', language), value: '100+' }
   ];
 
   return (
@@ -67,10 +71,10 @@ const ExtraSection2 = () => {
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4 transition-colors">
-            Why Choose CureBay?
+            {t('extra2.whyChoose', language)}
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto transition-colors">
-            We're committed to providing you with the best healthcare experience through quality, convenience, and care
+            {t('extra2.committed', language)}
           </p>
         </div>
 
@@ -106,10 +110,10 @@ const ExtraSection2 = () => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 lg:p-12 transition-colors">
           <div className="text-center mb-8">
             <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors">
-              Trusted Healthcare Partner
+              {t('extra2.trustedPartner', language)}
             </h3>
             <p className="text-gray-600 dark:text-gray-300 transition-colors">
-              Numbers that speak for our commitment to your health
+              {t('extra2.numbers', language)}
             </p>
           </div>
 
@@ -131,18 +135,17 @@ const ExtraSection2 = () => {
         <div className="text-center mt-16">
           <div className="bg-gradient-to-r from-cyan-600 to-purple-600 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-8 lg:p-12 text-white dark:text-gray-100 border border-gray-200/20 dark:border-gray-600/30 transition-all duration-300">
             <h3 className="text-2xl lg:text-3xl font-bold mb-4">
-              Ready to Experience Better Healthcare?
+              {t('extra2.betterHealthcare', language)}
             </h3>
             <p className="text-cyan-100 dark:text-gray-300 mb-8 max-w-2xl mx-auto transition-colors duration-300">
-              Join thousands of satisfied customers who trust CureBay for their medicine needs. 
-              Start your journey to better health today.
+              {t('extra2.join', language)}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button className="bg-white text-cyan-600 hover:bg-gray-100 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500 px-8 py-3 rounded-lg font-medium transition-all duration-300">
-                Browse Medicines
+                {t('extra2.browse', language)}
               </button>
               <button className="border-2 border-white text-white hover:bg-white hover:text-cyan-600 dark:border-gray-400 dark:text-gray-100 dark:hover:bg-gray-400 dark:hover:text-gray-900 px-8 py-3 rounded-lg font-medium transition-all duration-300">
-                Contact Support
+                {t('extra2.contactSupport', language)}
               </button>
             </div>
           </div>
@@ -153,4 +156,3 @@ const ExtraSection2 = () => {
 };
 
 export default ExtraSection2;
-

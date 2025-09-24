@@ -4,7 +4,14 @@ import {
   Plus,
   Edit,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Clock,
+  Eye,
+  TrendingUp
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
@@ -207,30 +214,54 @@ function HeroSlidesTab({
     }
   };
 
-  const getSlideStatusColor = (isActive, startDate, endDate) => {
+  const isSlideActive = (slide) => {
     const now = new Date();
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
+    const start = slide.startDate ? new Date(slide.startDate) : null;
+    const end = slide.endDate ? new Date(slide.endDate) : null;
     
-    if (!isActive) return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-    if (start && now < start) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
-    if (end && now > end) return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
+    return slide.isActive && 
+           (!start || now >= start) && 
+           (!end || now <= end);
+  };
+
+  const isSlideScheduled = (slide) => {
+    const now = new Date();
+    const start = slide.startDate ? new Date(slide.startDate) : null;
+    
+    return slide.isActive && start && now < start;
+  };
+
+  const isSlideExpired = (slide) => {
+    const now = new Date();
+    const end = slide.endDate ? new Date(slide.endDate) : null;
+    
+    return slide.isActive && end && now > end;
+  };
+
+  const getSlideStatusColor = (slide) => {
+    if (!slide.isActive) return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+    if (isSlideScheduled(slide)) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
+    if (isSlideExpired(slide)) return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
     return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
   };
 
-  const getSlideStatusText = (isActive, startDate, endDate) => {
-    const now = new Date();
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    
-    if (!isActive) return 'Inactive';
-    if (start && now < start) return 'Scheduled';
-    if (end && now > end) return 'Expired';
+  const getSlideStatusIcon = (slide) => {
+    if (!slide.isActive) return <XCircle className="w-4 h-4" />;
+    if (isSlideScheduled(slide)) return <Clock className="w-4 h-4" />;
+    if (isSlideExpired(slide)) return <AlertCircle className="w-4 h-4" />;
+    return <CheckCircle className="w-4 h-4" />;
+  };
+
+  const getSlideStatusText = (slide) => {
+    if (!slide.isActive) return 'Inactive';
+    if (isSlideScheduled(slide)) return 'Scheduled';
+    if (isSlideExpired(slide)) return 'Expired';
     return 'Active';
   };
 
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Header Section */}
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -239,7 +270,9 @@ function HeroSlidesTab({
                 <Monitor className="w-5 h-5" />
                 Manage Hero Slides
               </CardTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Control homepage hero slider content</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Control homepage hero slider content
+              </p>
             </div>
             <Button onClick={() => openHeroSlideModal()} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
@@ -247,7 +280,19 @@ function HeroSlidesTab({
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6">
+      </Card>
+
+      {/* Hero Slides List */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center justify-between">
+            <span>Hero Slides ({heroSlides.length})</span>
+            <Badge variant="secondary" className="text-sm">
+              Sorted by Priority
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
           {heroSlides.length === 0 ? (
             <div className="text-center py-8">
               <Monitor className="mx-auto h-12 w-12 text-gray-400" />
@@ -258,94 +303,146 @@ function HeroSlidesTab({
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {heroSlides.map((slide) => (
-                <div key={slide._id || slide.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                  <div className="flex flex-col lg:flex-row gap-4">
-                    {/* Slide Preview */}
-                    <div className="lg:w-1/3">
-                      <div 
-                        className={`relative h-32 rounded-lg bg-gradient-to-r ${slide.backgroundColor} overflow-hidden`}
-                        style={{
-                          backgroundImage: slide.image ? `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${slide.image})` : '',
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                        }}
-                      >
-                        <div className="absolute inset-0 p-3 text-white">
-                          <h3 className="text-sm font-bold truncate">{slide.title}</h3>
-                          <p className="text-xs opacity-90 truncate">{slide.subtitle}</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Slide Details */}
-                    <div className="lg:w-2/3 space-y-2">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">{slide.title}</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-300">{slide.subtitle}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={getSlideStatusColor(slide.isActive, slide.startDate, slide.endDate)}>
-                            {getSlideStatusText(slide.isActive, slide.startDate, slide.endDate)}
-                          </Badge>
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {heroSlides
+                .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+                .map((slide) => (
+                  <div 
+                    key={slide._id || slide.id} 
+                    className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  >
+                    <div className="flex flex-col lg:flex-row gap-6">
+                      {/* Slide Preview */}
+                      <div className="lg:w-1/4">
+                        <div 
+                          className={`relative h-32 rounded-lg bg-gradient-to-r ${slide.backgroundColor} overflow-hidden border border-gray-200 dark:border-gray-700`}
+                          style={{
+                            backgroundImage: slide.image ? `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${slide.image})` : '',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                          }}
+                        >
+                          <div className="absolute inset-0 p-3 text-white flex flex-col justify-end">
+                            <h3 className="text-sm font-bold truncate">{slide.title}</h3>
+                            <p className="text-xs opacity-90 truncate">{slide.subtitle}</p>
+                          </div>
                         </div>
                       </div>
                       
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                        {slide.description}
-                      </p>
-                      
-                      <div className="flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
-                        <span>Button: "{slide.buttonText}"</span>
-                        <span>•</span>
-                        <span>Link: {slide.buttonLink}</span>
-                        <span>•</span>
-                        <span>Priority: {slide.priority}</span>
-                        <span>•</span>
-                        <span>Created: {new Date(slide.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      
-                      {(slide.startDate || slide.endDate) && (
-                        <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400">
-                          {slide.startDate && <span>Start: {new Date(slide.startDate).toLocaleDateString()}</span>}
-                          {slide.endDate && <span>End: {new Date(slide.endDate).toLocaleDateString()}</span>}
+                      {/* Slide Details */}
+                      <div className="lg:w-3/4 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-3 mb-2">
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                {slide.title}
+                              </h3>
+                              <Badge className={`${getSlideStatusColor(slide)} flex items-center gap-1`}>
+                                {getSlideStatusIcon(slide)}
+                                {getSlideStatusText(slide)}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" />
+                                Priority: {slide.priority || 1}
+                              </Badge>
+                            </div>
+                            
+                            <p className="text-gray-600 dark:text-gray-300 mb-3">
+                              {slide.description}
+                            </p>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                <Monitor className="w-4 h-4" />
+                                <span className="truncate">{slide.buttonText || 'Shop Now'}</span>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                <Eye className="w-4 h-4" />
+                                <span>Link: {slide.buttonLink || '/shop'}</span>
+                              </div>
+                            </div>
+                            
+                            {(slide.startDate || slide.endDate) && (
+                              <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400 mt-3">
+                                {slide.startDate && (
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>Start: {new Date(slide.startDate).toLocaleDateString()}</span>
+                                  </div>
+                                )}
+                                {slide.endDate && (
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>End: {new Date(slide.endDate).toLocaleDateString()}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex flex-col gap-2 min-w-0 sm:min-w-[180px]">
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openHeroSlideModal(slide)}
+                                className="flex-1"
+                              >
+                                <Edit className="w-4 h-4 mr-1" />
+                                <span className="hidden sm:inline">Edit</span>
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => deleteHeroSlide(slide._id || slide.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleHeroSlideStatus(slide._id || slide.id)}
+                              className={`w-full ${
+                                slide.isActive 
+                                  ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                  : 'bg-green-600 hover:bg-green-700 text-white'
+                              }`}
+                            >
+                              <RotateCcw className="w-4 h-4 mr-1" />
+                              {slide.isActive ? 'Deactivate' : 'Activate'}
+                            </Button>
+                            
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs whitespace-nowrap">Priority:</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="10"
+                                value={slide.priority || 1}
+                                onChange={(e) => {
+                                  const newPriority = parseInt(e.target.value) || 1;
+                                  const updatedSlides = heroSlides.map(s => 
+                                    (s._id === slide._id || s.id === slide.id) 
+                                      ? {...s, priority: newPriority}
+                                      : s
+                                  );
+                                  setHeroSlides(updatedSlides);
+                                }}
+                                className="h-8 text-xs flex-1"
+                              />
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      
-                      {/* Action Buttons */}
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openHeroSlideModal(slide)}
-                        >
-                          <Edit className="w-3 h-3 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toggleHeroSlideStatus(slide._id || slide.id)}
-                        >
-                          <RotateCcw className="w-3 h-3 mr-1" />
-                          {slide.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteHeroSlide(slide._id || slide.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="w-3 h-3 mr-1" />
-                          Delete
-                        </Button>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              }
             </div>
           )}
         </CardContent>

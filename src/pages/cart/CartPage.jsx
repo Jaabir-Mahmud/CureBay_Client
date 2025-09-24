@@ -1,11 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { useCart } from '../../contexts/CartContext';
+import { useAuth } from '../../contexts/AuthContext'; // Added AuthContext import
 import SEOHelmet from '../../components/SEOHelmet';
+import { useLanguage } from '../../contexts/LanguageContext'; // Added LanguageContext import
+import { t } from '../../lib/i18n'; // Added translation import
 
 const CartPage = () => {
   const {
@@ -18,22 +21,38 @@ const CartPage = () => {
     getShipping,
     getFinalTotal
   } = useCart();
+  
+  const { user } = useAuth(); // Get user from AuthContext
+  const { language } = useLanguage(); // Use language context
+  const navigate = useNavigate();
 
   const subtotal = getSubtotal();
   const tax = getTax();
   const shipping = getShipping();
   const total = getFinalTotal();
 
+  const handleCheckout = () => {
+    // Check if user is logged in before proceeding to checkout
+    if (!user) {
+      // Redirect to login page
+      navigate('/auth');
+      return;
+    }
+    
+    // Navigate to checkout with cart data
+    navigate('/checkout', { state: { cartData: cartItems } });
+  };
+
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 flex items-center justify-center">
         <div className="text-center">
           <ShoppingBag className="w-24 h-24 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Your cart is empty</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('cart.empty', language)}</h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6">Add some medicines to get started</p>
           <Link to="/shop">
             <Button className="bg-cyan-600 hover:bg-cyan-700">
-              Continue Shopping
+              {t('cart.continueShopping', language)}
             </Button>
           </Link>
         </div>
@@ -53,7 +72,7 @@ const CartPage = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Shopping Cart</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{t('cart.yourCart', language)}</h1>
           <p className="text-gray-600 dark:text-gray-300">Review your selected medicines</p>
         </div>
 
@@ -74,7 +93,7 @@ const CartPage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4 p-4 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 transition-colors">
+                  <div key={`${item.id}-${item.selectedVariant}`} className="flex items-center space-x-4 p-4 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 transition-colors">
                     <img
                       src={item.image}
                       alt={item.name}
@@ -168,37 +187,27 @@ const CartPage = () => {
                   </div>
                 )}
 
-                <Link to="/checkout" className="block">
-                  <Button className="w-full bg-cyan-500 hover:bg-cyan-600 text-lg py-3">
-                    Proceed to Checkout
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </Button>
-                </Link>
+                <Button 
+                  className="w-full bg-cyan-500 hover:bg-cyan-600 text-lg py-3"
+                  onClick={handleCheckout}
+                >
+                  {t('cart.checkout', language)}
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
 
                 <Link to="/shop" className="block">
                   <Button variant="outline" className="w-full">
-                    Continue Shopping
+                    {t('cart.continueShopping', language)}
                   </Button>
                 </Link>
-
-                {/* Security Badge */}
-                <div className="text-center pt-4">
-                  <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>Secure checkout</span>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-    </div>
+      </div>
     </>
   );
 };
 
 export default CartPage;
-

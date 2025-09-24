@@ -168,21 +168,26 @@ const HeroSlider = () => {
                 backgroundPosition: 'center',
               }}
             >
-              {/* Theme-based overlay */}
+              {/* Background image */}
+              <div 
+                className="absolute inset-0 bg-cover bg-center"
+                style={{
+                  backgroundImage: `url(${slide.image})`,
+                }}
+              ></div>
+              
+              {/* Theme-based overlay with reduced opacity */}
               <div 
                 className={`absolute inset-0 transition-all duration-300 ${
                   isDarkMode 
-                    ? 'bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900' 
-                    : `bg-gradient-to-r ${backgroundGradient}`
+                    ? 'bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-opacity-20' 
+                    : `bg-gradient-to-r ${backgroundGradient} bg-opacity-30`
                 }`}
-                style={{
-                  backgroundColor: isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.92)'
-                }}
               ></div>
               
               <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
                 <div className="grid lg:grid-cols-2 gap-12 items-center h-full">
-                  {/* Left Content */}
+                  {/* Left Content - Text */}
                   <div className={`space-y-6 ${textColor} transition-colors duration-300`}>
                     <div className="space-y-4">
                       <h2 className="text-lg font-medium opacity-90">{slide.subtitle}</h2>
@@ -251,6 +256,10 @@ const HeroSlider = () => {
                             src={slide.featured.medicine.image}
                             alt={slide.featured.medicine.name}
                             className="w-24 h-24 object-cover rounded-lg mx-auto"
+                            onError={(e) => {
+                              console.error('Error loading featured medicine image:', e);
+                              e.target.src = 'https://via.placeholder.com/150?text=Image+Not+Found';
+                            }}
                           />
                           
                           <div className="text-center">

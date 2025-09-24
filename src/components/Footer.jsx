@@ -13,42 +13,45 @@ import {
   Truck,
   Clock
 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext'; // Added LanguageContext import
+import { t } from '../lib/i18n'; // Added translation import
 
 const Footer = () => {
+  const { language } = useLanguage(); // Use language context
   const currentYear = new Date().getFullYear();
 
   const quickLinks = [
-    { name: 'About Us', href: '/about' },
-    { name: 'Contact', href: '/contact' },
-    { name: 'Privacy Policy', href: '/privacy' },
-    { name: 'Terms of Service', href: '/terms' },
-    { name: 'FAQ', href: '/faq' },
-    { name: 'Help Center', href: '/help' }
+    { name: t('footer.aboutUs', language), href: '/about' },
+    { name: t('footer.contact', language), href: '/contact' },
+    { name: t('footer.privacyPolicy', language), href: '/privacy' },
+    { name: t('footer.termsOfService', language), href: '/terms' },
+    { name: t('footer.faq', language), href: '/faq' },
+    { name: t('footer.helpCenter', language), href: '/help' }
   ];
 
   const categories = [
-    { name: 'Tablets', href: '/category/tablets' },
-    { name: 'Syrups', href: '/category/syrups' },
-    { name: 'Capsules', href: '/category/capsules' },
-    { name: 'Injections', href: '/category/injections' },
-    { name: 'Supplements', href: '/category/supplements' },
-    { name: 'Others', href: '/category/others' }
+    { name: t('footer.tablets', language), href: '/category/tablets' },
+    { name: t('footer.syrups', language), href: '/category/syrups' },
+    { name: t('footer.capsules', language), href: '/category/capsules' },
+    { name: t('footer.injections', language), href: '/category/injections' },
+    { name: t('footer.supplements', language), href: '/category/supplements' },
+    { name: t('footer.others', language), href: '/category/others' }
   ];
 
   const services = [
-    { name: 'Online Consultation', href: '/consultation' },
-    { name: 'Prescription Upload', href: '/prescription' },
-    { name: 'Medicine Reminder', href: '/reminder' },
-    { name: 'Health Checkup', href: '/checkup' },
-    { name: 'Lab Tests', href: '/lab-tests' },
-    { name: 'Health Insurance', href: '/insurance' }
+    { name: t('footer.onlineConsultation', language), href: '/consultation' },
+    { name: t('footer.prescriptionUpload', language), href: '/prescription' },
+    { name: t('footer.medicineReminder', language), href: '/reminder' },
+    { name: t('footer.healthCheckup', language), href: '/checkup' },
+    { name: t('footer.labTests', language), href: '/lab-tests' },
+    { name: t('footer.healthInsurance', language), href: '/insurance' }
   ];
 
   const features = [
-    { icon: Shield, text: 'Verified Quality' },
-    { icon: Truck, text: 'Fast Delivery' },
-    { icon: Clock, text: '24/7 Support' },
-    { icon: Heart, text: 'Expert Care' }
+    { icon: Shield, text: t('footer.verifiedQuality', language) },
+    { icon: Truck, text: t('footer.fastDelivery', language) },
+    { icon: Clock, text: t('footer.support247', language) },
+    { icon: Heart, text: t('footer.expertCare', language) }
   ];
 
   return (
@@ -72,8 +75,7 @@ const Footer = () => {
             </div>
             
             <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed text-base transition-colors duration-300">
-              Your trusted healthcare partner, providing quality medicines and expert care 
-              to help you live a healthier life. Available 24/7 for your convenience.
+              {t('footer.description', language)}
             </p>
 
             {/* Contact Info */}
@@ -103,7 +105,7 @@ const Footer = () => {
           <div className="bg-white/50 dark:bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50 transition-all duration-300 hover:shadow-lg">
             <h3 className="text-lg font-bold mb-6 text-gray-900 dark:text-white transition-colors duration-300 flex items-center">
               <div className="w-2 h-6 bg-gradient-to-b from-cyan-500 to-cyan-600 rounded-full mr-3"></div>
-              Quick Links
+              {t('footer.quickLinks', language)}
             </h3>
             <ul className="space-y-3">
               {quickLinks.map((link) => (
@@ -123,7 +125,7 @@ const Footer = () => {
           <div className="bg-white/50 dark:bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50 transition-all duration-300 hover:shadow-lg">
             <h3 className="text-lg font-bold mb-6 text-gray-900 dark:text-white transition-colors duration-300 flex items-center">
               <div className="w-2 h-6 bg-gradient-to-b from-green-500 to-green-600 rounded-full mr-3"></div>
-              Categories
+              {t('footer.categories', language)}
             </h3>
             <ul className="space-y-3">
               {categories.map((category) => (
@@ -143,7 +145,7 @@ const Footer = () => {
           <div className="bg-white/50 dark:bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-gray-200/50 dark:border-gray-700/50 transition-all duration-300 hover:shadow-lg">
             <h3 className="text-lg font-bold mb-6 text-gray-900 dark:text-white transition-colors duration-300 flex items-center">
               <div className="w-2 h-6 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full mr-3"></div>
-              Services
+              {t('footer.services', language)}
             </h3>
             <ul className="space-y-3">
               {services.map((service) => (
@@ -163,8 +165,8 @@ const Footer = () => {
         {/* Features Section */}
         <div className="border-t border-gray-200/50 dark:border-gray-700/50 mt-16 pt-12 transition-colors duration-300">
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Why Choose CureBay?</h3>
-            <p className="text-gray-600 dark:text-gray-300">We're committed to providing the best healthcare experience</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('extra1.whyChoose', language)}</h3>
+            <p className="text-gray-600 dark:text-gray-300">{t('footer.whyChooseDescription', language)}</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {features.map((feature, index) => {
@@ -192,63 +194,41 @@ const Footer = () => {
         <div className="border-t border-gray-200/50 dark:border-gray-700/50 mt-16 pt-12 transition-colors duration-300">
           <div className="max-w-2xl mx-auto text-center">
             <div className="bg-gradient-to-r from-cyan-600 to-purple-600 dark:from-gray-800 dark:to-gray-700 rounded-3xl p-8 shadow-2xl border border-gray-200/20 dark:border-gray-600/30 transition-all duration-300">
-              <h3 className="text-2xl font-bold mb-4 text-white dark:text-gray-100">Stay Updated with CureBay</h3>
+              <h3 className="text-2xl font-bold mb-4 text-white dark:text-gray-100">{t('footer.stayUpdated', language)}</h3>
               <p className="text-cyan-100 dark:text-gray-300 mb-8 text-lg transition-colors duration-300">
-                Subscribe to our newsletter for health tips, special offers, and the latest updates.
+                {t('footer.stayUpdatedDescription', language)}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
                 <input
                   type="email"
-                  placeholder="Enter your email"
-                  className="flex-1 px-6 py-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-0 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-white/30 dark:focus:ring-gray-400/30 transition-all duration-300 text-lg"
+                  placeholder={t('footer.emailPlaceholder', language)}
+                  className="flex-1 px-4 py-3 rounded-lg border-0 focus:ring-2 focus:ring-cyan-500 dark:bg-white/10 dark:text-white dark:placeholder-gray-300"
                 />
-                <button className="bg-white hover:bg-gray-50 dark:bg-gray-600 dark:hover:bg-gray-500 text-cyan-600 dark:text-gray-100 px-8 py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105 text-lg">
-                  Subscribe
+                <button className="px-6 py-3 bg-white text-cyan-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-300 shadow-lg">
+                  {t('footer.subscribe', language)}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Bottom Footer */}
-      <div className="border-t border-gray-200/50 dark:border-gray-700/50 transition-colors duration-300 bg-white/30 dark:bg-black/20 backdrop-blur-sm">
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Copyright */}
+        <div className="border-t border-gray-200/50 dark:border-gray-700/50 mt-12 pt-8 text-center">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            {/* Copyright */}
-            <div className="text-gray-600 dark:text-gray-400 text-sm mb-6 md:mb-0 transition-colors duration-300 text-center md:text-left">
-              © {currentYear} CureBay. All rights reserved. | Made with <span className="text-red-500 mx-1">❤️</span> for better healthcare
-            </div>
-
-            {/* Social Links */}
-            <div className="flex items-center space-x-3">
-              <span className="text-gray-600 dark:text-gray-400 text-sm mr-4">Follow us:</span>
-              <a 
-                href="#" 
-                className="w-12 h-12 bg-cyan-100 dark:bg-cyan-900/30 hover:bg-cyan-600 dark:hover:bg-cyan-600 text-cyan-600 hover:text-white dark:text-cyan-400 dark:hover:text-white rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                aria-label="Facebook"
-              >
+            <p className="text-gray-600 dark:text-gray-400 mb-4 md:mb-0">
+              © {currentYear} CureBay. {t('footer.allRightsReserved', language)}
+            </p>
+            <div className="flex space-x-6">
+              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-300">
                 <Facebook className="w-5 h-5" />
               </a>
-              <a 
-                href="#" 
-                className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 hover:bg-sky-500 dark:hover:bg-sky-500 text-sky-600 hover:text-white dark:text-sky-400 dark:hover:text-white rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                aria-label="Twitter"
-              >
+              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-300">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a 
-                href="#" 
-                className="w-12 h-12 bg-pink-100 dark:bg-pink-900/30 hover:bg-pink-600 dark:hover:bg-pink-600 text-pink-600 hover:text-white dark:text-pink-400 dark:hover:text-white rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                aria-label="Instagram"
-              >
+              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-300">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a 
-                href="#" 
-                className="w-12 h-12 bg-cyan-100 dark:bg-cyan-900/30 hover:bg-cyan-700 dark:hover:bg-cyan-700 text-cyan-700 hover:text-white dark:text-cyan-400 dark:hover:text-white rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                aria-label="LinkedIn"
-              >
+              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-300">
                 <Linkedin className="w-5 h-5" />
               </a>
             </div>
@@ -260,4 +240,3 @@ const Footer = () => {
 };
 
 export default Footer;
-

@@ -6,7 +6,7 @@ import {
   Grid,
   List,
   Eye,
-  Edit,
+  Edit2,
   Trash2,
   Package,
   AlertTriangle,
@@ -34,6 +34,8 @@ import {
   DialogTitle,
 } from '../../ui/dialog';
 import toast from 'react-hot-toast';
+import { useLanguage } from '../../../contexts/LanguageContext'; // Added LanguageContext import
+import { t } from '../../../lib/i18n'; // Added translation import
 
 function CategoriesTab({ 
   categories, 
@@ -41,6 +43,7 @@ function CategoriesTab({
   activeTab 
 }) {
   const navigate = useNavigate();
+  const { language } = useLanguage(); // Use language context
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryViewMode, setCategoryViewMode] = useState('grid'); // 'grid' or 'list'
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -157,12 +160,12 @@ function CategoriesTab({
     
     // Validate form
     if (!categoryForm.name.trim()) {
-      toast.error('Category name is required');
+      toast.error(t('admin.categories.nameRequired', language));
       return;
     }
     
     if (!categoryForm.description.trim()) {
-      toast.error('Category description is required');
+      toast.error(t('admin.categories.descriptionRequired', language));
       return;
     }
 
@@ -197,69 +200,35 @@ function CategoriesTab({
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to ${editingCategory ? 'update' : 'create'} category`);
+        throw new Error(errorData.message || t('admin.categories.failed', language));
       }
 
-      // Handle potential empty or invalid JSON responses
-      let updatedCategory;
-      try {
-        updatedCategory = await res.json();
-      } catch (jsonError) {
-        console.error('Failed to parse JSON response:', jsonError);
-        updatedCategory = {}; // Use empty object as fallback
-      }
+      const updatedCategory = await res.json();
       
-      // Update the local categories state
       if (editingCategory) {
-        const isDefaultCategory = typeof editingCategory.id === 'number' || !isNaN(editingCategory.id);
-        
-        if (isDefaultCategory) {
-          // Replace the default category with the new one from backend
-          setCategories(prevCategories => 
-            prevCategories.map(cat => 
-              cat.id === editingCategory.id 
-                ? { ...updatedCategory, count: cat.count } // Preserve count from default
-                : cat
-            )
-          );
-        } else {
-          // Update existing category
-          setCategories(prevCategories => 
-            prevCategories.map(cat => 
-              cat.id === editingCategory.id 
-                ? { ...cat, ...categoryForm, updatedAt: new Date().toISOString() }
-                : cat
-            )
-          );
-        }
+        // Update existing category in state
+        setCategories(prevCategories => 
+          prevCategories.map(cat => 
+            cat.id === editingCategory.id ? { ...updatedCategory, id: updatedCategory._id } : cat
+          )
+        );
+        toast.success(t('admin.categories.updated', language));
       } else {
-        // Use the actual category data from backend response if available
-        const newCategory = updatedCategory.id ? updatedCategory : {
-          ...categoryForm,
-          id: Date.now(), // Fallback temporary ID
-          count: 0,
-          status: 'active',
-          createdAt: new Date().toISOString()
-        };
-        setCategories(prevCategories => [...prevCategories, newCategory]);
+        // Add new category to state
+        setCategories(prevCategories => [...prevCategories, { ...updatedCategory, id: updatedCategory._id }]);
+        toast.success(t('admin.categories.created', language));
       }
       
       closeCategoryModal();
-      
     } catch (error) {
       console.error('Error saving category:', error);
-      toast.error(error.message || `Failed to ${editingCategory ? 'update' : 'create'} category. Please try again.`);
+      toast.error(error.message || t('admin.categories.error', language));
     }
   };
 
-  const openDeleteCategoryModal = (category) => {
+  const confirmDeleteCategory = (category) => {
     setCategoryToDelete(category);
     setDeleteCategoryModalOpen(true);
-  };
-
-  const closeDeleteCategoryModal = () => {
-    setDeleteCategoryModalOpen(false);
-    setCategoryToDelete(null);
   };
 
   const deleteCategory = async () => {
@@ -270,288 +239,218 @@ function CategoriesTab({
       // Check if this is a default category (numeric ID) that doesn't exist in backend
       const isDefaultCategory = typeof categoryToDelete.id === 'number' || !isNaN(categoryToDelete.id);
       
-      if (isDefaultCategory) {
-        // For default categories, just remove from local state
-        setCategories(prevCategories => 
-          prevCategories.filter(cat => cat.id !== categoryToDelete.id)
-        );
-        toast.success('Default category removed from view!');
-      } else {
-        // Delete from backend for real categories
-        const res = await fetch(`/api/categories/${categoryToDelete.id}`, { 
-          method: 'DELETE' 
+      if (!isDefaultCategory) {
+        // Delete from backend only if it's not a default category
+        const res = await fetch(`/api/categories/${categoryToDelete.id}`, {
+          method: 'DELETE',
         });
-        
+
         if (!res.ok) {
-          throw new Error('Failed to delete category');
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || t('admin.categories.deleteFailed', language));
         }
-        
-        // Remove from local state
-        setCategories(prevCategories => 
-          prevCategories.filter(cat => cat.id !== categoryToDelete.id)
-        );
-        
-        toast.success('Category deleted successfully!');
       }
       
-      closeDeleteCategoryModal();
-      
+      // Remove from state
+      setCategories(prevCategories => prevCategories.filter(cat => cat.id !== categoryToDelete.id));
+      toast.success(t('admin.categories.deleted', language));
+      setDeleteCategoryModalOpen(false);
+      setCategoryToDelete(null);
     } catch (error) {
       console.error('Error deleting category:', error);
-      toast.error('Failed to delete category. Please try again.');
+      toast.error(error.message || t('admin.categories.deleteError', language));
     } finally {
       setIsDeletingCategory(false);
     }
   };
 
-  const toggleCategoryStatus = async (categoryId) => {
-    try {
-      // Check if this is a default category (numeric ID) that doesn't exist in backend
-      const isDefaultCategory = typeof categoryId === 'number' || !isNaN(categoryId);
-      
-      if (isDefaultCategory) {
-        // For default categories, just update local state
-        setCategories(prevCategories => 
-          prevCategories.map(cat => 
-            cat.id === categoryId 
-              ? { ...cat, status: cat.status === 'active' ? 'inactive' : 'active' }
-              : cat
-          )
-        );
-        return;
-      }
-
-      // Update status in backend for real categories
-      const res = await fetch(`/api/categories/${categoryId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'toggle' })
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to update category status');
-      }
-
-      const updatedCategory = await res.json();
-      
-      // Update local state
-      setCategories(prevCategories => 
-        prevCategories.map(cat => 
-          cat.id === categoryId 
-            ? { ...cat, status: updatedCategory.status }
-            : cat
-        )
-      );
-      
-    } catch (error) {
-      console.error('Error updating category status:', error);
-      toast.error('Failed to update category status');
-    }
+  const cancelDeleteCategory = () => {
+    setDeleteCategoryModalOpen(false);
+    setCategoryToDelete(null);
   };
 
+  // Icon options for category form
+  const iconOptions = [
+    { value: 'Pill', label: t('admin.categories.pill', language) },
+    { value: 'Heart', label: t('admin.categories.heart', language) },
+    { value: 'Circle', label: t('admin.categories.circle', language) },
+    { value: 'Syringe', label: t('admin.categories.syringe', language) },
+    { value: 'Stethoscope', label: t('admin.categories.stethoscope', language) },
+    { value: 'Tag', label: t('admin.categories.tag', language) }
+  ];
+
+  // Color options for category form
+  const colorOptions = [
+    { value: 'cyan', label: t('admin.categories.cyan', language) },
+    { value: 'pink', label: t('admin.categories.pink', language) },
+    { value: 'green', label: t('admin.categories.green', language) },
+    { value: 'red', label: t('admin.categories.red', language) },
+    { value: 'orange', label: t('admin.categories.orange', language) },
+    { value: 'gray', label: t('admin.categories.gray', language) }
+  ];
+
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Medicine Categories</h2>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Manage and organize your medicine categories</p>
+    <div className="space-y-6">
+      {/* Header and Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex-1 max-w-md">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder={t('admin.categories.search', language)}
+              value={categorySearch}
+              onChange={(e) => setCategorySearch(e.target.value)}
+              className="pl-10"
+            />
+            {categorySearch && (
+              <button
+                onClick={() => setCategorySearch('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
-        <Button onClick={() => openCategoryModal()} className="w-full sm:w-auto">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Category
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant={categoryViewMode === 'grid' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCategoryViewMode('grid')}
+          >
+            <Grid className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={categoryViewMode === 'list' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCategoryViewMode('list')}
+          >
+            <List className="w-4 h-4" />
+          </Button>
+          <Button onClick={() => openCategoryModal()} className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            {t('admin.categories.add', language)}
+          </Button>
+        </div>
       </div>
 
-      {/* Search and View Controls */}
-      <Card>
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search categories..."
-                value={categorySearch}
-                onChange={(e) => setCategorySearch(e.target.value)}
-                className="pl-10 text-sm"
-              />
-            </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Button
-                variant={categoryViewMode === 'grid' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setCategoryViewMode('grid')}
-                className="flex-1 sm:flex-none"
-              >
-                <Grid className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Grid</span>
-              </Button>
-              <Button
-                variant={categoryViewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setCategoryViewMode('list')}
-                className="flex-1 sm:flex-none"
-              >
-                <List className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">List</span>
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Categories Display */}
-      <Card>
-        <CardContent className="p-3 sm:p-6">
-          {categoryViewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-              {filteredCategories.map((category) => {
-                const IconComponent = getIconComponent(category.icon);
-                const colorClasses = getColorClasses(category.color);
-                
-                return (
-                  <div 
-                    key={category.id} 
-                    className={`relative group rounded-lg border-2 ${colorClasses.border} ${colorClasses.bg} p-3 sm:p-6 transition-all duration-300 hover:shadow-lg hover:scale-105`}
-                  >
-                    <div className="flex items-start justify-between mb-3 sm:mb-4">
-                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full ${colorClasses.icon} flex items-center justify-center`}>
-                        <IconComponent className={`w-5 h-5 sm:w-6 sm:h-6 ${colorClasses.text}`} />
-                      </div>
-                      <Badge 
-                        variant={category.status === 'active' ? 'default' : 'secondary'}
-                        className="cursor-pointer hover:opacity-80 transition-opacity text-xs"
-                        onClick={() => toggleCategoryStatus(category.id)}
-                      >
-                        {category.status}
-                      </Badge>
+      {/* Categories Grid/List */}
+      {filteredCategories.length === 0 ? (
+        <div className="text-center py-12">
+          <Package className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">{t('admin.categories.noCategories', language)}</h3>
+          <p className="text-gray-500 dark:text-gray-400">{t('admin.categories.noCategoriesDesc', language)}</p>
+        </div>
+      ) : categoryViewMode === 'grid' ? (
+        // Grid View
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCategories.map((category) => {
+            const IconComponent = getIconComponent(category.icon);
+            const colorClasses = getColorClasses(category.color);
+            
+            return (
+              <Card key={category.id} className={`${colorClasses.bg} ${colorClasses.border} border transition-all duration-300 hover:shadow-lg`}>
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className={`w-12 h-12 ${colorClasses.icon} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                      <IconComponent className={`w-6 h-6 ${colorClasses.text}`} />
                     </div>
-                    
-                    <div className="mb-3 sm:mb-4">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        {category.name}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 sm:mb-3 overflow-hidden" style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical'
-                      }}>
-                        {category.description}
-                      </p>
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 text-xs sm:text-sm">
-                        <span className={`font-medium ${colorClasses.text}`}>
-                          {category.count.toLocaleString()} medicines
-                        </span>
-                        <span className="text-gray-500 dark:text-gray-400">
-                          Created {new Date(category.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="default" 
-                        className="flex-1 text-xs"
+                    <div className="flex space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => viewCategoryMedicines(category)}
+                        className="h-8 w-8 p-0 flex items-center justify-center"
                       >
-                        <Eye className="w-3 h-3 sm:mr-1" />
-                        <span className="hidden sm:inline">View {category.name}</span>
-                        <span className="sm:hidden">View</span>
+                        <Eye className="w-4 h-4" />
                       </Button>
-                      <div className="flex gap-2 sm:flex-col lg:flex-row">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => openCategoryModal(category)}
-                          className="flex-1 sm:flex-none"
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-red-600 hover:text-red-700 flex-1 sm:flex-none"
-                          onClick={() => openDeleteCategoryModal(category)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openCategoryModal(category)}
+                        className="h-8 w-8 p-0 flex items-center justify-center"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => confirmDeleteCategory(category)}
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="space-y-3 sm:space-y-4">
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-white mt-4 mb-2">{category.name}</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">{category.description}</p>
+                  <div className="flex items-center justify-between">
+                    <Badge variant="secondary" className="text-xs">
+                      {category.count} {t('admin.categories.medicines', language)}
+                    </Badge>
+                    <Badge variant={category.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                      {category.status === 'active' ? t('admin.categories.active', language) : t('admin.categories.inactive', language)}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        // List View
+        <Card>
+          <CardContent className="p-0">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredCategories.map((category) => {
                 const IconComponent = getIconComponent(category.icon);
                 const colorClasses = getColorClasses(category.color);
                 
                 return (
-                  <div 
-                    key={category.id} 
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:shadow-md transition-shadow gap-3 sm:gap-4"
-                  >
-                    <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                      <div className={`w-10 h-10 rounded-full ${colorClasses.icon} flex items-center justify-center flex-shrink-0`}>
+                  <div key={category.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200">
+                    <div className="flex items-center">
+                      <div className={`w-10 h-10 ${colorClasses.icon} rounded-lg flex items-center justify-center flex-shrink-0`}>
                         <IconComponent className={`w-5 h-5 ${colorClasses.text}`} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
-                            {category.name}
-                          </h3>
-                          <Badge 
-                            variant={category.status === 'active' ? 'default' : 'secondary'}
-                            className="cursor-pointer hover:opacity-80 transition-opacity text-xs w-fit"
-                            onClick={() => toggleCategoryStatus(category.id)}
-                          >
-                            {category.status}
-                          </Badge>
-                        </div>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 overflow-hidden" style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical'
-                        }}>
-                          {category.description}
-                        </p>
-                        <div className="sm:hidden mt-2">
-                          <div className={`font-medium ${colorClasses.text} text-sm`}>
-                            {category.count.toLocaleString()} medicines
+                      <div className="ml-4 flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-medium text-gray-900 dark:text-white truncate">{category.name}</h3>
+                          <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
+                            <Badge variant="secondary" className="text-xs">
+                              {category.count} {t('admin.categories.medicines', language)}
+                            </Badge>
+                            <Badge variant={category.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                              {category.status === 'active' ? t('admin.categories.active', language) : t('admin.categories.inactive', language)}
+                            </Badge>
                           </div>
                         </div>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mt-1 truncate">{category.description}</p>
                       </div>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                      <div className="hidden sm:block text-right">
-                        <div className={`font-medium ${colorClasses.text}`}>
-                          {category.count.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-gray-500">medicines</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="default"
+                      <div className="ml-4 flex space-x-1 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => viewCategoryMedicines(category)}
-                          className="flex-1 sm:flex-none text-xs"
+                          className="h-8 w-8 p-0 flex items-center justify-center"
                         >
-                          <Eye className="w-3 h-3 sm:mr-1" />
-                          <span className="hidden sm:inline">View {category.name}</span>
-                          <span className="sm:hidden">View</span>
+                          <Eye className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => openCategoryModal(category)}>
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => openDeleteCategoryModal(category)}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openCategoryModal(category)}
+                          className="h-8 w-8 p-0 flex items-center justify-center"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => confirmDeleteCategory(category)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
@@ -559,213 +458,116 @@ function CategoriesTab({
                 );
               })}
             </div>
-          )}
+          </CardContent>
+        </Card>
+      )}
 
-          {filteredCategories.length === 0 && (
-            <div className="text-center py-12">
-              <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                No categories found
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {categorySearch ? 'Try adjusting your search terms.' : 'Get started by creating your first category.'}
-              </p>
-              {!categorySearch && (
-                <Button onClick={() => openCategoryModal()}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Category
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Category Modal */}
+      {/* Add/Edit Category Modal */}
       <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
-        <DialogContent className="sm:max-w-[425px] mx-4 sm:mx-0">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">
-              {editingCategory ? 'Edit Category' : 'Create New Category'}
-            </DialogTitle>
-            <DialogDescription className="text-sm">
-              {editingCategory 
-                ? 'Update the category details below.' 
-                : 'Add a new medicine category to organize your products.'
-              }
+            <DialogTitle>{editingCategory ? t('admin.categories.edit', language) : t('admin.categories.add', language)}</DialogTitle>
+            <DialogDescription>
+              {editingCategory ? t('admin.categories.editDesc', language) : t('admin.categories.addDesc', language)}
             </DialogDescription>
           </DialogHeader>
-          
-          <form onSubmit={handleCategorySubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm">Category Name</Label>
-              <Input
-                id="name"
-                value={categoryForm.name}
-                onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})}
-                placeholder="e.g., Tablets, Syrups"
-                required
-                className="text-sm"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm">Description</Label>
-              <Textarea
-                id="description"
-                value={categoryForm.description}
-                onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
-                placeholder="Brief description of this category"
-                rows={3}
-                className="text-sm resize-none"
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="icon" className="text-sm">Icon</Label>
-                <Select 
-                  value={categoryForm.icon} 
-                  onValueChange={(value) => setCategoryForm({...categoryForm, icon: value})}
-                >
-                  <SelectTrigger className="text-sm">
-                    <SelectValue />
+          <form onSubmit={handleCategorySubmit}>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="category-name">{t('admin.categories.name', language)}</Label>
+                <Input
+                  id="category-name"
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})}
+                  placeholder={t('admin.categories.namePlaceholder', language)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="category-description">{t('admin.categories.description', language)}</Label>
+                <Textarea
+                  id="category-description"
+                  value={categoryForm.description}
+                  onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
+                  placeholder={t('admin.categories.descriptionPlaceholder', language)}
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label htmlFor="category-icon">{t('admin.categories.icon', language)}</Label>
+                <Select value={categoryForm.icon} onValueChange={(value) => setCategoryForm({...categoryForm, icon: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('admin.categories.selectIcon', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Pill">💊 Pill</SelectItem>
-                    <SelectItem value="Heart">❤️ Heart</SelectItem>
-                    <SelectItem value="Circle">⭕ Circle</SelectItem>
-                    <SelectItem value="Syringe">💉 Syringe</SelectItem>
-                    <SelectItem value="Stethoscope">🩺 Stethoscope</SelectItem>
-                    <SelectItem value="Tag">🏷️ Tag</SelectItem>
+                    {iconOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="color" className="text-sm">Color Theme</Label>
-                <Select 
-                  value={categoryForm.color} 
-                  onValueChange={(value) => setCategoryForm({...categoryForm, color: value})}
-                >
-                  <SelectTrigger className="text-sm">
-                    <SelectValue />
+              <div>
+                <Label htmlFor="category-color">{t('admin.categories.color', language)}</Label>
+                <Select value={categoryForm.color} onValueChange={(value) => setCategoryForm({...categoryForm, color: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('admin.categories.selectColor', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cyan">🔵 Cyan</SelectItem>
-                    <SelectItem value="pink">🩷 Pink</SelectItem>
-                    <SelectItem value="green">🟢 Green</SelectItem>
-                    <SelectItem value="red">🔴 Red</SelectItem>
-                    <SelectItem value="orange">🟠 Orange</SelectItem>
-                    <SelectItem value="gray">⚫ Gray</SelectItem>
+                    {colorOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            
-            <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={closeCategoryModal} className="w-full sm:w-auto">
-                Cancel
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={closeCategoryModal}>
+                {t('common.cancel', language)}
               </Button>
-              <Button type="submit" className="w-full sm:w-auto">
-                {editingCategory ? 'Update Category' : 'Create Category'}
+              <Button type="submit">
+                {editingCategory ? t('admin.categories.update', language) : t('admin.categories.create', language)}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Category Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       <Dialog open={deleteCategoryModalOpen} onOpenChange={setDeleteCategoryModalOpen}>
-        <DialogContent className="sm:max-w-md mx-4 sm:mx-0">
+        <DialogContent>
           <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
-              </div>
-              <div>
-                <DialogTitle className="text-left text-base sm:text-lg">Delete Category</DialogTitle>
-                <DialogDescription className="text-left text-gray-600 dark:text-gray-300 text-sm">
-                  This action cannot be undone.
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-3">
-                {categoryToDelete && (
-                  <>
-                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${getColorClasses(categoryToDelete.color).icon} flex items-center justify-center`}>
-                      {React.createElement(getIconComponent(categoryToDelete.icon), { 
-                        className: `w-4 h-4 sm:w-5 sm:h-5 ${getColorClasses(categoryToDelete.color).text}` 
-                      })}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
-                        {categoryToDelete.name}
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate">
-                        {categoryToDelete.description}
-                      </p>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getColorClasses(categoryToDelete.color).bg} ${getColorClasses(categoryToDelete.color).text}`}>
-                          {categoryToDelete.count} medicines
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold
-                          ${categoryToDelete.status === 'active'
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                            : 'bg-gray-200 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300'}`}>
-                          {categoryToDelete.status}
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-red-700 dark:text-red-300">
-                  <p className="font-medium">Warning:</p>
-                  <ul className="mt-1 space-y-1 text-xs">
-                    <li>• All medicines in this category will be affected</li>
-                    <li>• Category data will be permanently deleted</li>
-                    <li>• This action cannot be reversed</li>
-                  </ul>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              {t('admin.categories.confirmDelete', language)}
+            </DialogTitle>
+            <DialogDescription>
+              {t('admin.categories.confirmDeleteDesc', language)} <span className="font-semibold">{categoryToDelete?.name}</span>?
+              {categoryToDelete?.count > 0 && (
+                <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    <AlertTriangle className="w-4 h-4 inline mr-1" />
+                    {t('admin.categories.deleteWarning', language)}
+                  </p>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={closeDeleteCategoryModal}
-              className="flex items-center gap-2 w-full sm:w-auto"
-            >
-              <X size={16} />
-              Cancel
-            </Button>
-            <Button
-              onClick={deleteCategory}
-              disabled={isDeletingCategory}
-              className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 flex items-center gap-2 w-full sm:w-auto"
-            >
-              {isDeletingCategory ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 size={16} />
-                  Delete Category
-                </>
               )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={cancelDeleteCategory} disabled={isDeletingCategory}>
+              {t('common.cancel', language)}
+            </Button>
+            <Button 
+              type="button" 
+              variant="destructive" 
+              onClick={deleteCategory} 
+              disabled={isDeletingCategory}
+              className="flex items-center gap-2"
+            >
+              {isDeletingCategory && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+              {t('admin.categories.delete', language)}
             </Button>
           </DialogFooter>
         </DialogContent>

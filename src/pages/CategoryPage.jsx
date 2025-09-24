@@ -8,6 +8,7 @@ import { useCart } from '../contexts/CartContext';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import SEOHelmet from '../components/SEOHelmet';
+import MedicineCard from '../components/shop/MedicineCard.jsx';
 import {
   Dialog,
   DialogContent,
@@ -58,10 +59,10 @@ const CategoryPage = () => {
       limit: itemsPerPage
     }],
     queryFn: async () => {
-      if (!currentCategory?.id) return { medicines: [], pagination: { totalItems: 0, totalPages: 0 } };
+      if (!currentCategory?._id) return { medicines: [], pagination: { totalMedicines: 0, totalPages: 0 } };
       
       const params = new URLSearchParams({
-        category: currentCategory.id,
+        category: currentCategory._id,
         page: currentPage.toString(),
         limit: itemsPerPage.toString(),
         sortBy,
@@ -78,7 +79,7 @@ const CategoryPage = () => {
       }
       return response.json();
     },
-    enabled: !!currentCategory?.id, // Only run when we have a category ID
+    enabled: !!currentCategory?._id, // Only run when we have a category ID
     staleTime: 2 * 60 * 1000,
     onError: (error) => {
       console.error('Error fetching medicines:', error);
@@ -87,7 +88,7 @@ const CategoryPage = () => {
   });
 
   const medicines = medicinesData?.medicines || [];
-  const totalItems = medicinesData?.pagination?.totalItems || 0;
+  const totalItems = medicinesData?.pagination?.totalMedicines || 0;
   const totalPages = medicinesData?.pagination?.totalPages || 0;
 
   // Handle sorting
@@ -505,64 +506,9 @@ const CategoryPage = () => {
         </div>
 
         {/* Medicine Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {medicines.map((medicine) => (
-            <div key={medicine.id} className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <img
-                    className="h-12 w-12 rounded-lg object-cover"
-                    src={medicine.image}
-                    alt={medicine.name}
-                  />
-                  <div className="ml-4">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {medicine.name}
-                    </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-300">
-                      {medicine.genericName}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
-                      </Button>
-                    </DialogTrigger>
-                    <MedicineModal medicine={medicine} />
-                  </Dialog>
-                  
-                  <Button
-                    onClick={() => handleAddToCart(medicine)}
-                    disabled={!medicine.inStock}
-                    size="sm"
-                    className="bg-cyan-600 hover:bg-cyan-700"
-                  >
-                    <ShoppingCart className="w-4 h-4 mr-1" />
-                    Select
-                  </Button>
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg font-semibold text-cyan-500">${medicine.finalPrice || medicine.price}</span>
-                  {medicine.price !== (medicine.finalPrice || medicine.price) && (
-                    <span className="text-sm text-gray-500 line-through">${medicine.price}</span>
-                  )}
-                  {medicine.discountPercentage > 0 && (
-                    <Badge className="bg-red-500">-{medicine.discountPercentage}%</Badge>
-                  )}
-                </div>
-                <div className="flex items-center mt-2">
-                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                  <span className="ml-1 text-sm font-medium">{medicine.rating || 4.0}</span>
-                  <span className="ml-1 text-sm text-gray-500">({medicine.reviews || 0})</span>
-                </div>
-              </div>
-            </div>
+            <MedicineCard key={medicine._id} medicine={medicine} />
           ))}
         </div>
 
