@@ -50,9 +50,9 @@ const CategorySection = ({ category }) => {
                     alt={medicine.name}
                     className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                   />
-                  {medicine.discount > 0 && (
+                  {medicine.discountPercentage > 0 && (
                     <Badge className="absolute top-2 right-2 bg-red-500 text-white">
-                      {medicine.discount}% {t('home.category.off', language)}
+                      {medicine.discountPercentage}% {t('home.category.off', language)}
                     </Badge>
                   )}
                 </div>
@@ -88,18 +88,18 @@ const CategorySection = ({ category }) => {
                   {/* Price */}
                   <div className="mt-3 flex items-center justify-between">
                     <div>
-                      {medicine.discount > 0 ? (
+                      {medicine.discountPercentage > 0 ? (
                         <>
                           <span className="text-lg font-bold text-gray-900 dark:text-white">
-                            ${(medicine.price * (1 - medicine.discount / 100)).toFixed(2)}
+                            ৳{(medicine.finalPrice || medicine.price * (1 - medicine.discountPercentage / 100)).toFixed(2)}
                           </span>
                           <span className="text-sm text-gray-500 dark:text-gray-400 line-through ml-2">
-                            ${medicine.price.toFixed(2)}
+                            ৳{medicine.price.toFixed(2)}
                           </span>
                         </>
                       ) : (
                         <span className="text-lg font-bold text-gray-900 dark:text-white">
-                          ${medicine.price.toFixed(2)}
+                          ৳{medicine.price.toFixed(2)}
                         </span>
                       )}
                     </div>

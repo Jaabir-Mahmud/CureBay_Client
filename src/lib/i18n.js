@@ -63,6 +63,10 @@ const translations = {
     'profile.updateFailed': 'Failed to update profile. Please try again.',
     'profile.verificationSent': 'Verification email sent! Please check your inbox.',
     'profile.verificationFailed': 'Failed to send verification email. Please try again.',
+  'home.discount.specialOffers': 'Special Offers',
+  'home.discount.description': 'Discover our amazing deals and save on your favorite medicines',
+  'home.discount.viewAllOffers': 'View all Special Offers',
+  'home.discount.hideAllOffers': 'Hide Special Offers',
     
     // Auth Page
     'auth.login': 'Login',
@@ -132,6 +136,17 @@ const translations = {
     'admin.categories.edit': 'Edit Category',
     'admin.categories.editDesc': 'Make changes to category here.',
     'admin.categories.addDesc': 'Add a new category here.',
+    
+    // Home Page - Categories Section
+    'home.categories.title': 'Browse Categories',
+  'home.categories.description': 'Explore our medicine categories and find what you need for your health.',
+    'home.categories.viewAll': 'View All Categories',
+    'home.categories.medicines': 'medicines',
+    'home.categories.error': 'Failed to load categories',
+    
+    // Home Page - Category Section (Bengali) (existing)
+    'home.category.viewAll': 'সব দেখুন',
+    'home.category.off': 'ছাড়',
     'admin.categories.name': 'Category Name',
     'admin.categories.namePlaceholder': 'Enter category name',
     'admin.categories.description': 'Description',
@@ -904,8 +919,17 @@ const translations = {
     'home.category.viewAll': 'সবগুলো দেখুন',
     'home.category.off': 'ছাড়',
     
+    // Home Page - Categories Section
+    'home.categories.title': 'বিভাগগুলি ব্রাউজ করুন',
+  'home.categories.description': 'আমাদের ঔষধ বিভাগগুলি দেখুন এবং আপনার স্বাস্থ্যসেবার জন্য প্রয়োজনীয়টি খুঁজে নিন।',
+    'home.categories.viewAll': 'সমস্ত বিভাগ দেখুন',
+    'home.categories.medicines': 'ঔষধসমূহ',
+    'home.categories.error': 'বিভাগগুলি লোড করতে ব্যর্থ',
+    
     'home.discount.specialOffers': 'বিশেষ অফার',
-    'home.discount.description': 'মানসম্মত ঔষধ এবং স্বাস্থ্যসেবা পণ্যের উপর অসাধারণ ডিল আবিষ্কার করুন',
+    'home.discount.description': 'আমাদের অসাধারণ ডিলগুলি আবিষ্কার করুন এবং আপনার প্রিয় ওষুধগুলিতে সঞ্চয় করুন',
+  'home.discount.viewAllOffers': 'সব বিশেষ অফার দেখুন',
+  'home.discount.hideAllOffers': 'বিশেষ অফার লুকান',
     'home.discount.off': 'ছাড়',
     'home.discount.quickView': 'দ্রুত দেখুন',
     'home.discount.reviews': 'রিভিউ',

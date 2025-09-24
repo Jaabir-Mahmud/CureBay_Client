@@ -8,14 +8,38 @@ import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext'; // Added LanguageContext import
 import { t } from '../lib/i18n'; // Added translation import
 
-const DiscountSection = ({ medicines = [] }) => {
+const DiscountSection = () => {
   const { addToCart } = useCart();
   const { language } = useLanguage(); // Use language context
   const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const [medicines, setMedicines] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
+
+  // Fetch discounted medicines
+  useEffect(() => {
+    const fetchDiscountedMedicines = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/medicines/discounted?limit=8');
+        if (response.ok) {
+          const data = await response.json();
+          setMedicines(data.medicines || []);
+        }
+      } catch (error) {
+        console.error('Error fetching discounted medicines:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDiscountedMedicines();
+  }, []);
 
   // Filter medicines with discount
-  const discountedMedicines = medicines.filter(medicine => medicine.discount > 0);
+  const discountedMedicines = medicines.filter(medicine => medicine.discountPercentage > 0);
 
+  if (loading) return <div className="py-12 text-center">Loading offers...</div>;
   if (discountedMedicines.length === 0) return null;
 
   const handleAddToCart = (medicine) => {
@@ -33,22 +57,30 @@ const DiscountSection = ({ medicines = [] }) => {
   return (
     <section className="py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-            {t('home.discount.specialOffers', language)}
-          </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            {t('home.discount.description', language)}
-          </p>
+        <div className="flex items-center justify-between mb-12">
+          <div className="text-left">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              {t('home.discount.specialOffers', language)}
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl">
+              {t('home.discount.description', language)}
+            </p>
+          </div>
+          <Button
+            className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded"
+            onClick={() => setShowAll((prev) => !prev)}
+          >
+            {showAll ? t('home.discount.hideAllOffers', language) : t('home.discount.viewAllOffers', language)}
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {discountedMedicines.slice(0, 4).map((medicine) => (
+          {(showAll ? discountedMedicines : discountedMedicines.slice(0, 4)).map((medicine) => (
             <Card key={medicine._id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group">
               <CardContent className="p-0">
                 {/* Discount Badge */}
                 <Badge className="absolute top-2 right-2 z-10 bg-red-500 text-white">
-                  {medicine.discount}% {t('home.discount.off', language)}
+                  {medicine.discountPercentage}% {language === 'BN' ? 'ছাড়' : 'discount'}
                 </Badge>
 
                 {/* Medicine Image */}
@@ -76,7 +108,6 @@ const DiscountSection = ({ medicines = [] }) => {
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
                     {medicine.company}
                   </p>
-                  
                   {/* Rating */}
                   <div className="flex items-center mt-2">
                     <div className="flex text-amber-400">
@@ -95,15 +126,14 @@ const DiscountSection = ({ medicines = [] }) => {
                       ({medicine.reviews || 12} {t('home.discount.reviews', language)})
                     </span>
                   </div>
-
                   {/* Price */}
                   <div className="mt-3 flex items-center justify-between">
                     <div>
                       <span className="text-lg font-bold text-gray-900 dark:text-white">
-                        ${(medicine.price * (1 - medicine.discount / 100)).toFixed(2)}
+                        ৳{(medicine.finalPrice || medicine.price * (1 - medicine.discountPercentage / 100)).toFixed(2)}
                       </span>
                       <span className="text-sm text-gray-500 dark:text-gray-400 line-through ml-2">
-                        ${medicine.price.toFixed(2)}
+                        ৳{medicine.price.toFixed(2)}
                       </span>
                     </div>
                     <Button
@@ -173,15 +203,15 @@ const DiscountSection = ({ medicines = [] }) => {
                 <div className="mt-4">
                   <div className="flex items-center">
                     <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                      ${(selectedMedicine.price * (1 - selectedMedicine.discount / 100)).toFixed(2)}
+                      ৳{(selectedMedicine.finalPrice || selectedMedicine.price * (1 - selectedMedicine.discountPercentage / 100)).toFixed(2)}
                     </span>
-                    {selectedMedicine.discount > 0 && (
+                    {selectedMedicine.discountPercentage > 0 && (
                       <>
                         <span className="text-lg text-gray-500 dark:text-gray-400 line-through ml-3">
-                          ${selectedMedicine.price.toFixed(2)}
+                          ৳{selectedMedicine.price.toFixed(2)}
                         </span>
                         <Badge className="ml-3 bg-red-500 text-white">
-                          {selectedMedicine.discount}% {t('home.discount.off', language)}
+                          {selectedMedicine.discountPercentage}% {t('home.discount.off', language)}
                         </Badge>
                       </>
                     )}

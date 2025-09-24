@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import SEOHelmet from '../components/SEOHelmet';
 import HeroSlider from '../components/HeroSlider';
 import BannerSlider from '../components/BannerSlider';
-import CategorySection from '../components/CategorySection';
+import CategoriesGrid from '../components/CategoriesGrid';  // Updated import
 import DiscountSection from '../components/DiscountSection';
 import ExtraSection1 from '../components/ExtraSection1';
 import ExtraSection2 from '../components/ExtraSection2';
@@ -54,7 +54,9 @@ const HomePage = () => {
         <div className="sr-only">{t('common.welcome', language)}</div>
         <HeroSlider heroSlides={heroSlides} />
         <BannerSlider banners={banners} />
-        <CategorySection />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <CategoriesGrid />  
+        </div>
         <DiscountSection />
         <ExtraSection1 />
         <ExtraSection2 />

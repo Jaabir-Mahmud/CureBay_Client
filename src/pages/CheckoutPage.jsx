@@ -345,7 +345,7 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
                     <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                   </div>
                 </div>
-                <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                <p className="font-medium">৳{(item.price * item.quantity).toFixed(2)}</p>
               </div>
             ))}
           </div>
@@ -356,20 +356,20 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Subtotal</span>
-              <span>${orderData.subtotal.toFixed(2)}</span>
+              <span>৳{orderData.subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span>Tax</span>
-              <span>${orderData.tax.toFixed(2)}</span>
+              <span>৳{orderData.tax.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span>Shipping</span>
-              <span>{orderData.shipping === 0 ? 'Free' : `$${orderData.shipping.toFixed(2)}`}</span>
+              <span>{orderData.shipping === 0 ? 'Free' : `৳${orderData.shipping.toFixed(2)}`}</span>
             </div>
             <Separator />
             <div className="flex justify-between font-bold text-lg">
               <span>Total</span>
-              <span>${orderData.total.toFixed(2)}</span>
+              <span>৳{orderData.total.toFixed(2)}</span>
             </div>
           </div>
 
@@ -377,7 +377,7 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
           {orderData.subtotal < 50 && (
             <div className="bg-cyan-50 dark:bg-cyan-900/20 p-3 rounded-lg mt-4">
               <p className="text-sm text-cyan-700 dark:text-cyan-300">
-                Add ${(50 - orderData.subtotal).toFixed(2)} more for free shipping!
+                Add ৳{(50 - orderData.subtotal).toFixed(2)} more for free shipping!
               </p>
             </div>
           )}
@@ -399,7 +399,7 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
         ) : (
           <span className="flex items-center justify-center gap-2">
             <CreditCard className="w-5 h-5" />
-            Pay ${orderData.total?.toFixed(2) || '0.00'}
+            Pay ৳{orderData.total?.toFixed(2) || '0.00'}
           </span>
         )}
       </Button>
@@ -448,14 +448,14 @@ const CheckoutPage = () => {
 
     // Calculate totals
     const subtotal = cartData.reduce((sum, item) => {
-      const price = item.discountPercentage > 0 
+      const price = item.finalPrice || (item.discountPercentage > 0 
         ? item.price * (1 - item.discountPercentage / 100)
-        : item.price;
+        : item.price);
       return sum + (price * item.quantity);
     }, 0);
 
     const tax = subtotal * 0.08; // 8% tax
-    const shipping = subtotal > 50 ? 0 : 9.99; // Free shipping over $50
+    const shipping = subtotal > 50 ? 0 : 9.99; // Free shipping over ৳50
     const total = subtotal + tax + shipping;
 
     setOrderData({
@@ -554,7 +554,7 @@ const CheckoutPage = () => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <Truck className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-600 dark:text-gray-300">Free shipping on orders over $50</span>
+                      <span className="text-gray-600 dark:text-gray-300">Free shipping on orders over ৳50</span>
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm">

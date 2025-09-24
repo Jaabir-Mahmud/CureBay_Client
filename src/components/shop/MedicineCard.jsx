@@ -40,9 +40,9 @@ const MedicineCard = ({ medicine }) => {
         </Link>
 
         {/* Discount Badge */}
-        {medicine.discount > 0 && (
+        {medicine.discountPercentage > 0 && (
           <Badge className="absolute top-2 right-2 bg-red-500 text-white">
-            {medicine.discount}% OFF
+            {medicine.discountPercentage}% OFF
           </Badge>
         )}
 
@@ -102,18 +102,18 @@ const MedicineCard = ({ medicine }) => {
 
         {/* Price */}
         <div className="mb-4">
-          {medicine.discount > 0 ? (
+          {medicine.discountPercentage > 0 ? (
             <div className="flex items-center">
               <span className="text-lg font-bold text-gray-900 dark:text-white">
-                ${(medicine.price * (1 - medicine.discount / 100)).toFixed(2)}
+                ৳{(medicine.finalPrice || medicine.price * (1 - medicine.discountPercentage / 100)).toFixed(2)}
               </span>
               <span className="text-sm text-gray-500 dark:text-gray-400 line-through ml-2">
-                ${medicine.price.toFixed(2)}
+                ৳{medicine.price.toFixed(2)}
               </span>
             </div>
           ) : (
             <span className="text-lg font-bold text-gray-900 dark:text-white">
-              ${medicine.price.toFixed(2)}
+              ৳{medicine.price.toFixed(2)}
             </span>
           )}
         </div>

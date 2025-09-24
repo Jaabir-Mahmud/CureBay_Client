@@ -373,11 +373,11 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
                     <p className="text-xs text-gray-500 truncate">{medicine.genericName}</p>
                     <div className="flex items-center gap-1 mt-1">
                       <span className="text-sm font-medium text-cyan-600 dark:text-cyan-400">
-                        ${medicine.price}
+                        ৳{medicine.price}
                       </span>
                       {medicine.discountPercentage > 0 && (
                         <span className="text-xs text-gray-500 line-through">
-                          ${((medicine.price * 100) / (100 - medicine.discountPercentage)).toFixed(2)}
+                          ৳{((medicine.price * 100) / (100 - medicine.discountPercentage)).toFixed(2)}
                         </span>
                       )}
                     </div>
@@ -521,10 +521,10 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white">{t('admin.medicines.price', language)}</h3>
                     <p className="text-cyan-600 dark:text-cyan-400 font-medium">
-                      ${selectedMedicine.price} 
+                      ৳{selectedMedicine.price} 
                       {selectedMedicine.discountPercentage > 0 && (
                         <span className="ml-2 text-sm text-red-600 line-through">
-                          ${((selectedMedicine.price * 100) / (100 - selectedMedicine.discountPercentage)).toFixed(2)}
+                          ৳{((selectedMedicine.price * 100) / (100 - selectedMedicine.discountPercentage)).toFixed(2)}
                         </span>
                       )}
                     </p>

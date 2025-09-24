@@ -44,7 +44,7 @@ function OverviewTab({ stats, recentUsers, pendingPayments, acceptPayment }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <StatCard 
           title={t('admin.overview.totalRevenue', language)}
-          value={`$${stats.totalRevenue?.toLocaleString()}`}
+          value={`৳${stats.totalRevenue?.toLocaleString()}`}
           icon={<Lottie animationData={moneyAnim} loop={true} style={{ height: 30, width: 30 }} />}
           trend={stats.revenueGrowth >= 0 ? 'up' : 'down'}
           trendValue={stats.revenueGrowth}
@@ -52,7 +52,7 @@ function OverviewTab({ stats, recentUsers, pendingPayments, acceptPayment }) {
         />
         <StatCard 
           title={t('admin.overview.paidTotal', language)}
-          value={`$${stats.paidTotal?.toLocaleString()}`}
+          value={`৳${stats.paidTotal?.toLocaleString()}`}
           icon={<Lottie animationData={moneyAnim} loop={true} style={{ height: 30, width: 30 }} />}
           trend={stats.paidTotal >= stats.pendingTotal ? 'up' : 'down'}
           trendValue={stats.totalRevenue ? ((stats.paidTotal / stats.totalRevenue) * 100).toFixed(1) : 0}
@@ -60,7 +60,7 @@ function OverviewTab({ stats, recentUsers, pendingPayments, acceptPayment }) {
         />
         <StatCard 
           title={t('admin.overview.pendingTotal', language)}
-          value={`$${stats.pendingTotal?.toLocaleString()}`}
+          value={`৳${stats.pendingTotal?.toLocaleString()}`}
           icon={<Lottie animationData={moneyAnim} loop={true} style={{ height: 30, width: 30 }} />}
           trend={stats.pendingTotal <= stats.paidTotal ? 'down' : 'up'}
           trendValue={stats.totalRevenue ? ((stats.pendingTotal / stats.totalRevenue) * 100).toFixed(1) : 0}
@@ -151,7 +151,7 @@ function OverviewTab({ stats, recentUsers, pendingPayments, acceptPayment }) {
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="text-right">
-                      <p className="font-bold text-lg text-gray-900 dark:text-white">${payment.amount}</p>
+                      <p className="font-bold text-lg text-gray-900 dark:text-white">৳{payment.amount}</p>
                     </div>
                     <Button size="sm" onClick={() => acceptPayment(payment.id)}>
                       {t('admin.overview.accept', language)}

@@ -12,18 +12,25 @@ export const useLanguage = () => {
 };
 
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState('EN');
+  const [language, setLanguage] = useState(() => {
+    const savedLanguage = localStorage.getItem('selectedLanguage');
+    if (savedLanguage && (savedLanguage === 'EN' || savedLanguage === 'BN')) {
+      return savedLanguage;
+    }
+    const browserLang = getBrowserLanguage();
+    return browserLang === 'BN' ? 'BN' : 'EN';
+  });
 
   useEffect(() => {
-    // Load saved language from localStorage or detect browser language
-    const savedLanguage = localStorage.getItem('selectedLanguage');
-    if (savedLanguage) {
-      setLanguage(savedLanguage);
-    } else {
-      // Detect browser language as default
-      const browserLang = getBrowserLanguage();
-      setLanguage(browserLang);
-    }
+    // Only update if localStorage changes externally
+    const handleStorage = () => {
+      const savedLanguage = localStorage.getItem('selectedLanguage');
+      if (savedLanguage && (savedLanguage === 'EN' || savedLanguage === 'BN')) {
+        setLanguage(savedLanguage);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const changeLanguage = (newLanguage) => {

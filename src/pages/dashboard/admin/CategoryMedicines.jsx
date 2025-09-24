@@ -784,11 +784,11 @@ const CategoryMedicines = () => {
                       <div>
                         {medicine.discountPercentage > 0 && (
                           <span className="text-xs text-gray-500 line-through">
-                            ${medicine.price.toFixed(2)}
+                            ৳{medicine.price.toFixed(2)}
                           </span>
                         )}
                         <span className="text-lg font-bold text-green-600">
-                          ${medicine.finalPrice.toFixed(2)}
+                          ৳{medicine.finalPrice.toFixed(2)}
                         </span>
                         {medicine.discountPercentage > 0 && (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded ml-2">
@@ -885,11 +885,11 @@ const CategoryMedicines = () => {
                         <td className="p-4">
                           <div className="flex flex-col">
                             <span className="font-bold text-green-600">
-                              ${medicine.finalPrice.toFixed(2)}
+                              ৳{medicine.finalPrice.toFixed(2)}
                             </span>
                             {medicine.discountPercentage > 0 && (
                               <span className="text-xs text-gray-500 line-through">
-                                ${medicine.price.toFixed(2)}
+                                ৳{medicine.price.toFixed(2)}
                               </span>
                             )}
                           </div>

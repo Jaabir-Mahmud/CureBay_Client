@@ -318,12 +318,12 @@ const CategoryPage = () => {
             {/* Price */}
             <div className="border-t pt-4">
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl font-bold text-cyan-500">${medicine.price}</span>
+                <span className="text-3xl font-bold text-cyan-500">৳{typeof medicine.finalPrice === 'number' ? medicine.finalPrice.toFixed(2) : (typeof medicine.price === 'number' ? medicine.price.toFixed(2) : medicine.price)}</span>
                 {medicine.originalPrice && (
-                  <span className="text-lg text-gray-500 line-through">${medicine.originalPrice}</span>
+                  <span className="text-lg text-gray-500 line-through">৳{typeof medicine.originalPrice === 'number' ? medicine.originalPrice.toFixed(2) : medicine.originalPrice}</span>
                 )}
-                {medicine.discount && (
-                  <Badge className="bg-red-500 text-white">Save ${(medicine.originalPrice - medicine.price).toFixed(2)}</Badge>
+                {medicine.discountPercentage && (
+                  <Badge className="bg-red-500 text-white">Save ৳{((medicine.originalPrice || medicine.price) - (medicine.finalPrice || medicine.price)).toFixed(2)}</Badge>
                 )}
               </div>
               
@@ -351,7 +351,7 @@ const CategoryPage = () => {
                   </Button>
                 </div>
                 <span className="text-sm text-gray-500">
-                  Total: ${(medicine.price * quantity).toFixed(2)}
+                  Total: ৳{((medicine.finalPrice || medicine.price) * quantity).toFixed(2)}
                 </span>
               </div>
 

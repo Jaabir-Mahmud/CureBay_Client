@@ -181,11 +181,12 @@ const InvoicePage = () => {
                               {item.quantity}
                             </td>
                             <td className="py-4 px-4 text-right">
-                              ${item.price.toFixed(2)}
+                              ৳{typeof item.price === 'number' ? item.price.toFixed(2) : item.price}
                             </td>
                             <td className="py-4 px-4 text-right font-medium">
-                              ${itemTotal.toFixed(2)}
+                              ৳{typeof itemTotal === 'number' ? itemTotal.toFixed(2) : itemTotal}
                             </td>
+
                           </tr>
                         );
                       })}
@@ -201,26 +202,26 @@ const InvoicePage = () => {
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
                       <span className="text-gray-900 dark:text-white">
-                        ${(order.totalAmount / 1.08 - (order.totalAmount > 50 ? 0 : 9.99)).toFixed(2)}
+                        ৳{(order.totalAmount / 1.08 - (order.totalAmount > 50 ? 0 : 9.99)).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Tax (8%):</span>
                       <span className="text-gray-900 dark:text-white">
-                        ${(order.totalAmount * 0.08 / 1.08).toFixed(2)}
+                        ৳{(order.totalAmount * 0.08 / 1.08).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Shipping:</span>
                       <span className="text-gray-900 dark:text-white">
-                        {order.totalAmount > 50 ? 'Free' : '$9.99'}
+                        {order.totalAmount > 50 ? 'Free' : '৳9.99'}
                       </span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-bold text-lg">
                       <span className="text-gray-900 dark:text-white">Total:</span>
                       <span className="text-gray-900 dark:text-white">
-                        ${order.totalAmount.toFixed(2)}
+                        ৳{order.totalAmount.toFixed(2)}
                       </span>
                     </div>
                   </div>

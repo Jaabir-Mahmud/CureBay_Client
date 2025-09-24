@@ -528,7 +528,7 @@ function PaymentsTab({
                                 <div>
                                   <Label className="text-sm font-medium">Payment Information</Label>
                                   <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mt-1">
-                                    <p className="font-medium">${payment.amount.toFixed(2)}</p>
+                                    <p className="font-medium">৳{payment.amount.toFixed(2)}</p>
                                     <p className="text-sm text-gray-600">{payment.paymentMethod}</p>
                                     <Badge className={getStatusColor(payment.status)}>
                                       {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
@@ -546,13 +546,13 @@ function PaymentsTab({
                                         <p className="font-medium">{medicine.name}</p>
                                         <p className="text-sm text-gray-600">Quantity: {medicine.quantity}</p>
                                       </div>
-                                      <p className="font-medium">${(medicine.price * medicine.quantity).toFixed(2)}</p>
+                                      <p className="font-medium">৳{(medicine.price * medicine.quantity).toFixed(2)}</p>
                                     </div>
                                   ))}
                                   <div className="border-t pt-2 mt-2">
                                     <div className="flex justify-between items-center font-bold">
                                       <span>Total</span>
-                                      <span>${payment.amount.toFixed(2)}</span>
+                                      <span>৳{payment.amount.toFixed(2)}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -603,7 +603,7 @@ function PaymentsTab({
             <DialogDescription>
               {selectedPayment && (
                 <span>
-                  Payment ID: {selectedPayment.id} - ${selectedPayment.amount.toFixed(2)}
+                  Payment ID: {selectedPayment.id} - ৳{selectedPayment.amount.toFixed(2)}
                 </span>
               )}
             </DialogDescription>

@@ -90,12 +90,12 @@ const HeroSlider = () => {
         </div>
 
         <div className="flex items-center justify-center space-x-2">
-          <span className="text-2xl font-bold text-cyan-500">${medicine.price}</span>
+          <span className="text-2xl font-bold text-cyan-500">৳{medicine.price}</span>
           {medicine.originalPrice && (
-            <span className="text-lg text-gray-500 line-through">${medicine.originalPrice}</span>
+            <span className="text-lg text-gray-500 line-through">৳{medicine.originalPrice}</span>
           )}
-          {medicine.discount && (
-            <Badge className="bg-red-500">-{medicine.discount}%</Badge>
+          {medicine.discountPercentage && (
+            <Badge className="bg-red-500">-{medicine.discountPercentage}%</Badge>
           )}
         </div>
 
@@ -276,16 +276,16 @@ const HeroSlider = () => {
                             
                             <div className="flex items-center justify-center space-x-2 mb-4">
                               <span className="text-xl font-bold text-cyan-500">
-                                ${slide.featured.medicine.price}
+                                ৳{slide.featured.medicine.price}
                               </span>
                               {slide.featured.medicine.originalPrice && (
                                 <span className="text-sm text-gray-500 line-through">
-                                  ${slide.featured.medicine.originalPrice}
+                                  ৳{slide.featured.medicine.originalPrice}
                                 </span>
                               )}
-                              {slide.featured.medicine.discount && (
+                              {slide.featured.medicine.discountPercentage && (
                                 <Badge className="bg-red-100 text-red-700 text-xs">
-                                  -{slide.featured.medicine.discount}%
+                                  -{slide.featured.medicine.discountPercentage}%
                                 </Badge>
                               )}
                             </div>

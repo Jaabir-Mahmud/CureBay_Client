@@ -508,8 +508,8 @@ function ReportsTab() {
                             <Badge variant="outline">{medicine.category}</Badge>
                           </td>
                           <td className="p-3 font-medium">{medicine.quantitySold}</td>
-                          <td className="p-3 font-bold text-green-600">${medicine.revenue.toFixed(2)}</td>
-                          <td className="p-3">${medicine.avgPrice.toFixed(2)}</td>
+                          <td className="p-3 font-bold text-green-600">৳{medicine.revenue.toFixed(2)}</td>
+                          <td className="p-3">৳{medicine.avgPrice.toFixed(2)}</td>
                           <td className="p-3 text-gray-600">{medicine.seller}</td>
                         </tr>
                       ))}
@@ -548,11 +548,11 @@ function ReportsTab() {
                               <span className="font-medium">{seller.name}</span>
                             </div>
                           </td>
-                          <td className="p-3 font-bold text-green-600">${seller.totalSales.toFixed(2)}</td>
+                          <td className="p-3 font-bold text-green-600">৳{seller.totalSales.toFixed(2)}</td>
                           <td className="p-3">{seller.totalOrders}</td>
                           <td className="p-3">{seller.totalMedicines}</td>
-                          <td className="p-3">${seller.averageOrderValue.toFixed(2)}</td>
-                          <td className="p-3 font-medium text-cyan-500">${seller.commission.toFixed(2)}</td>
+                          <td className="p-3">৳{seller.averageOrderValue.toFixed(2)}</td>
+                          <td className="p-3 font-medium text-cyan-500">৳{seller.commission.toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -591,9 +591,9 @@ function ReportsTab() {
                             </div>
                           </td>
                           <td className="p-3 text-gray-600">{customer.email}</td>
-                          <td className="p-3 font-bold text-green-600">${customer.totalSpent.toFixed(2)}</td>
+                          <td className="p-3 font-bold text-green-600">৳{customer.totalSpent.toFixed(2)}</td>
                           <td className="p-3">{customer.totalOrders}</td>
-                          <td className="p-3">${customer.averageOrderValue.toFixed(2)}</td>
+                          <td className="p-3">৳{customer.averageOrderValue.toFixed(2)}</td>
                           <td className="p-3 text-sm">{new Date(customer.lastOrderDate).toLocaleDateString()}</td>
                         </tr>
                       ))}

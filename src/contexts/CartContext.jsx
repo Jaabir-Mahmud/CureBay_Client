@@ -37,9 +37,9 @@ const cartReducer = (state, action) => {
           id: product.id,
           name: product.name,
           company: product.company,
-          price: product.price,
+          price: product.finalPrice || product.price, // Use finalPrice if available, otherwise use price
           originalPrice: product.originalPrice,
-          discount: product.discount,
+          discount: product.discountPercentage,
           image: product.image,
           category: product.category,
           genericName: product.genericName,

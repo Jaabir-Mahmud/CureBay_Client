@@ -103,7 +103,7 @@ const CartPage = () => {
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-white">{item.name}</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-300">by {item.company}</p>
-                      <p className="text-lg font-bold text-cyan-500">${item.price}</p>
+                      <p className="text-lg font-bold text-cyan-500">৳{typeof item.price === 'number' ? item.price.toFixed(2) : item.price}</p>
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -129,7 +129,7 @@ const CartPage = () => {
 
                     <div className="text-right">
                       <p className="font-semibold text-gray-900 dark:text-white">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        ৳{(item.price * item.quantity).toFixed(2)}
                       </p>
                       <Button
                         variant="ghost"
@@ -156,11 +156,11 @@ const CartPage = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>৳{subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tax</span>
-                    <span>${tax.toFixed(2)}</span>
+                    <span>৳{tax.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping</span>
@@ -168,21 +168,21 @@ const CartPage = () => {
                       {shipping === 0 ? (
                         <Badge variant="secondary">Free</Badge>
                       ) : (
-                        `$${shipping.toFixed(2)}`
+                        `৳${shipping.toFixed(2)}`
                       )}
                     </span>
                   </div>
                   <hr />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>৳{total.toFixed(2)}</span>
                   </div>
                 </div>
 
                 {shipping > 0 && (
                   <div className="bg-cyan-50 dark:bg-cyan-900/20 p-3 rounded-lg transition-colors">
                     <p className="text-sm text-cyan-700 dark:text-cyan-300">
-                      Add ${(50 - subtotal).toFixed(2)} more for free shipping!
+                      Add ৳{(50 - subtotal).toFixed(2)} more for free shipping!
                     </p>
                   </div>
                 )}

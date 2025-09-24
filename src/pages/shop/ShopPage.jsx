@@ -394,16 +394,16 @@ const ShopPage = () => {
                         <div>
                           {medicine.discountPercentage > 0 ? (
                             <>
-                              <span className="text-lg font-bold text-cyan-600">${medicine.finalPrice}</span>
-                              <span className="text-sm text-gray-500 line-through ml-2">${medicine.price}</span>
+                              <span className="text-lg font-bold text-cyan-600">৳{typeof medicine.finalPrice === 'number' ? medicine.finalPrice.toFixed(2) : medicine.finalPrice}</span>
+                              <span className="text-sm text-gray-500 line-through ml-2">৳{typeof medicine.price === 'number' ? medicine.price.toFixed(2) : medicine.price}</span>
                             </>
                           ) : (
-                            <span className="text-lg font-bold text-cyan-600">${medicine.price}</span>
+                            <span className="text-lg font-bold text-cyan-600">৳{typeof medicine.price === 'number' ? medicine.price.toFixed(2) : medicine.price}</span>
                           )}
                         </div>
                         <Badge variant="secondary">{medicine.mass} {medicine.massUnit}</Badge>
                       </div>
-                      
+
                       <Button
                         onClick={() => handleAddToCart(medicine, 1, medicine.massUnit)}
                         className="w-full bg-cyan-500 hover:bg-cyan-600"
