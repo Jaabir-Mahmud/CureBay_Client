@@ -191,8 +191,12 @@ const AdminDashboard = () => {
       setIsLoading(true);
       
       try {
+        const token = await user.getIdToken();
+        
         // Fetch overview stats
-        const statsResponse = await fetch('/api/admin/overview');
+        const statsResponse = await fetch('/api/admin/overview', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();
           setStats(statsData);
@@ -212,7 +216,9 @@ const AdminDashboard = () => {
         }
         
         // Fetch recent users
-        const usersResponse = await fetch('/api/admin/recent-users');
+        const usersResponse = await fetch('/api/admin/recent-users', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
           setRecentUsers(Array.isArray(usersData) ? usersData : []);
@@ -221,7 +227,9 @@ const AdminDashboard = () => {
         }
         
         // Fetch pending payments
-        const paymentsResponse = await fetch('/api/admin/pending-payments');
+        const paymentsResponse = await fetch('/api/admin/pending-payments', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (paymentsResponse.ok) {
           const paymentsData = await paymentsResponse.json();
           setPendingPayments(Array.isArray(paymentsData) ? paymentsData : []);
@@ -230,16 +238,32 @@ const AdminDashboard = () => {
         }
         
         // Fetch categories
+        console.log('Fetching categories...'); // Debug log
         const categoriesResponse = await fetch('/api/categories');
+        console.log('Categories response status:', categoriesResponse.status); // Debug log
         if (categoriesResponse.ok) {
           const categoriesData = await categoriesResponse.json();
-          setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+          console.log('Fetched categories:', categoriesData); // Debug log
+          // Ensure we have an array and handle potential null/undefined values
+          const validCategories = Array.isArray(categoriesData) 
+            ? categoriesData.filter(cat => cat !== null && cat !== undefined)
+            : [];
+          
+          // If no categories exist, we might want to show a message or create defaults
+          if (validCategories.length === 0) {
+            console.log('No categories found, consider creating default categories');
+          }
+          
+          setCategories(validCategories);
         } else {
+          console.error('Failed to fetch categories:', categoriesResponse.status); // Debug log
           setCategories([]);
         }
         
         // Fetch all payments (orders with payment information)
-        const allPaymentsResponse = await fetch('/api/orders');
+        const allPaymentsResponse = await fetch('/api/orders', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (allPaymentsResponse.ok) {
           const allPaymentsData = await allPaymentsResponse.json();
           // Transform orders to payment format
@@ -322,11 +346,17 @@ const AdminDashboard = () => {
 
   const acceptPayment = async (orderId) => {
     try {
-      const res = await fetch(`/api/admin/accept-payment/${orderId}`, { method: 'PATCH' });
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/admin/accept-payment/${orderId}`, { 
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) throw new Error('Failed to accept payment');
       setPendingPayments(payments => payments.filter(p => p.id !== orderId));
       // Optionally, refetch stats to update paid/pending totals
-      fetch('/api/admin/overview')
+      fetch('/api/admin/overview', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
         .then(res => res.json())
         .then(data => setStats(data));
     } catch {

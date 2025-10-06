@@ -139,10 +139,26 @@ const translations = {
     
     // Home Page - Categories Section
     'home.categories.title': 'Browse Categories',
-  'home.categories.description': 'Explore our medicine categories and find what you need for your health.',
+    'home.categories.description': 'Explore our medicine categories and find what you need for your health.',
     'home.categories.viewAll': 'View All Categories',
     'home.categories.medicines': 'medicines',
     'home.categories.error': 'Failed to load categories',
+    'home.categories.noCategories': 'No categories available',
+    
+    // Home Page - Discount Section
+    'home.discount.specialOffers': 'Special Offers',
+    'home.discount.description': 'Discover our amazing deals and save on your favorite medicines',
+    'home.discount.viewAllOffers': 'View all Special Offers',
+    'home.discount.hideAllOffers': 'Hide Special Offers',
+    'home.discount.quickView': 'Quick View',
+    'home.discount.reviews': 'reviews',
+    'home.discount.productDetails': 'Product Details',
+    'home.discount.descriptionTitle': 'Description',
+    'home.discount.noDescription': 'No description available',
+    'home.discount.addToCart': 'Add to Cart',
+    'home.discount.off': 'OFF',
+    'home.discount.error': 'Failed to load special offers',
+    'home.discount.noOffers': 'No special offers available at the moment',
     
     // Home Page - Category Section (Bengali) (existing)
     'home.category.viewAll': 'সব দেখুন',
@@ -921,22 +937,26 @@ const translations = {
     
     // Home Page - Categories Section
     'home.categories.title': 'বিভাগগুলি ব্রাউজ করুন',
-  'home.categories.description': 'আমাদের ঔষধ বিভাগগুলি দেখুন এবং আপনার স্বাস্থ্যসেবার জন্য প্রয়োজনীয়টি খুঁজে নিন।',
+    'home.categories.description': 'আমাদের ঔষধ বিভাগগুলি দেখুন এবং আপনার স্বাস্থ্যসেবার জন্য প্রয়োজনীয়টি খুঁজে নিন।',
     'home.categories.viewAll': 'সমস্ত বিভাগ দেখুন',
     'home.categories.medicines': 'ঔষধসমূহ',
     'home.categories.error': 'বিভাগগুলি লোড করতে ব্যর্থ',
+    'home.categories.noCategories': 'কোন বিভাগ উপলব্ধ নেই',
     
+    // Home Page - Discount Section
     'home.discount.specialOffers': 'বিশেষ অফার',
     'home.discount.description': 'আমাদের অসাধারণ ডিলগুলি আবিষ্কার করুন এবং আপনার প্রিয় ওষুধগুলিতে সঞ্চয় করুন',
-  'home.discount.viewAllOffers': 'সব বিশেষ অফার দেখুন',
-  'home.discount.hideAllOffers': 'বিশেষ অফার লুকান',
-    'home.discount.off': 'ছাড়',
+    'home.discount.viewAllOffers': 'সব বিশেষ অফার দেখুন',
+    'home.discount.hideAllOffers': 'বিশেষ অফার লুকান',
     'home.discount.quickView': 'দ্রুত দেখুন',
     'home.discount.reviews': 'রিভিউ',
     'home.discount.productDetails': 'পণ্যের বিবরণ',
     'home.discount.descriptionTitle': 'বর্ণনা',
     'home.discount.noDescription': 'কোন বর্ণনা উপলব্ধ নেই',
     'home.discount.addToCart': 'কার্টে যোগ করুন',
+    'home.discount.off': 'ছাড়',
+    'home.discount.error': 'বিশেষ অফার লোড করতে ব্যর্থ',
+    'home.discount.noOffers': 'এই মুহূর্তে কোন বিশেষ অফার উপলব্ধ নেই',
   }
 };
 

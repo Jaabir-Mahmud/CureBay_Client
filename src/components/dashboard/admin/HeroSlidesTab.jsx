@@ -28,12 +28,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../ui/dialog';
+import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 function HeroSlidesTab({ 
   heroSlides, 
   setHeroSlides 
 }) {
+  const { user } = useAuth();
   const [heroSlideForm, setHeroSlideForm] = useState({
     title: '',
     subtitle: '',
@@ -98,17 +100,19 @@ function HeroSlidesTab({
   const saveHeroSlide = async () => {
     try {
       // Validate required fields
-      if (!heroSlideForm.title || !heroSlideForm.image) {
+      if (!heroSlideForm.title || !heroSlideForm.image || !user) {
         toast.error('Title and image are required');
         return;
       }
 
+      const token = await user.getIdToken();
       if (editingHeroSlide) {
         // Update existing slide
         const response = await fetch(`/api/hero-slides/${editingHeroSlide._id || editingHeroSlide.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(heroSlideForm),
         });
@@ -138,6 +142,7 @@ function HeroSlidesTab({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(heroSlideForm),
         });
@@ -164,11 +169,15 @@ function HeroSlidesTab({
   };
 
   const deleteHeroSlide = async (slideId) => {
+    if (!user) return;
+    
     const slide = heroSlides.find(s => s._id === slideId || s.id === slideId);
     if (window.confirm(`Are you sure you want to delete "${slide?.title}"?`)) {
       try {
+        const token = await user.getIdToken();
         const response = await fetch(`/api/hero-slides/${slideId}`, {
           method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!response.ok) {
@@ -185,9 +194,13 @@ function HeroSlidesTab({
   };
 
   const toggleHeroSlideStatus = async (slideId) => {
+    if (!user) return;
+    
     try {
+      const token = await user.getIdToken();
       const response = await fetch(`/api/hero-slides/${slideId}/toggle-status`, {
         method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) {

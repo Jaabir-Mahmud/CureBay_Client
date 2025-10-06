@@ -29,12 +29,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../ui/dialog';
+import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 function BannersTab({ 
   bannerAds, 
   setBannerAds 
 }) {
+  const { user } = useAuth();
   const [bannerSearch, setBannerSearch] = useState('');
   const [bannerStatusFilter, setBannerStatusFilter] = useState('all'); // all, active, inactive, scheduled, expired
   const [bannerModalOpen, setBannerModalOpen] = useState(false);
@@ -82,19 +84,21 @@ function BannersTab({
   };
 
   const saveBanner = async () => {
-    if (!bannerForm.title.trim() || !bannerForm.image.trim()) {
+    if (!bannerForm.title.trim() || !bannerForm.image.trim() || !user) {
       toast.error('Title and image are required.');
       return;
     }
     
     setIsSavingBanner(true);
     try {
+      const token = await user.getIdToken();
       if (editingBanner) {
         // Update existing banner
         const response = await fetch(`/api/banners/${editingBanner._id || editingBanner.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(bannerForm),
         });
@@ -124,6 +128,7 @@ function BannersTab({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(bannerForm),
         });
@@ -155,7 +160,7 @@ function BannersTab({
 
   const deleteBanner = async (bannerId) => {
     // Check if bannerId is valid
-    if (!bannerId) {
+    if (!bannerId || !user) {
       toast.error('Invalid banner ID');
       return;
     }
@@ -163,8 +168,10 @@ function BannersTab({
     const banner = bannerAds.find(b => b._id === bannerId || b.id === bannerId);
     if (window.confirm(`Are you sure you want to delete "${banner?.title}"?`)) {
       try {
+        const token = await user.getIdToken();
         const response = await fetch(`/api/banners/${bannerId}`, {
           method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!response.ok) {
@@ -182,14 +189,16 @@ function BannersTab({
 
   const toggleBannerStatus = async (bannerId) => {
     // Check if bannerId is valid
-    if (!bannerId) {
+    if (!bannerId || !user) {
       toast.error('Invalid banner ID');
       return;
     }
     
     try {
+      const token = await user.getIdToken();
       const response = await fetch(`/api/banners/${bannerId}/toggle-status`, {
         method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) {
@@ -221,15 +230,19 @@ function BannersTab({
 
   const changeBannerPriority = async (bannerId, newPriority) => {
     // Check if bannerId is valid
-    if (!bannerId) {
+    if (!bannerId || !user) {
       toast.error('Invalid banner ID');
       return;
     }
     
     try {
+      const token = await user.getIdToken();
       const response = await fetch(`/api/banners/${bannerId}/priority`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ priority: newPriority })
       });
 
@@ -599,7 +612,7 @@ const getBannerStatusText = (banner) => {
                           <div className="flex items-center gap-2">
                             <Label className="text-xs whitespace-nowrap">Priority:</Label>
                             <Select 
-                              value={banner.priority.toString()} 
+                              value={(banner.priority || 3).toString()} 
                               onValueChange={(value) => changeBannerPriority(banner.id || banner._id, parseInt(value))}
                             >
                               <SelectTrigger className="h-8 text-xs flex-1">
@@ -651,7 +664,7 @@ const getBannerStatusText = (banner) => {
               <div>
                 <Label htmlFor="banner-priority">Priority</Label>
                 <Select 
-                  value={bannerForm.priority.toString()} 
+                  value={(bannerForm.priority || 3).toString()} 
                   onValueChange={(value) => setBannerForm({...bannerForm, priority: parseInt(value)})}
                 >
                   <SelectTrigger>

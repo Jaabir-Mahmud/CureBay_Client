@@ -413,11 +413,20 @@ const SellerDashboard = () => {
         discountPercentage: parseInt(data.discountPercentage) || 0 // Ensure discount is an integer
       };
 
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/medicines', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(medicineData)
       });
 
@@ -482,11 +491,20 @@ const SellerDashboard = () => {
         discountPercentage: parseInt(data.discountPercentage) || 0 // Ensure discount is an integer
       };
 
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`/api/medicines/${selectedMedicine._id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(medicineData)
       });
 
@@ -520,8 +538,18 @@ const SellerDashboard = () => {
     if (!confirm('Are you sure you want to delete this medicine?')) return;
     
     try {
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {};
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`/api/medicines/${medicineId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers
       });
 
       if (!response.ok) throw new Error('Failed to delete medicine');

@@ -34,20 +34,40 @@ function ManageUsers() {
   const [userToDelete, setUserToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { validateSession } = useAuth();
+  const { user: currentUser, validateSession } = useAuth();
 
   useEffect(() => {
-    fetch('/api/users')
-      .then(res => res.json())
-      .then(data => {
-        setUsers(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Failed to fetch users');
-        setLoading(false);
-      });
+    fetchUsers();
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch('/api/users', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setUsers(data);
+      } else {
+        console.error('Expected array but got:', data);
+        setUsers([]);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setError('Failed to fetch users');
+      setUsers([]); // Set empty array as fallback
+      setLoading(false);
+    }
+  };
 
   // Keyboard shortcut for refresh (Ctrl+R or F5)
   useEffect(() => {
@@ -66,9 +86,13 @@ function ManageUsers() {
 
   const updateRole = async (id, newRole) => {
     try {
+      const token = await currentUser.getIdToken();
       const res = await fetch(`/api/users/${id}/role`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
         body: JSON.stringify({ role: newRole }),
       });
       if (!res.ok) throw new Error('Failed to update role');
@@ -88,7 +112,11 @@ function ManageUsers() {
     
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/users/${userToDelete._id}`, { method: 'DELETE' });
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`/api/users/${userToDelete._id}`, { 
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) throw new Error('Failed to delete user');
       setUsers(users => users.filter(u => u._id !== userToDelete._id));
       setDeleteModalOpen(false);
@@ -124,9 +152,13 @@ function ManageUsers() {
     setIsRefreshing(true);
     setError(null);
     try {
-      const res = await fetch('/api/users');
-      if (!res.ok) throw new Error('Failed to fetch users');
-      // Handle potential empty or invalid JSON responses
+      const token = await currentUser.getIdToken();
+      const res = await fetch('/api/users', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (!res.ok) throw new Error(`Failed to fetch users. Status: ${res.status}`);
+      
       let data;
       try {
         data = await res.json();
@@ -134,11 +166,22 @@ function ManageUsers() {
         console.error('Failed to parse JSON response:', jsonError);
         data = []; // Use empty array as fallback
       }
-      setUsers(data);
-      toast.success(`Refreshed user list - ${data.length} users found`, {
-        duration: 3000,
-        position: 'top-right',
-      });
+      
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setUsers(data);
+        toast.success(`Refreshed user list - ${data.length} users found`, {
+          duration: 3000,
+          position: 'top-right',
+        });
+      } else {
+        console.error('Expected array but got:', data);
+        setUsers([]);
+        toast.success(`Refreshed user list - 0 users found`, {
+          duration: 3000,
+          position: 'top-right',
+        });
+      }
     } catch (err) {
       setError('Failed to refresh users');
       console.error('Error refreshing users:', err);
@@ -153,7 +196,11 @@ function ManageUsers() {
 
   const toggleActive = async (id) => {
     try {
-      const res = await fetch(`/api/users/${id}/active`, { method: 'PATCH' });
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`/api/users/${id}/active`, { 
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) throw new Error('Failed to update status');
       // Handle potential empty or invalid JSON responses
       let data;
@@ -169,11 +216,11 @@ function ManageUsers() {
     }
   };
 
-  const filteredUsers = users.filter(u =>
+  const filteredUsers = Array.isArray(users) ? users.filter(u =>
     (roleFilter === 'all' || u.role === roleFilter) &&
     (u.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()))
-  );
+  ) : [];
 
   if (loading) return <div>Loading users...</div>;
   if (error) return <div className="text-red-500">{error}</div>;

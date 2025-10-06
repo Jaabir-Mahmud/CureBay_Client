@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../../ui/dialog';
+import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 function PaymentsTab({ 
@@ -43,6 +44,7 @@ function PaymentsTab({
   const [paymentAction, setPaymentAction] = useState(''); // accept, reject
   const [rejectReason, setRejectReason] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const { user } = useAuth();
 
   // Payment Management Functions
   const filteredPayments = payments.filter(payment => {
@@ -86,10 +88,11 @@ function PaymentsTab({
   };
 
   const processPayment = async () => {
-    if (!selectedPayment) return;
+    if (!selectedPayment || !user) return;
     
     setIsProcessingPayment(true);
     try {
+      const token = await user.getIdToken();
       // Update order payment status
       const endpoint = `/api/orders/${selectedPayment.id}`;
       const requestBody = JSON.stringify({
@@ -98,7 +101,10 @@ function PaymentsTab({
       
       const res = await fetch(endpoint, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: requestBody
       });
       
@@ -137,7 +143,7 @@ function PaymentsTab({
   };
 
   const handleBulkPaymentAction = async (action) => {
-    if (selectedPayments.size === 0) {
+    if (selectedPayments.size === 0 || !user) {
       toast.error('Please select payments to process.');
       return;
     }
@@ -150,6 +156,7 @@ function PaymentsTab({
     
     setIsProcessingPayment(true);
     try {
+      const token = await user.getIdToken();
       const promises = Array.from(selectedPayments).map(paymentId => {
         const endpoint = `/api/orders/${paymentId}`;
         const requestBody = JSON.stringify({
@@ -157,7 +164,10 @@ function PaymentsTab({
         });
         return fetch(endpoint, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: requestBody
         });
       });

@@ -314,41 +314,51 @@ const AuthPage = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      // Check if this is a new user
-      if (user.metadata.creationTime === user.metadata.lastSignInTime) {
-        // New user - save additional data
-        try {
-          const userData = {
-            uid: user.uid,
-            email: user.email,
-            name: user.displayName,
-            profilePicture: user.photoURL
-          };
+      // Get the Firebase ID token
+      const idToken = await user.getIdToken();
+      
+      // Send user data and token to backend
+      try {
+        const userData = {
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName,
+          profilePicture: user.photoURL
+        };
+        
+        const response = await fetch('/api/auth/firebase-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            idToken,
+            ...userData
+          })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage = 'Failed to authenticate with server';
           
-          const response = await fetch('/api/users/google', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(userData)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            // If user already exists, that's fine - continue with login
-            if (!errorData.userExists) {
-              throw new Error(errorData.error || 'Failed to save user data');
-            }
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.error || errorMessage;
+          } catch (parseError) {
+            // If response is not JSON, use the raw text
+            errorMessage = errorText || errorMessage;
           }
           
-          // Wait a moment for the user to be fully created in the database
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        } catch (error) {
-          console.error('Error saving user data:', error);
-          toast.error('Failed to save user data. Please contact support.');
-          // Don't navigate if user creation failed
-          return;
+          throw new Error(errorMessage);
         }
+        
+        // Wait a moment for the user to be fully created in the database
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        console.error('Error authenticating with server:', error);
+        toast.error('Failed to authenticate with server. Please contact support.');
+        // Don't navigate if user creation failed
+        return;
       }
       
       toast.success('Login successful!');

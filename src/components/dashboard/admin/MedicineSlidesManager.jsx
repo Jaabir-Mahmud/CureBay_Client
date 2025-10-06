@@ -14,11 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../ui/dialog';
+import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { t } from '../../../lib/i18n';
 
 function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSlides }) {
+  const { user } = useAuth();
   const { language } = useLanguage();
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +54,9 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
   const fetchMedicines = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/medicines?limit=1000');
+      const token = user ? await user.getIdToken() : null;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await fetch('/api/medicines?limit=1000', { headers });
       if (response.ok) {
         const data = await response.json();
         setMedicines(data.medicines || []);
@@ -169,6 +173,7 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
 
     setIsSubmitting(true);
     try {
+      const token = await user.getIdToken();
       const formData = {
         ...medicineForm,
         price: parseFloat(medicineForm.price),
@@ -182,6 +187,7 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(formData),
       });
@@ -231,8 +237,18 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
     }
     
     try {
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {};
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/medicines/${medicineId}`, {
         method: 'DELETE',
+        headers,
       });
 
       if (res.ok) {
@@ -256,11 +272,20 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
   // Toggle medicine status
   const toggleMedicineStatus = async (medicineId, currentStatus) => {
     try {
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/medicines/${medicineId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ inStock: !currentStatus }),
       });
 

@@ -1,0 +1,21 @@
+```css
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.7s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Existing styles for category cards */
+.category-card {
+  /* other styles */
+  opacity: 0; /* Ensure cards are hidden initially */
+  transform: translateY(10px); /* Start position for animation */
+}
+
+.category-card.visible {
+  opacity: 1; /* Fade in effect */
+  transform: translateY(0); /* Slide up effect */
+}
+```

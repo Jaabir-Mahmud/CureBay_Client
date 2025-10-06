@@ -17,8 +17,10 @@ import {
   DialogTitle,
 } from '../../../components/ui/dialog';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const CategoryMedicines = () => {
+  const { user } = useAuth();
   const { categoryId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -83,6 +85,15 @@ const CategoryMedicines = () => {
 
   useEffect(() => {
     console.log('CategoryMedicines mounted with categoryId:', categoryId);
+    
+    // Validate categoryId before fetching data
+    if (!categoryId || categoryId === 'undefined') {
+      console.error('Invalid categoryId:', categoryId);
+      toast.error('Invalid category ID. Please select a valid category.');
+      setLoading(false);
+      return;
+    }
+    
     fetchCategoryMedicines();
     fetchAllCategories();
   }, [categoryId]);
@@ -123,6 +134,13 @@ const CategoryMedicines = () => {
   };
 
   const fetchCategoryMedicines = async () => {
+    // Validate categoryId before making requests
+    if (!categoryId || categoryId === 'undefined') {
+      console.error('Cannot fetch medicines: Invalid categoryId:', categoryId);
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       console.log('Fetching medicines for category:', categoryId);
@@ -135,6 +153,7 @@ const CategoryMedicines = () => {
         setCategory(categoryData);
       } else {
         console.error('Failed to fetch category:', categoryRes.status);
+        toast.error('Failed to load category information');
       }
       
       // Fetch medicines in this category
@@ -192,7 +211,9 @@ const CategoryMedicines = () => {
         case 'name':
           return (a.name || '').localeCompare(b.name || '');
         case 'price':
-          return (a.finalPrice || 0) - (b.finalPrice || 0);
+          const aFinalPrice = a.finalPrice || a.price * (1 - a.discountPercentage / 100) || 0;
+          const bFinalPrice = b.finalPrice || b.price * (1 - b.discountPercentage / 100) || 0;
+          return aFinalPrice - bFinalPrice;
         case 'stock':
           return (b.stockQuantity || 0) - (a.stockQuantity || 0);
         case 'company':
@@ -380,11 +401,20 @@ const CategoryMedicines = () => {
       console.log('Original form data:', medicineForm);
       console.log('Processed form data being sent:', formData);
 
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch('/api/medicines', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(formData),
       });
 
@@ -428,67 +458,26 @@ const CategoryMedicines = () => {
     }
   };
 
-  const handleUpdateMedicine = async (e) => {
+  const updateMedicine = async (e) => {
     e.preventDefault();
-    
-    // Validate required fields
-    if (!medicineForm.name.trim()) {
-      toast.error('Medicine name is required');
-      return;
-    }
-    if (!medicineForm.genericName.trim()) {
-      toast.error('Generic name is required');
-      return;
-    }
-    if (!medicineForm.description.trim()) {
-      toast.error('Description is required');
-      return;
-    }
-    if (!medicineForm.category) {
-      toast.error('Category is required');
-      return;
-    }
-    if (!medicineForm.company.trim()) {
-      toast.error('Company name is required');
-      return;
-    }
-    if (!medicineForm.massUnit.trim()) {
-      toast.error('Mass unit is required');
-      return;
-    }
-    if (!medicineForm.price || isNaN(medicineForm.price) || parseFloat(medicineForm.price) <= 0) {
-      toast.error('Valid price is required');
-      return;
-    }
-    if (!medicineForm.stockQuantity || isNaN(medicineForm.stockQuantity) || parseInt(medicineForm.stockQuantity) < 0) {
-      toast.error('Valid stock quantity is required');
-      return;
-    }
-
     setIsSubmitting(true);
+    
     try {
-      // Handle image upload if a file was selected
-      let imageUrl = medicineForm.image || '';
-      
+      // Upload image if a new file is provided
+      let imageUrl = editingMedicine.image; // Default to existing image
       if (medicineForm.imageFile) {
         try {
-          setIsUploadingImage(true);
-          const uploadToast = toast.loading('Uploading image...');
-          
           const uploadResult = await uploadImageFile(medicineForm.imageFile);
           imageUrl = uploadResult.url;
-          
-          toast.dismiss(uploadToast);
-          toast.success('Image uploaded successfully!');
         } catch (uploadError) {
-          toast.error(`Image upload failed: ${uploadError.message}`);
-          // Continue with form submission even if image upload fails
-          console.error('Image upload error:', uploadError);
-        } finally {
-          setIsUploadingImage(false);
+          console.error('Image upload failed:', uploadError);
+          toast.error('Failed to upload image: ' + uploadError.message);
+          setIsSubmitting(false);
+          return;
         }
       }
-
+      
+      // Prepare form data
       const formData = {
         ...medicineForm,
         image: imageUrl, // Use uploaded image URL or provided URL
@@ -502,11 +491,20 @@ const CategoryMedicines = () => {
       // Remove imageFile from the data being sent to server
       delete formData.imageFile;
 
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/medicines/${editingMedicine._id || editingMedicine.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(formData),
       });
 
@@ -554,8 +552,18 @@ const CategoryMedicines = () => {
     }
     
     try {
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {};
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/medicines/${medicineId}`, {
         method: 'DELETE',
+        headers,
       });
 
       if (res.ok) {
@@ -578,11 +586,20 @@ const CategoryMedicines = () => {
 
   const toggleMedicineStatus = async (medicineId, currentStatus) => {
     try {
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/medicines/${medicineId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ inStock: !currentStatus }),
       });
 
@@ -755,7 +772,7 @@ const CategoryMedicines = () => {
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredMedicines.map((medicine) => (
-              <Card key={medicine._id || medicine.id} className="group hover:shadow-lg transition-all duration-300">
+              <Card key={`grid-${medicine._id || medicine.id}`} className="group hover:shadow-lg transition-all duration-300">
                 <CardContent className="p-6">
                   <div className="mb-4">
                     <img
@@ -784,11 +801,11 @@ const CategoryMedicines = () => {
                       <div>
                         {medicine.discountPercentage > 0 && (
                           <span className="text-xs text-gray-500 line-through">
-                            ৳{medicine.price.toFixed(2)}
+                            ৳{(medicine.price || 0).toFixed(2)}
                           </span>
                         )}
                         <span className="text-lg font-bold text-green-600">
-                          ৳{medicine.finalPrice.toFixed(2)}
+                          ৳{(medicine.finalPrice || medicine.price * (1 - medicine.discountPercentage / 100) || 0).toFixed(2)}
                         </span>
                         {medicine.discountPercentage > 0 && (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded ml-2">
@@ -861,7 +878,7 @@ const CategoryMedicines = () => {
                   </thead>
                   <tbody>
                     {filteredMedicines.map((medicine) => (
-                      <tr key={medicine._id || medicine.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <tr key={`list-${medicine._id || medicine.id}`} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/50">
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <img
@@ -885,11 +902,11 @@ const CategoryMedicines = () => {
                         <td className="p-4">
                           <div className="flex flex-col">
                             <span className="font-bold text-green-600">
-                              ৳{medicine.finalPrice.toFixed(2)}
+                              ৳{(medicine.finalPrice || medicine.price * (1 - medicine.discountPercentage / 100) || 0).toFixed(2)}
                             </span>
                             {medicine.discountPercentage > 0 && (
                               <span className="text-xs text-gray-500 line-through">
-                                ৳{medicine.price.toFixed(2)}
+                                ৳{(medicine.price || 0).toFixed(2)}
                               </span>
                             )}
                           </div>
@@ -1003,7 +1020,7 @@ const CategoryMedicines = () => {
                     </SelectItem>
                   ) : (
                     categories.map((cat) => (
-                      <SelectItem key={cat._id || cat.id} value={cat._id || cat.id}>
+                      <SelectItem key={`add-${cat._id || cat.id}`} value={cat._id || cat.id}>
                         {cat.name}
                       </SelectItem>
                     ))
@@ -1241,7 +1258,7 @@ const CategoryMedicines = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleUpdateMedicine} className="space-y-4">
+          <form onSubmit={updateMedicine} className="space-y-4">
             {/* Medicine Name */}
             <div>
               <Label htmlFor="edit-name" className="text-sm font-medium">
@@ -1284,7 +1301,7 @@ const CategoryMedicines = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
-                    <SelectItem key={cat._id || cat.id} value={cat._id || cat.id}>
+                    <SelectItem key={`edit-${cat._id || cat.id}`} value={cat._id || cat.id}>
                       {cat.name}
                     </SelectItem>
                   ))}

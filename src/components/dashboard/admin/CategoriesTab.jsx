@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../ui/dialog';
+import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { useLanguage } from '../../../contexts/LanguageContext'; // Added LanguageContext import
 import { t } from '../../../lib/i18n'; // Added translation import
@@ -43,6 +44,7 @@ function CategoriesTab({
   activeTab 
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { language } = useLanguage(); // Use language context
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryViewMode, setCategoryViewMode] = useState('grid'); // 'grid' or 'list'
@@ -57,6 +59,12 @@ function CategoriesTab({
   const [deleteCategoryModalOpen, setDeleteCategoryModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+
+  // Debug log to see what categories are being passed
+  useEffect(() => {
+    console.log('CategoriesTab received categories:', categories);
+    console.log('Number of categories:', categories.length);
+  }, [categories]);
 
   // Category helper functions
   const getIconComponent = (iconName) => {
@@ -113,10 +121,33 @@ function CategoriesTab({
     return colors[color] || colors.cyan;
   };
 
-  const filteredCategories = categories.filter(category =>
-    category.name.toLowerCase().includes(categorySearch.toLowerCase()) ||
-    category.description.toLowerCase().includes(categorySearch.toLowerCase())
-  );
+  const filteredCategories = categories.filter(category => {
+    // Basic validation - exclude null/undefined categories
+    if (!category) return false;
+    
+    // Check if category has a valid ID (_id or id)
+    const categoryId = category.id || category._id;
+    if (!categoryId) return false;
+    
+    // If no search term, include all valid categories
+    if (!categorySearch) return true;
+    
+    // Check if name or description match search (if provided)
+    const name = category.name || '';
+    const description = category.description || '';
+    
+    const nameMatch = name.toLowerCase().includes(categorySearch.toLowerCase());
+    const descriptionMatch = description.toLowerCase().includes(categorySearch.toLowerCase());
+    
+    // Include if either name or description matches
+    return nameMatch || descriptionMatch;
+  });
+
+  // Debug log to see filtered categories
+  useEffect(() => {
+    console.log('Filtered categories:', filteredCategories);
+    console.log('Number of filtered categories:', filteredCategories.length);
+  }, [filteredCategories]);
 
   const openCategoryModal = (category = null) => {
     if (category) {
@@ -140,8 +171,31 @@ function CategoriesTab({
   };
 
   const viewCategoryMedicines = (category) => {
+    // Basic validation for category before navigation
+    if (!category) {
+      toast.error('Invalid category selected');
+      return;
+    }
+    
+    // Use category._id if category.id is not available
+    const categoryId = category.id || category._id;
+    if (!categoryId) {
+      toast.error('Category ID is missing');
+      return;
+    }
+    
+    // Validate that categoryId looks like a valid MongoDB ObjectId or is a valid string
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    const isValidObjectId = objectIdRegex.test(categoryId);
+    const isValidString = typeof categoryId === 'string' && categoryId.length > 0;
+    
+    if (!isValidObjectId && !isValidString) {
+      toast.error('Invalid category ID format');
+      return;
+    }
+    
     // Preserve current tab in the URL for proper back navigation
-    navigate(`/dashboard/admin/categories/${category.id}/medicines?fromTab=${activeTab}`);
+    navigate(`/dashboard/admin/categories/${categoryId}/medicines?fromTab=${activeTab}`);
   };
 
   const closeCategoryModal = () => {
@@ -170,6 +224,7 @@ function CategoriesTab({
     }
 
     try {
+      const token = await user.getIdToken();
       let res;
       if (editingCategory) {
         // Check if this is a default category (numeric ID) that doesn't exist in backend
@@ -179,21 +234,30 @@ function CategoriesTab({
           // Create new category for default ones
           res = await fetch('/api/categories', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify(categoryForm),
           });
         } else {
           // Update existing category with valid MongoDB ObjectId
           res = await fetch(`/api/categories/${editingCategory.id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify(categoryForm),
           });
         }
       } else {
         res = await fetch('/api/categories', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify(categoryForm),
         });
       }
@@ -232,10 +296,11 @@ function CategoriesTab({
   };
 
   const deleteCategory = async () => {
-    if (!categoryToDelete) return;
+    if (!categoryToDelete || !user) return;
     
     setIsDeletingCategory(true);
     try {
+      const token = await user.getIdToken();
       // Check if this is a default category (numeric ID) that doesn't exist in backend
       const isDefaultCategory = typeof categoryToDelete.id === 'number' || !isNaN(categoryToDelete.id);
       
@@ -243,6 +308,7 @@ function CategoriesTab({
         // Delete from backend only if it's not a default category
         const res = await fetch(`/api/categories/${categoryToDelete.id}`, {
           method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!res.ok) {
@@ -336,6 +402,7 @@ function CategoriesTab({
       </div>
 
       {/* Categories Grid/List */}
+      {console.log('Rendering categories section, filteredCategories.length:', filteredCategories.length)}
       {filteredCategories.length === 0 ? (
         <div className="text-center py-12">
           <Package className="w-12 h-12 mx-auto text-gray-400 mb-4" />
@@ -345,12 +412,28 @@ function CategoriesTab({
       ) : categoryViewMode === 'grid' ? (
         // Grid View
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {console.log('Rendering grid view with', filteredCategories.length, 'categories')}
           {filteredCategories.map((category) => {
-            const IconComponent = getIconComponent(category.icon);
-            const colorClasses = getColorClasses(category.color);
+            // Basic safety check
+            if (!category) {
+              return null;
+            }
+            
+            // Use category._id if category.id is not available
+            const categoryId = category.id || category._id;
+            if (!categoryId) {
+              return null;
+            }
+            
+            const IconComponent = getIconComponent(category.icon || 'Pill');
+            const colorClasses = getColorClasses(category.color || 'cyan');
+            const categoryName = category.name || 'Unnamed Category';
+            const categoryDescription = category.description || 'No description available';
+            const medicineCount = category.count || 0;
+            const categoryStatus = category.status || 'active';
             
             return (
-              <Card key={category.id} className={`${colorClasses.bg} ${colorClasses.border} border transition-all duration-300 hover:shadow-lg`}>
+              <Card key={categoryId} className={`${colorClasses.bg} ${colorClasses.border} border transition-all duration-300 hover:shadow-lg`}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className={`w-12 h-12 ${colorClasses.icon} rounded-lg flex items-center justify-center flex-shrink-0`}>
@@ -360,7 +443,7 @@ function CategoriesTab({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => viewCategoryMedicines(category)}
+                        onClick={() => viewCategoryMedicines({...category, id: categoryId})}
                         className="h-8 w-8 p-0 flex items-center justify-center"
                       >
                         <Eye className="w-4 h-4" />
@@ -368,7 +451,7 @@ function CategoriesTab({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => openCategoryModal(category)}
+                        onClick={() => openCategoryModal({...category, id: categoryId})}
                         className="h-8 w-8 p-0 flex items-center justify-center"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -376,21 +459,21 @@ function CategoriesTab({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => confirmDeleteCategory(category)}
+                        onClick={() => confirmDeleteCategory({...category, id: categoryId})}
                         className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
-                  <h3 className="font-semibold text-lg text-gray-900 dark:text-white mt-4 mb-2">{category.name}</h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">{category.description}</p>
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-white mt-4 mb-2">{categoryName}</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">{categoryDescription}</p>
                   <div className="flex items-center justify-between">
                     <Badge variant="secondary" className="text-xs">
-                      {category.count} {t('admin.categories.medicines', language)}
+                      {medicineCount} {t('admin.categories.medicines', language)}
                     </Badge>
-                    <Badge variant={category.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                      {category.status === 'active' ? t('admin.categories.active', language) : t('admin.categories.inactive', language)}
+                    <Badge variant={categoryStatus === 'active' ? 'default' : 'secondary'} className="text-xs">
+                      {categoryStatus === 'active' ? t('admin.categories.active', language) : t('admin.categories.inactive', language)}
                     </Badge>
                   </div>
                 </CardContent>
@@ -403,35 +486,51 @@ function CategoriesTab({
         <Card>
           <CardContent className="p-0">
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {console.log('Rendering list view with', filteredCategories.length, 'categories')}
               {filteredCategories.map((category) => {
-                const IconComponent = getIconComponent(category.icon);
-                const colorClasses = getColorClasses(category.color);
+                // Basic safety check
+                if (!category) {
+                  return null;
+                }
+                
+                // Use category._id if category.id is not available
+                const categoryId = category.id || category._id;
+                if (!categoryId) {
+                  return null;
+                }
+                
+                const IconComponent = getIconComponent(category.icon || 'Pill');
+                const colorClasses = getColorClasses(category.color || 'cyan');
+                const categoryName = category.name || 'Unnamed Category';
+                const categoryDescription = category.description || 'No description available';
+                const medicineCount = category.count || 0;
+                const categoryStatus = category.status || 'active';
                 
                 return (
-                  <div key={category.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200">
+                  <div key={categoryId} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200">
                     <div className="flex items-center">
                       <div className={`w-10 h-10 ${colorClasses.icon} rounded-lg flex items-center justify-center flex-shrink-0`}>
                         <IconComponent className={`w-5 h-5 ${colorClasses.text}`} />
                       </div>
                       <div className="ml-4 flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-medium text-gray-900 dark:text-white truncate">{category.name}</h3>
+                          <h3 className="font-medium text-gray-900 dark:text-white truncate">{categoryName}</h3>
                           <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
                             <Badge variant="secondary" className="text-xs">
-                              {category.count} {t('admin.categories.medicines', language)}
+                              {medicineCount} {t('admin.categories.medicines', language)}
                             </Badge>
-                            <Badge variant={category.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                              {category.status === 'active' ? t('admin.categories.active', language) : t('admin.categories.inactive', language)}
+                            <Badge variant={categoryStatus === 'active' ? 'default' : 'secondary'} className="text-xs">
+                              {categoryStatus === 'active' ? t('admin.categories.active', language) : t('admin.categories.inactive', language)}
                             </Badge>
                           </div>
                         </div>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mt-1 truncate">{category.description}</p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mt-1 truncate">{categoryDescription}</p>
                       </div>
                       <div className="ml-4 flex space-x-1 flex-shrink-0">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => viewCategoryMedicines(category)}
+                          onClick={() => viewCategoryMedicines({...category, id: categoryId})}
                           className="h-8 w-8 p-0 flex items-center justify-center"
                         >
                           <Eye className="w-4 h-4" />
@@ -439,7 +538,7 @@ function CategoriesTab({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => openCategoryModal(category)}
+                          onClick={() => openCategoryModal({...category, id: categoryId})}
                           className="h-8 w-8 p-0 flex items-center justify-center"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -447,7 +546,7 @@ function CategoriesTab({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => confirmDeleteCategory(category)}
+                          onClick={() => confirmDeleteCategory({...category, id: categoryId})}
                           className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -500,7 +599,7 @@ function CategoriesTab({
                   </SelectTrigger>
                   <SelectContent>
                     {iconOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
+                      <SelectItem key={`icon-${option.value}`} value={option.value}>
                         {option.label}
                       </SelectItem>
                     ))}
@@ -515,7 +614,7 @@ function CategoriesTab({
                   </SelectTrigger>
                   <SelectContent>
                     {colorOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
+                      <SelectItem key={`color-${option.value}`} value={option.value}>
                         {option.label}
                       </SelectItem>
                     ))}

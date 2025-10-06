@@ -40,7 +40,7 @@ const CategorySection = ({ category }) => {
       {/* Medicines Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {displayMedicines.map((medicine) => (
-          <Card key={medicine._id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+          <Card key={medicine._id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group">
             <CardContent className="p-0">
               <Link to={`/medicine/${medicine._id}`} className="block">
                 {/* Medicine Image */}
@@ -48,18 +48,19 @@ const CategorySection = ({ category }) => {
                   <img
                     src={medicine.image}
                     alt={medicine.name}
-                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   {medicine.discountPercentage > 0 && (
-                    <Badge className="absolute top-2 right-2 bg-red-500 text-white">
+                    <Badge className="absolute top-3 right-3 bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg">
                       {medicine.discountPercentage}% {t('home.category.off', language)}
                     </Badge>
                   )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
 
                 {/* Medicine Info */}
                 <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1">
+                  <h3 className="font-bold text-gray-900 dark:text-white line-clamp-1 text-lg mb-1">
                     {medicine.name}
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
@@ -67,7 +68,7 @@ const CategorySection = ({ category }) => {
                   </p>
                   
                   {/* Rating */}
-                  <div className="flex items-center mt-2">
+                  <div className="flex items-center mt-3">
                     <div className="flex text-amber-400">
                       {[...Array(5)].map((_, i) => (
                         <Star
@@ -80,17 +81,17 @@ const CategorySection = ({ category }) => {
                         />
                       ))}
                     </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
                       ({medicine.reviews || 12}) {t('home.discount.reviews', language)}
                     </span>
                   </div>
 
                   {/* Price */}
-                  <div className="mt-3 flex items-center justify-between">
+                  <div className="mt-4 flex items-center justify-between">
                     <div>
                       {medicine.discountPercentage > 0 ? (
                         <>
-                          <span className="text-lg font-bold text-gray-900 dark:text-white">
+                          <span className="text-xl font-bold text-gray-900 dark:text-white">
                             ৳{(medicine.finalPrice || medicine.price * (1 - medicine.discountPercentage / 100)).toFixed(2)}
                           </span>
                           <span className="text-sm text-gray-500 dark:text-gray-400 line-through ml-2">
@@ -98,12 +99,12 @@ const CategorySection = ({ category }) => {
                           </span>
                         </>
                       ) : (
-                        <span className="text-lg font-bold text-gray-900 dark:text-white">
+                        <span className="text-xl font-bold text-gray-900 dark:text-white">
                           ৳{medicine.price.toFixed(2)}
                         </span>
                       )}
                     </div>
-                    <button className="p-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full transition-colors duration-300">
+                    <button className="p-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
                       <ShoppingCart className="w-4 h-4" />
                     </button>
                   </div>
