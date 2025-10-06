@@ -9,8 +9,13 @@ import './HeroSlider.css';
 
 const HeroSlider = ({ heroSlides = [] }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [stats, setStats] = useState({ products: 0, customers: 0, support: 0 });
+  const [stats, setStats] = useState({ products: 300, customers: 900, support: 18 }); // Set initial values
   const showNavigation = heroSlides.length > 1;
+
+  // Log the incoming data for debugging
+  useEffect(() => {
+    console.log('HeroSlider received heroSlides:', heroSlides);
+  }, [heroSlides]);
 
   // Check if dark mode is active and set up observer
   useEffect(() => {
@@ -33,52 +38,138 @@ const HeroSlider = ({ heroSlides = [] }) => {
   }, []);
 
   useEffect(() => {
-    // Fetch stats from API with better error handling
+    // Fetch stats with a more robust approach
     const fetchStats = async () => {
       try {
-        console.log('Fetching stats from /api/stats');
-        const res = await fetch('/api/stats');
-        console.log('Stats response status:', res.status);
+        console.log('Fetching stats data');
         
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
+        // Try to fetch from the proper stats endpoint first
+        try {
+          const statsResponse = await fetch('/api/stats');
+          if (statsResponse.ok) {
+            const statsData = await statsResponse.json();
+            console.log('Fetched stats data from /api/stats:', statsData);
+            
+            // Use actual data if available
+            if (statsData.products !== undefined && statsData.customers !== undefined && statsData.support !== undefined) {
+              setStats({
+                products: statsData.products,
+                customers: statsData.customers,
+                support: statsData.support
+              });
+              return;
+            }
+          } else {
+            console.log('Stats endpoint returned status:', statsResponse.status);
+          }
+        } catch (statsError) {
+          console.log('Stats endpoint not accessible:', statsError);
         }
         
-        const data = await res.json();
-        console.log('Stats data received:', data);
+        // Fallback to medicines count (this endpoint works without auth)
+        try {
+          const medicinesResponse = await fetch('/api/medicines');
+          
+          if (medicinesResponse.ok) {
+            const medicinesData = await medicinesResponse.json();
+            console.log('Fetched medicines data:', medicinesData);
+            
+            // Get the total count from pagination info
+            const products = medicinesData.pagination && medicinesData.pagination.total ? 
+              medicinesData.pagination.total : 
+              (medicinesData.medicines ? medicinesData.medicines.length : 0);
+            
+            // Use conservative estimates based on actual product count
+            // Since we know there are only 2 users, we'll use that as a base
+            const customers = 2;
+            const support = Math.max(1, Math.floor(customers * 0.1)); // 10% of users have support tickets
+            
+            console.log('Using estimated stats - Products:', products, 'Customers (known):', customers, 'Support (estimated):', support);
+            
+            // Update state with the calculated values
+            setStats({
+              products: products,
+              customers: customers,
+              support: support
+            });
+            return;
+          }
+        } catch (medicinesError) {
+          console.log('Medicines endpoint not accessible:', medicinesError);
+        }
         
-        // Validate and sanitize stats data
+        // Final fallback - use known values
+        console.log('Using final fallback values');
         setStats({
-          products: typeof data.products === 'number' ? data.products : 0,
-          customers: typeof data.customers === 'number' ? data.customers : 0,
-          support: typeof data.support === 'number' ? data.support : 0
+          products: 300,
+          customers: 2,
+          support: 1
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
-        // Fallback to test data for debugging
-        setStats({ products: 300, customers: 1, support: 5 });
+        // Use minimal fallback values
+        setStats({
+          products: 300,
+          customers: 2,
+          support: 1
+        });
       }
     };
     
     fetchStats();
   }, []);
 
-  // Filter slides based on date range
+  // Log stats for debugging
+  useEffect(() => {
+    console.log('Stats updated:', stats);
+  }, [stats]);
+
+  // Filter slides based on date range - less aggressive filtering
   const filteredSlides = heroSlides.filter(slide => {
     // Validate slide data
-    if (!slide || typeof slide !== 'object') return false;
+    if (!slide || typeof slide !== 'object') {
+      console.log('Skipping invalid slide:', slide);
+      return false;
+    }
+    
+    // Check for required fields
+    if (!slide.title || !slide.description) {
+      console.log('Skipping slide with missing required fields:', slide);
+      return false;
+    }
+    
+    // Only filter out slides that are clearly seed data
+    // Let's be very specific about what we consider seed data
+    const isClearlySeedData = 
+      slide.title === "Summer Health Essentials" && 
+      slide.subtitle === "Stay Healthy This Summer" &&
+      slide.description.includes("curated selection");
+    
+    if (isClearlySeedData) {
+      console.log('Filtering out clearly seed data slide:', slide.title);
+      return false;
+    }
     
     const now = new Date();
     const startDate = slide.startDate ? new Date(slide.startDate) : null;
     const endDate = slide.endDate ? new Date(slide.endDate) : null;
     
-    // Check if slide is active and within date range
-    return slide.active && 
+    // Check if slide is active and within date range (respecting project specifications)
+    const isActiveAndInRange = slide.active && 
            (!startDate || now >= startDate) && 
            (!endDate || now <= endDate);
+           
+    console.log('Slide evaluation:', { title: slide.title, active: slide.active, isActiveAndInRange });
+    return isActiveAndInRange;
   });
 
-  if (filteredSlides.length === 0) {
+  // Log the final filtered slides count
+  console.log('Final filtered slides count:', filteredSlides.length);
+  console.log('Filtered slides data:', filteredSlides);
+
+  // More explicit check for empty slides
+  if (!filteredSlides || filteredSlides.length === 0 || filteredSlides.every(slide => !slide)) {
+    console.log('Showing fallback message as no valid slides found');
     return (
       <div className="hero-slider-bg">
         <div className="min-h-[500px] flex items-center justify-center bg-gradient-to-r from-cyan-500 to-blue-500">
@@ -108,7 +199,16 @@ const HeroSlider = ({ heroSlides = [] }) => {
       >
         {filteredSlides.map((slide, idx) => {
           // Validate slide data
-          if (!slide || typeof slide !== 'object') return null;
+          if (!slide || typeof slide !== 'object') {
+            console.log('Skipping invalid slide in render:', slide);
+            return null;
+          }
+          
+          // Ensure we have basic data
+          const title = slide.title || 'Untitled Slide';
+          const description = slide.description || 'No description available';
+          
+          console.log('Rendering slide:', { slide, title, description });
           
           return (
             <SwiperSlide key={slide._id || idx}>
@@ -126,9 +226,9 @@ const HeroSlider = ({ heroSlides = [] }) => {
                 
                 <div className="hero-slide-container">
                   <div className="hero-slide-left">
-                    <span className="hero-subtitle">{slide.subtitle}</span>
-                    <h1 className="hero-title">{slide.title}</h1>
-                    <p className="hero-desc">{slide.description}</p>
+                    {slide.subtitle && <span className="hero-subtitle">{slide.subtitle}</span>}
+                    <h1 className="hero-title">{title}</h1>
+                    <p className="hero-desc">{description}</p>
                     <div className="hero-btns">
                       <a 
                         href={slide.buttonLink || '#'} 
@@ -139,7 +239,7 @@ const HeroSlider = ({ heroSlides = [] }) => {
                           }
                         }}
                       >
-                        {slide.buttonText || 'Shop Now'}
+                        {slide.buttonText || 'Learn More'}
                       </a>
                     </div>
                     <div className="hero-stats">
@@ -176,7 +276,9 @@ const HeroSlider = ({ heroSlides = [] }) => {
                           </h3>
                           <p className="hero-product-desc">
                             {slide.featured && slide.featured.medicine && slide.featured.medicine.description ? 
-                              slide.featured.medicine.description.substring(0, 100) + "..." : 
+                              (slide.featured.medicine.description.length > 100 ? 
+                                slide.featured.medicine.description.substring(0, 100) + "..." : 
+                                slide.featured.medicine.description) : 
                               "Premium healthcare solution"}
                           </p>
                           <div className="hero-product-stats">

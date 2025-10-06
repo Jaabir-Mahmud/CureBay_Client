@@ -95,7 +95,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [recentUsers, setRecentUsers] = useState([]);
   const [pendingPayments, setPendingPayments] = useState([]);
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   
   // Categories state
   const [categories, setCategories] = useState([]);
@@ -186,12 +186,28 @@ const AdminDashboard = () => {
   // Fetch data when component mounts or active tab changes
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;
+      // Wait for user to be properly initialized
+      if (!user) {
+        // If user is null and not loading, redirect to login
+        if (!loading) {
+          navigate('/auth');
+        }
+        return;
+      }
       
       setIsLoading(true);
       
       try {
-        const token = await user.getIdToken();
+        // Get user token with proper error handling
+        let token;
+        try {
+          token = await user.getIdToken();
+        } catch (tokenError) {
+          console.error('Failed to get user token:', tokenError);
+          toast.error('Authentication error. Please try logging in again.');
+          navigate('/auth');
+          return;
+        }
         
         // Fetch overview stats
         const statsResponse = await fetch('/api/admin/overview', {
@@ -277,6 +293,14 @@ const AdminDashboard = () => {
           })) : [];
           setPayments(payments);
         } else {
+          console.error('Failed to fetch orders:', allPaymentsResponse.status);
+          // Try to get error details
+          try {
+            const errorText = await allPaymentsResponse.text();
+            console.error('Orders fetch error details:', errorText);
+          } catch (e) {
+            console.error('Could not parse error response:', e);
+          }
           setPayments([]);
         }
         
@@ -306,7 +330,7 @@ const AdminDashboard = () => {
     };
     
     fetchData();
-  }, [user]);
+  }, [user, loading]);
 
   useEffect(() => {
     const setCardColors = () => {

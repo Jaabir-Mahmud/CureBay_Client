@@ -22,6 +22,7 @@ const HomePage = () => {
         const heroSlidesResponse = await fetch('/api/hero-slides?active=true');
         if (heroSlidesResponse.ok) {
           const heroSlidesData = await heroSlidesResponse.json();
+          console.log('Hero slides data received:', heroSlidesData);
           setHeroSlides(Array.isArray(heroSlidesData) ? heroSlidesData : []);
         } else {
           console.error('Failed to fetch hero slides:', heroSlidesResponse.status);
@@ -32,6 +33,7 @@ const HomePage = () => {
         const bannersResponse = await fetch('/api/banners?active=true');
         if (bannersResponse.ok) {
           const bannersData = await bannersResponse.json();
+          console.log('Banners data received:', bannersData);
           setBanners(Array.isArray(bannersData) ? bannersData : []);
         } else {
           console.error('Failed to fetch banners:', bannersResponse.status);
@@ -77,6 +79,10 @@ const HomePage = () => {
     };
   }, []);
 
+  // Log the data being passed to HeroSlider
+  console.log('Passing heroSlides to HeroSlider:', heroSlides);
+  console.log('Passing banners to BannerSlider:', banners);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
@@ -96,7 +102,19 @@ const HomePage = () => {
         type="website"
       />
       <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
-        <HeroSlider heroSlides={heroSlides} />
+        {/* Add a simple check to see what we're passing */}
+        {heroSlides && heroSlides.length > 0 ? (
+          <HeroSlider heroSlides={heroSlides} />
+        ) : (
+          <div className="hero-slider-bg">
+            <div className="min-h-[500px] flex items-center justify-center bg-gradient-to-r from-cyan-500 to-blue-500">
+              <div className="text-center text-white">
+                <h2 className="text-3xl font-bold mb-4">Welcome to CureBay</h2>
+                <p className="text-xl">Your trusted healthcare partner</p>
+              </div>
+            </div>
+          </div>
+        )}
         <BannerSlider banners={banners} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <CategoriesGrid />  
