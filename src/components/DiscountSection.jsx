@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Add useNavigate import
 import { ShoppingCart, Star, X, Eye } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -11,10 +12,10 @@ import { t } from '../lib/i18n';
 const DiscountSection = () => {
   const { addToCart } = useCart();
   const { language } = useLanguage();
+  const navigate = useNavigate(); // Add navigate hook
   const [selectedMedicine, setSelectedMedicine] = useState(null);
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAll, setShowAll] = useState(false);
   const [error, setError] = useState(null);
 
   // Fetch discounted medicines with better error handling
@@ -24,6 +25,7 @@ const DiscountSection = () => {
         setLoading(true);
         setError(null);
         
+        // Changed limit from 12 back to 8 as requested
         const response = await fetch('/api/medicines/discounted?limit=8');
         if (!response.ok) {
           throw new Error(`Failed to fetch discounted medicines: ${response.status} ${response.statusText}`);
@@ -65,11 +67,6 @@ const DiscountSection = () => {
     fetchDiscountedMedicines();
   }, []);
 
-  // Filter medicines with discount
-  const discountedMedicines = medicines.filter(medicine => 
-    typeof medicine.discountPercentage === 'number' && medicine.discountPercentage > 0
-  );
-
   if (loading) {
     return (
       <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
@@ -83,7 +80,8 @@ const DiscountSection = () => {
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[...Array(4)].map((_, index) => (
+            {/* Show only 8 loading skeletons */}
+            {[...Array(8)].map((_, index) => (
               <Card key={index} className="overflow-hidden animate-pulse">
                 <CardContent className="p-0">
                   <div className="h-52 bg-gray-200 dark:bg-gray-700 rounded-t-2xl"></div>
@@ -121,9 +119,9 @@ const DiscountSection = () => {
             </div>
             <Button
               className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
-              onClick={() => setShowAll((prev) => !prev)}
+              onClick={() => navigate('/discounts')} // Redirect to discounts page
             >
-              {showAll ? t('home.discount.hideAllOffers', language) : t('home.discount.viewAllOffers', language)}
+              {t('home.discount.viewAllOffers', language)}
             </Button>
           </div>
           
@@ -140,7 +138,7 @@ const DiscountSection = () => {
     );
   }
 
-  if (discountedMedicines.length === 0) {
+  if (medicines.length === 0) {
     return (
       <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -155,9 +153,9 @@ const DiscountSection = () => {
             </div>
             <Button
               className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
-              onClick={() => setShowAll((prev) => !prev)}
+              onClick={() => navigate('/discounts')} // Redirect to discounts page
             >
-              {showAll ? t('home.discount.hideAllOffers', language) : t('home.discount.viewAllOffers', language)}
+              {t('home.discount.viewAllOffers', language)}
             </Button>
           </div>
           
@@ -209,14 +207,15 @@ const DiscountSection = () => {
           </div>
           <Button
             className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl whitespace-nowrap"
-            onClick={() => setShowAll((prev) => !prev)}
+            onClick={() => navigate('/discounts')} // Redirect to discounts page
           >
-            {showAll ? t('home.discount.hideAllOffers', language) : t('home.discount.viewAllOffers', language)}
+            {t('home.discount.viewAllOffers', language)}
           </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {(showAll ? discountedMedicines : discountedMedicines.slice(0, 4)).map((medicine) => {
+          {/* Show only first 8 medicines */}
+          {medicines.slice(0, 8).map((medicine) => {
             // Validate medicine data
             if (!medicine || typeof medicine !== 'object') return null;
             

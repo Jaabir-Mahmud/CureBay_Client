@@ -20,6 +20,8 @@ import InvoicePage from './pages/InvoicePage';
 import TestAPI from './test-api'; // Add this line
 import TestDiscountPage from './test-discount';
 import HealthTipsPage from './pages/HealthTipsPage';
+import DiscountsPage from './pages/DiscountsPage'; // Add DiscountsPage import
+import CouponTestPage from './pages/CouponTestPage'; // Add CouponTestPage import
 import ProtectedRoute from './components/ProtectedRoute'; // Added ProtectedRoute import
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
@@ -112,6 +114,8 @@ function App() {
                       <Route path="/test-api" element={<TestAPI />} /> {/* Add this line */}
                       <Route path="/test-discount" element={<TestDiscountPage />} />
                       <Route path="/health-tips" element={<HealthTipsPage />} />
+                      <Route path="/discounts" element={<DiscountsPage />} /> {/* Add DiscountsPage route */}
+                      <Route path="/coupon-test" element={<CouponTestPage />} /> {/* Add CouponTestPage route */}
                     </Routes>
                   </main>
                   <Footer />

@@ -48,9 +48,11 @@ function PaymentsTab({
 
   // Payment Management Functions
   const filteredPayments = payments.filter(payment => {
-    const matchesSearch = payment.customerName.toLowerCase().includes(paymentSearch.toLowerCase()) ||
-                         payment.customerEmail.toLowerCase().includes(paymentSearch.toLowerCase()) ||
-                         payment.orderId.toLowerCase().includes(paymentSearch.toLowerCase());
+    const matchesSearch = paymentSearch === '' || (
+      (payment.customerName && payment.customerName.toLowerCase().includes(paymentSearch.toLowerCase())) ||
+      (payment.customerEmail && payment.customerEmail.toLowerCase().includes(paymentSearch.toLowerCase())) ||
+      (payment.orderId && payment.orderId.toLowerCase().includes(paymentSearch.toLowerCase()))
+    );
     
     const matchesStatus = paymentStatusFilter === 'all' || payment.status === paymentStatusFilter;
     
@@ -81,6 +83,8 @@ function PaymentsTab({
   });
 
   const openPaymentModal = (payment, action) => {
+    if (!payment.id) return;
+    
     setSelectedPayment(payment);
     setPaymentAction(action);
     setRejectReason('');
@@ -88,7 +92,7 @@ function PaymentsTab({
   };
 
   const processPayment = async () => {
-    if (!selectedPayment || !user) return;
+    if (!selectedPayment || !selectedPayment.id || !user) return;
     
     setIsProcessingPayment(true);
     try {
@@ -123,7 +127,7 @@ function PaymentsTab({
       setPayments(updatedPayments);
       
       // Update stats if necessary
-      if (paymentAction === 'accept') {
+      if (paymentAction === 'accept' && selectedPayment.amount) {
         setStats(prevStats => ({
           ...prevStats,
           paidTotal: prevStats.paidTotal + selectedPayment.amount,
@@ -148,8 +152,15 @@ function PaymentsTab({
       return;
     }
 
+    // Filter out any undefined payment IDs
+    const validPaymentIds = Array.from(selectedPayments).filter(id => id);
+    if (validPaymentIds.length === 0) {
+      toast.error('No valid payments selected.');
+      return;
+    }
+
     const confirmed = window.confirm(
-      `Are you sure you want to ${action} ${selectedPayments.size} selected payment(s)?`
+      `Are you sure you want to ${action} ${validPaymentIds.length} selected payment(s)?`
     );
     
     if (!confirmed) return;
@@ -157,7 +168,7 @@ function PaymentsTab({
     setIsProcessingPayment(true);
     try {
       const token = await user.getIdToken();
-      const promises = Array.from(selectedPayments).map(paymentId => {
+      const promises = validPaymentIds.map(paymentId => {
         const endpoint = `/api/orders/${paymentId}`;
         const requestBody = JSON.stringify({
           paymentStatus: action === 'accept' ? 'paid' : 'failed'
@@ -176,7 +187,7 @@ function PaymentsTab({
       
       // Update local state
       const updatedPayments = payments.map(payment => 
-        selectedPayments.has(payment.id)
+        validPaymentIds.includes(payment.id)
           ? { 
               ...payment, 
               status: action === 'accept' ? 'paid' : 'failed',
@@ -187,7 +198,7 @@ function PaymentsTab({
       setPayments(updatedPayments);
       setSelectedPayments(new Set());
       
-      toast.success(`${selectedPayments.size} payments ${action}ed successfully!`);
+      toast.success(`${validPaymentIds.length} payments ${action}ed successfully!`);
       
     } catch (error) {
       console.error(`Error ${action}ing payments:`, error);
@@ -198,6 +209,8 @@ function PaymentsTab({
   };
 
   const togglePaymentSelection = (paymentId) => {
+    if (!paymentId) return;
+    
     setSelectedPayments(prev => {
       const newSet = new Set(prev);
       if (newSet.has(paymentId)) {
@@ -211,8 +224,9 @@ function PaymentsTab({
 
   const selectAllPayments = () => {
     const pendingPaymentIds = filteredPayments
-      .filter(p => p.status === 'pending')
-      .map(p => p.id);
+      .filter(p => p.status === 'pending' && p.id)
+      .map(p => p.id)
+      .filter(id => id !== undefined);
     setSelectedPayments(new Set(pendingPaymentIds));
   };
 
@@ -234,6 +248,8 @@ function PaymentsTab({
   };
 
   const getPaymentMethodIcon = (method) => {
+    if (!method) return <DollarSign className="w-4 h-4" />;
+    
     switch (method.toLowerCase()) {
       case 'credit card':
         return <CreditCard className="w-4 h-4" />;
@@ -419,6 +435,7 @@ function PaymentsTab({
                       checked={selectedPayments.size === filteredPayments.filter(p => p.status === 'pending').length && filteredPayments.filter(p => p.status === 'pending').length > 0}
                       onChange={selectedPayments.size > 0 ? clearPaymentSelection : selectAllPayments}
                       className="rounded border-gray-300"
+                      disabled={filteredPayments.filter(p => p.status === 'pending').length === 0}
                     />
                   </th>
                   <th className="text-left p-4 font-medium text-gray-900 dark:text-white">Payment Details</th>
@@ -432,51 +449,51 @@ function PaymentsTab({
               </thead>
               <tbody>
                 {filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                  <tr key={payment.id || payment.orderId || Math.random()} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                     <td className="p-4">
                       <input
                         type="checkbox"
                         checked={selectedPayments.has(payment.id)}
-                        onChange={() => togglePaymentSelection(payment.id)}
-                        disabled={payment.status !== 'pending'}
+                        onChange={() => payment.id && togglePaymentSelection(payment.id)}
+                        disabled={!payment.id || payment.status !== 'pending'}
                         className="rounded border-gray-300"
                       />
                     </td>
                     <td className="p-4">
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{payment.id}</p>
-                        <p className="text-sm text-gray-500">Order: {payment.orderId}</p>
-                        {payment.paymentDetails.transactionId && (
+                        <p className="font-medium text-gray-900 dark:text-white">{payment.id || 'N/A'}</p>
+                        <p className="text-sm text-gray-500">Order: {payment.orderId || 'N/A'}</p>
+                        {payment.paymentDetails && payment.paymentDetails.transactionId && (
                           <p className="text-xs text-gray-400">TXN: {payment.paymentDetails.transactionId}</p>
                         )}
                       </div>
                     </td>
                     <td className="p-4">
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{payment.customerName}</p>
-                        <p className="text-sm text-gray-500">{payment.customerEmail}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{payment.customerName || 'N/A'}</p>
+                        <p className="text-sm text-gray-500">{payment.customerEmail || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="p-4">
                       <div>
-                        <p className="font-bold text-lg text-cyan-500">${payment.amount.toFixed(2)}</p>
+                        <p className="font-bold text-lg text-cyan-500">${payment.amount ? payment.amount.toFixed(2) : '0.00'}</p>
                         <p className="text-xs text-gray-500">
-                          {payment.medicines.length} item{payment.medicines.length !== 1 ? 's' : ''}
+                          {(payment.medicines && Array.isArray(payment.medicines) && payment.medicines.length) || 0} item{payment.medicines && Array.isArray(payment.medicines) && payment.medicines.length !== 1 ? 's' : ''}
                         </p>
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         {getPaymentMethodIcon(payment.paymentMethod)}
-                        <span className="text-sm">{payment.paymentMethod}</span>
+                        <span className="text-sm">{payment.paymentMethod || 'N/A'}</span>
                       </div>
-                      {payment.paymentDetails.cardLast4 && (
+                      {payment.paymentDetails && payment.paymentDetails.cardLast4 && (
                         <p className="text-xs text-gray-400">****{payment.paymentDetails.cardLast4}</p>
                       )}
                     </td>
                     <td className="p-4">
                       <Badge className={getStatusColor(payment.status)}>
-                        {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                        {payment.status ? payment.status.charAt(0).toUpperCase() + payment.status.slice(1) : 'N/A'}
                       </Badge>
                       {payment.status === 'rejected' && payment.rejectReason && (
                         <p className="text-xs text-red-600 mt-1 max-w-32 truncate" title={payment.rejectReason}>
@@ -486,8 +503,8 @@ function PaymentsTab({
                     </td>
                     <td className="p-4">
                       <div>
-                        <p className="text-sm">{new Date(payment.createdAt).toLocaleDateString()}</p>
-                        <p className="text-xs text-gray-500">{new Date(payment.createdAt).toLocaleTimeString()}</p>
+                        <p className="text-sm">{payment.createdAt ? new Date(payment.createdAt).toLocaleDateString() : 'N/A'}</p>
+                        <p className="text-xs text-gray-500">{payment.createdAt ? new Date(payment.createdAt).toLocaleTimeString() : ''}</p>
                         {payment.acceptedAt && (
                           <p className="text-xs text-green-600">Accepted: {new Date(payment.acceptedAt).toLocaleDateString()}</p>
                         )}
@@ -498,7 +515,7 @@ function PaymentsTab({
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2">
-                        {payment.status === 'pending' && (
+                        {payment.status === 'pending' && payment.id && (
                           <>
                             <Button
                               onClick={() => openPaymentModal(payment, 'accept')}
@@ -518,55 +535,64 @@ function PaymentsTab({
                         )}
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" disabled={!payment.id}>
                               <Eye className="w-4 h-4" />
                             </Button>
                           </DialogTrigger>
                           <DialogContent className="max-w-2xl">
                             <DialogHeader>
-                              <DialogTitle>Payment Details - {payment.id}</DialogTitle>
+                              <DialogTitle>Payment Details - {payment.id || 'N/A'}</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4">
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <Label className="text-sm font-medium">Customer Information</Label>
                                   <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mt-1">
-                                    <p className="font-medium">{payment.customerName}</p>
-                                    <p className="text-sm text-gray-600">{payment.customerEmail}</p>
+                                    <p className="font-medium">{payment.customerName || 'N/A'}</p>
+                                    <p className="text-sm text-gray-600">{payment.customerEmail || 'N/A'}</p>
                                   </div>
                                 </div>
                                 <div>
                                   <Label className="text-sm font-medium">Payment Information</Label>
                                   <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mt-1">
-                                    <p className="font-medium">৳{payment.amount.toFixed(2)}</p>
-                                    <p className="text-sm text-gray-600">{payment.paymentMethod}</p>
+                                    <p className="font-medium">৳{payment.amount ? payment.amount.toFixed(2) : '0.00'}</p>
+                                    <p className="text-sm text-gray-600">{payment.paymentMethod || 'N/A'}</p>
                                     <Badge className={getStatusColor(payment.status)}>
-                                      {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                                      {payment.status ? payment.status.charAt(0).toUpperCase() + payment.status.slice(1) : 'N/A'}
                                     </Badge>
                                   </div>
                                 </div>
                               </div>
                               
-                              <div>
-                                <Label className="text-sm font-medium">Medicines Ordered</Label>
-                                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mt-1 space-y-2">
-                                  {payment.medicines.map((medicine, index) => (
-                                    <div key={index} className="flex justify-between items-center">
-                                      <div>
-                                        <p className="font-medium">{medicine.name}</p>
-                                        <p className="text-sm text-gray-600">Quantity: {medicine.quantity}</p>
+                              {(payment.medicines && Array.isArray(payment.medicines) && payment.medicines.length > 0) ? (
+                                <div>
+                                  <Label className="text-sm font-medium">Medicines Ordered</Label>
+                                  <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mt-1 space-y-2">
+                                    {payment.medicines.map((medicine, index) => (
+                                      <div key={index} className="flex justify-between items-center">
+                                        <div>
+                                          <p className="font-medium">{medicine.name || 'N/A'}</p>
+                                          <p className="text-sm text-gray-600">Quantity: {medicine.quantity || 0}</p>
+                                        </div>
+                                        <p className="font-medium">৳{medicine.price ? (medicine.price * (medicine.quantity || 0)).toFixed(2) : '0.00'}</p>
                                       </div>
-                                      <p className="font-medium">৳{(medicine.price * medicine.quantity).toFixed(2)}</p>
-                                    </div>
-                                  ))}
-                                  <div className="border-t pt-2 mt-2">
-                                    <div className="flex justify-between items-center font-bold">
-                                      <span>Total</span>
-                                      <span>৳{payment.amount.toFixed(2)}</span>
+                                    ))}
+                                    <div className="border-t pt-2 mt-2">
+                                      <div className="flex justify-between items-center font-bold">
+                                        <span>Total</span>
+                                        <span>৳{payment.amount ? payment.amount.toFixed(2) : '0.00'}</span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
+                              ) : (
+                                <div>
+                                  <Label className="text-sm font-medium">Medicines Ordered</Label>
+                                  <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mt-1">
+                                    <p className="text-gray-500">No medicines found for this order</p>
+                                  </div>
+                                </div>
+                              )}
                               
                               {payment.rejectReason && (
                                 <div>
@@ -613,7 +639,7 @@ function PaymentsTab({
             <DialogDescription>
               {selectedPayment && (
                 <span>
-                  Payment ID: {selectedPayment.id} - ৳{selectedPayment.amount.toFixed(2)}
+                  Payment ID: {selectedPayment.id || 'N/A'} - ৳{selectedPayment.amount ? selectedPayment.amount.toFixed(2) : '0.00'}
                 </span>
               )}
             </DialogDescription>
@@ -627,9 +653,9 @@ function PaymentsTab({
                     <CreditCard className="w-5 h-5 text-cyan-500 dark:text-cyan-400" />
                   </div>
                   <div>
-                    <p className="font-medium">{selectedPayment.customerName}</p>
-                    <p className="text-sm text-gray-600">{selectedPayment.customerEmail}</p>
-                    <p className="text-xs text-gray-500">Order: {selectedPayment.orderId}</p>
+                    <p className="font-medium">{selectedPayment.customerName || 'N/A'}</p>
+                    <p className="text-sm text-gray-600">{selectedPayment.customerEmail || 'N/A'}</p>
+                    <p className="text-xs text-gray-500">Order: {selectedPayment.orderId || 'N/A'}</p>
                   </div>
                 </div>
               </div>

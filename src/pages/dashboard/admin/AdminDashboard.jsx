@@ -41,7 +41,9 @@ import {
   MessageSquare,
   HelpCircle,
   LogOut,
-  Menu
+  Menu,
+  Percent,
+  Ticket
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -85,6 +87,8 @@ import ReportsTab from '../../../components/dashboard/admin/ReportsTab';
 import BannersTab from '../../../components/dashboard/admin/BannersTab';
 import HeroSlidesTab from '../../../components/dashboard/admin/HeroSlidesTab';
 import MedicineSlidesManager from '../../../components/dashboard/admin/MedicineSlidesManager';
+import DiscountsTab from '../../../components/dashboard/admin/DiscountsTab';
+import CouponsTab from '../../../components/dashboard/admin/CouponsTab';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -410,6 +414,8 @@ const AdminDashboard = () => {
     { id: 'overview', label: 'Overview', icon: Home },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'categories', label: 'Categories', icon: Tag },
+    { id: 'discounts', label: 'Discounts', icon: Percent },
+    { id: 'coupons', label: 'Coupons', icon: Ticket },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'banners', label: 'Banners', icon: Megaphone },
@@ -561,6 +567,16 @@ const AdminDashboard = () => {
                   setCategories={setCategories}
                   activeTab={activeTab}
                 />
+              </TabsContent>
+
+              {/* Discounts Tab */}
+              <TabsContent value="discounts" className="space-y-4">
+                <DiscountsTab />
+              </TabsContent>
+
+              {/* Coupons Tab */}
+              <TabsContent value="coupons" className="space-y-4">
+                <CouponsTab />
               </TabsContent>
 
               {/* Payments Tab */}

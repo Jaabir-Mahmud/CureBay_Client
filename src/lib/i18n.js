@@ -160,33 +160,28 @@ const translations = {
     'home.discount.error': 'Failed to load special offers',
     'home.discount.noOffers': 'No special offers available at the moment',
     
-    // Home Page - Category Section (Bengali) (existing)
-    'home.category.viewAll': 'সব দেখুন',
-    'home.category.off': 'ছাড়',
-    'admin.categories.name': 'Category Name',
-    'admin.categories.namePlaceholder': 'Enter category name',
-    'admin.categories.description': 'Description',
-    'admin.categories.descriptionPlaceholder': 'Enter category description',
-    'admin.categories.icon': 'Icon',
-    'admin.categories.selectIcon': 'Select an icon',
-    'admin.categories.color': 'Color',
-    'admin.categories.selectColor': 'Select a color',
-    'admin.categories.update': 'Update Category',
-    'admin.categories.create': 'Create Category',
-    'admin.categories.confirmDelete': 'Are you sure?',
-    'admin.categories.confirmDeleteDesc': 'This action cannot be undone. This will permanently delete the category',
-    'admin.categories.deleteWarning': 'This category contains medicines. Deleting it will remove all associated medicines.',
-    'admin.categories.delete': 'Delete',
-    'admin.categories.nameRequired': 'Category name is required',
-    'admin.categories.descriptionRequired': 'Category description is required',
-    'admin.categories.failed': 'Failed to save category',
-    'admin.categories.updated': 'Category updated successfully!',
-    'admin.categories.created': 'Category created successfully!',
-    'admin.categories.error': 'Failed to save category. Please try again.',
-    'admin.categories.deleteFailed': 'Failed to delete category',
-    'admin.categories.deleted': 'Category deleted successfully!',
-    'admin.categories.deleteError': 'Failed to delete category. Please try again.',
-    'admin.categories.pill': 'Pill',
+    // Discounts Page
+    'discounts.title': 'All Special Offers',
+    'discounts.subtitle': 'Discover our amazing deals and save on your favorite medicines',
+    'discounts.searchPlaceholder': 'Search medicines...',
+    'discounts.sort.discount': 'Highest Discount',
+    'discounts.sort.price': 'Lowest Price',
+    'discounts.sort.name': 'Name',
+    'discounts.quickView': 'Quick View',
+    'discounts.reviews': 'reviews',
+    'discounts.showingResults': 'Showing {count} discounted medicines',
+    'discounts.noResults.title': 'No discounted medicines found',
+    'discounts.noResults.search': 'Try adjusting your search criteria',
+    'discounts.noResults.general': 'There are currently no special offers available',
+    'discounts.noResults.browse': 'Browse all medicines',
+    
+    // SEO
+    'seo.discounts.title': 'Special Offers - CureBay Online Pharmacy',
+    'seo.discounts.description': 'Browse all our special offers and discounts on medicines. Save money on your healthcare needs with our exclusive deals.',
+    
+    // Common
+    'common.back': 'Back',
+
     'admin.categories.heart': 'Heart',
     'admin.categories.circle': 'Circle',
     'admin.categories.syringe': 'Syringe',
@@ -957,6 +952,29 @@ const translations = {
     'home.discount.off': 'ছাড়',
     'home.discount.error': 'বিশেষ অফার লোড করতে ব্যর্থ',
     'home.discount.noOffers': 'এই মুহূর্তে কোন বিশেষ অফার উপলব্ধ নেই',
+    
+    // Discounts Page
+    'discounts.title': 'সমস্ত বিশেষ অফার',
+    'discounts.subtitle': 'আমাদের অসাধারণ ডিলগুলি আবিষ্কার করুন এবং আপনার প্রিয় ওষুধগুলিতে সঞ্চয় করুন',
+    'discounts.searchPlaceholder': 'ঔষধ অনুসন্ধান করুন...',
+    'discounts.sort.discount': 'সর্বোচ্চ ছাড়',
+    'discounts.sort.price': 'সর্বনিম্ন মূল্য',
+    'discounts.sort.name': 'নাম',
+    'discounts.quickView': 'দ্রুত দেখুন',
+    'discounts.reviews': 'রিভিউ',
+    'discounts.showingResults': '{count} টি ছাড়যুক্ত ঔষধ দেখানো হচ্ছে',
+    'discounts.noResults.title': 'কোন ছাড়যুক্ত ঔষধ পাওয়া যায়নি',
+    'discounts.noResults.search': 'আপনার অনুসন্ধান মানদণ্ড পরিবর্তন করে চেষ্টা করুন',
+    'discounts.noResults.general': 'বর্তমানে কোন বিশেষ অফার উপলব্ধ নেই',
+    'discounts.noResults.browse': 'সমস্ত ঔষধ ব্রাউজ করুন',
+    
+    // SEO
+    'seo.discounts.title': 'বিশেষ অফার - CureBay অনলাইন ফার্মেসি',
+    'seo.discounts.description': 'আমাদের ঔষধের সমস্ত বিশেষ অফার এবং ছাড় ব্রাউজ করুন। আমাদের এক্সক্লুসিভ ডিলগুলির মাধ্যমে আপনার স্বাস্থ্যসেবা খরচে টাকা সঞ্চয় করুন।',
+    
+    // Common
+    'common.back': 'পেছনে',
+
   }
 };
 

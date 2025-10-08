@@ -429,7 +429,7 @@ function CategoriesTab({
             const colorClasses = getColorClasses(category.color || 'cyan');
             const categoryName = category.name || 'Unnamed Category';
             const categoryDescription = category.description || 'No description available';
-            const medicineCount = category.count || 0;
+            const medicineCount = category.medicineCount || category.count || 0; // Use medicineCount first, fallback to count
             const categoryStatus = category.status || 'active';
             
             return (
@@ -503,7 +503,7 @@ function CategoriesTab({
                 const colorClasses = getColorClasses(category.color || 'cyan');
                 const categoryName = category.name || 'Unnamed Category';
                 const categoryDescription = category.description || 'No description available';
-                const medicineCount = category.count || 0;
+                const medicineCount = category.medicineCount || category.count || 0; // Use medicineCount first, fallback to count
                 const categoryStatus = category.status || 'active';
                 
                 return (
@@ -644,7 +644,7 @@ function CategoriesTab({
             </DialogTitle>
             <DialogDescription>
               {t('admin.categories.confirmDeleteDesc', language)} <span className="font-semibold">{categoryToDelete?.name}</span>?
-              {categoryToDelete?.count > 0 && (
+              {(categoryToDelete?.medicineCount || categoryToDelete?.count || 0) > 0 && (
                 <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
                   <p className="text-sm text-red-700 dark:text-red-300">
                     <AlertTriangle className="w-4 h-4 inline mr-1" />
