@@ -497,9 +497,9 @@ const AdminDashboard = () => {
                 </Button>
                 <div className="flex items-center space-x-2">
                     {(() => {
-                      // Display user's name with priority: profile name -> Firebase user display name -> Firebase user email -> specific admin name -> general fallback
-                      const displayName = (profile && profile.name) || (user && user.displayName) || (user && user.email) || 'Jabir Mahmud';
-                      const initial = (displayName && displayName.charAt(0).toUpperCase()) || 'J';
+                      // Display user's name with priority: profile name -> Firebase user display name -> Firebase user email -> general fallback
+                      const displayName = (profile && profile.name) || (user && user.displayName) || (user && user.email) || 'Admin User';
+                      const initial = (displayName && displayName.charAt(0).toUpperCase()) || 'A';
                       
                       return (
                         <>
