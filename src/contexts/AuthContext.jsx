@@ -67,7 +67,8 @@ export const AuthProvider = ({ children }) => {
   // Function to check user profile with enhanced security
   const checkUserProfile = async (firebaseUser) => {
     try {
-      const token = await firebaseUser.getIdToken();
+      // Ensure we have a fresh token
+      const token = await firebaseUser.getIdToken(true); // Force refresh token
       // Use relative URL as Vite proxy should handle the routing
       let res = await fetch(createApiUrl('/api/users/me'), {
         headers: { 
@@ -132,10 +133,11 @@ export const AuthProvider = ({ children }) => {
           credentials: 'include'
         });
         if (createRes.ok) {
-          // Try fetching profile again
+          // Try fetching profile again with a fresh token
+          const freshToken = await firebaseUser.getIdToken(true); // Force refresh token
           res = await fetch(createApiUrl('/api/users/me'), {
             headers: { 
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${freshToken}`,
               'Content-Security-Policy': "default-src 'self'"
             },
             credentials: 'same-origin'
@@ -195,7 +197,7 @@ export const AuthProvider = ({ children }) => {
   // Function to update user profile with enhanced security
   const updateProfile = async (profileData) => {
     try {
-      const token = await user.getIdToken();
+      const token = await user.getIdToken(true); // Force refresh token
       console.log('Making request to update profile with data:', profileData);
       
       // Sanitize input data before sending
@@ -248,7 +250,11 @@ export const AuthProvider = ({ children }) => {
     if (!user) return;
 
     const interval = setInterval(async () => {
-      await checkUserProfile(user);
+      // Get a fresh user object with updated token
+      const freshUser = auth.currentUser;
+      if (freshUser) {
+        await checkUserProfile(freshUser);
+      }
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => clearInterval(interval);
@@ -274,7 +280,11 @@ export const AuthProvider = ({ children }) => {
   // Function to refresh user profile
   const refreshProfile = async () => {
     if (user) {
-      await checkUserProfile(user);
+      // Get a fresh user object with updated token
+      const freshUser = auth.currentUser;
+      if (freshUser) {
+        await checkUserProfile(freshUser);
+      }
     }
   };
 
