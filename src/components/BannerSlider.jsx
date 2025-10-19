@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -19,43 +19,44 @@ const BannerSlider = ({ banners = [] }) => {
     }
   }, [banners]);
 
-  // Filter banners based on date range
-  const filteredBanners = banners.filter(banner => {
-    // Validate banner data
-    if (!banner || typeof banner !== 'object') return false;
-    
-    const now = new Date();
-    const startDate = banner.startDate ? new Date(banner.startDate) : null;
-    const endDate = banner.endDate ? new Date(banner.endDate) : null;
-    
-    // Check if banner is active and within date range
-    return banner.active && 
-           (!startDate || now >= startDate) && 
-           (!endDate || now <= endDate);
-  });
+  // Memoized banner filtering
+  const filteredBanners = useMemo(() => {
+    return banners.filter(banner => {
+      // Validate banner data
+      if (!banner || typeof banner !== 'object') return false;
+      
+      const now = new Date();
+      const startDate = banner.startDate ? new Date(banner.startDate) : null;
+      const endDate = banner.endDate ? new Date(banner.endDate) : null;
+      
+      // Check if banner is active and within date range
+      return banner.active && 
+             (!startDate || now >= startDate) && 
+             (!endDate || now <= endDate);
+    });
+  }, [banners]);
 
-  if (loading) {
-    return (
-      <div className="relative h-64 bg-gray-100 dark:bg-gray-800 animate-pulse flex items-center justify-center rounded-3xl overflow-hidden shadow-2xl">
-        <div className="text-gray-500 dark:text-gray-400">Loading banners...</div>
-      </div>
-    );
-  }
+  // Memoized loading component
+  const loadingComponent = useMemo(() => (
+    <div className="relative h-64 bg-gray-100 dark:bg-gray-800 animate-pulse flex items-center justify-center rounded-3xl overflow-hidden shadow-2xl">
+      <div className="text-gray-500 dark:text-gray-400">Loading banners...</div>
+    </div>
+  ), []);
 
-  if (filteredBanners.length === 0) {
-    return (
-      <div className="relative py-8">
-        <div className="h-64 md:h-80 rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center">
-          <div className="text-center text-white">
-            <h3 className="text-2xl font-bold mb-2">Special Offers</h3>
-            <p className="text-lg">Check back soon for amazing deals!</p>
-          </div>
+  // Memoized no banners component
+  const noBannersComponent = useMemo(() => (
+    <div className="relative py-8">
+      <div className="h-64 md:h-80 rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center">
+        <div className="text-center text-white">
+          <h3 className="text-2xl font-bold mb-2">Special Offers</h3>
+          <p className="text-lg">Check back soon for amazing deals!</p>
         </div>
       </div>
-    );
-  }
+    </div>
+  ), []);
 
-  return (
+  // Memoized main content
+  const mainContent = useMemo(() => (
     <div className="relative py-8">
       <Swiper
         modules={[Navigation, Pagination, Autoplay]}
@@ -75,6 +76,10 @@ const BannerSlider = ({ banners = [] }) => {
         }}
         loop={filteredBanners.length > 1}
         className="banner-slider h-64 md:h-80 rounded-3xl overflow-hidden shadow-2xl"
+        // Add performance optimizations
+        updateOnWindowResize={true}
+        observer={true}
+        observeParents={true}
       >
         {filteredBanners.map((banner) => {
           // Validate banner data
@@ -88,9 +93,12 @@ const BannerSlider = ({ banners = [] }) => {
                   alt={banner.title || 'Banner image'}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // Fallback image on error
-                    e.target.src = 'https://placehold.co/1200x400/cccccc/ffffff?text=Banner+Image';
+                    // Fallback to a reliable data URL
+                    e.target.src = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'1200\' height=\'400\' viewBox=\'0 0 1200 400\'%3e%3crect width=\'1200\' height=\'400\' fill=\'%23cccccc\'/%3e%3ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'system-ui\' font-size=\'24\' fill=\'%23ffffff\'%3eBanner Image%3c/text%3e%3c/svg%3e';
+                    // Prevent infinite error loop
+                    e.target.onerror = null;
                   }}
+                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent flex items-center">
                   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
@@ -173,7 +181,17 @@ const BannerSlider = ({ banners = [] }) => {
         `
       }} />
     </div>
-  );
+  ), [filteredBanners]);
+
+  if (loading) {
+    return loadingComponent;
+  }
+
+  if (filteredBanners.length === 0) {
+    return noBannersComponent;
+  }
+
+  return mainContent;
 };
 
-export default BannerSlider;
+export default React.memo(BannerSlider);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import SEOHelmet from '../components/SEOHelmet';
 import HeroSlider from '../components/HeroSlider';
 import BannerSlider from '../components/BannerSlider';
@@ -6,6 +6,7 @@ import CategoriesGrid from '../components/CategoriesGrid';
 import DiscountSection from '../components/DiscountSection';
 import ExtraSection1 from '../components/ExtraSection1';
 import ExtraSection2 from '../components/ExtraSection2';
+import CustomerReviews from '../components/CustomerReviews';
 import { useLanguage } from '../contexts/LanguageContext';
 import { t } from '../lib/i18n';
 
@@ -15,41 +16,37 @@ const HomePage = () => {
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch active hero slides with proper error handling
-        const heroSlidesResponse = await fetch('/api/hero-slides?active=true');
-        if (heroSlidesResponse.ok) {
-          const heroSlidesData = await heroSlidesResponse.json();
-          console.log('Hero slides data received:', heroSlidesData);
-          setHeroSlides(Array.isArray(heroSlidesData) ? heroSlidesData : []);
-        } else {
-          console.error('Failed to fetch hero slides:', heroSlidesResponse.status);
-          setHeroSlides([]);
-        }
-
-        // Fetch active banners with proper error handling
-        const bannersResponse = await fetch('/api/banners?active=true');
-        if (bannersResponse.ok) {
-          const bannersData = await bannersResponse.json();
-          console.log('Banners data received:', bannersData);
-          setBanners(Array.isArray(bannersData) ? bannersData : []);
-        } else {
-          console.error('Failed to fetch banners:', bannersResponse.status);
-          setBanners([]);
-        }
-      } catch (error) {
-        console.error('Network error while fetching homepage data:', error);
+  // Memoized fetch function
+  const fetchData = useCallback(async () => {
+    try {
+      // Fetch active hero slides with proper error handling
+      const heroSlidesResponse = await fetch('/api/hero-slides?active=true');
+      if (heroSlidesResponse.ok) {
+        const heroSlidesData = await heroSlidesResponse.json();
+        setHeroSlides(Array.isArray(heroSlidesData) ? heroSlidesData : []);
+      } else {
         setHeroSlides([]);
-        setBanners([]);
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchData();
+      // Fetch active banners with proper error handling
+      const bannersResponse = await fetch('/api/banners?active=true');
+      if (bannersResponse.ok) {
+        const bannersData = await bannersResponse.json();
+        setBanners(Array.isArray(bannersData) ? bannersData : []);
+      } else {
+        setBanners([]);
+      }
+    } catch (error) {
+      setHeroSlides([]);
+      setBanners([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Add security headers to prevent XSS and other attacks
   useEffect(() => {
@@ -79,21 +76,17 @@ const HomePage = () => {
     };
   }, []);
 
-  // Log the data being passed to HeroSlider
-  console.log('Passing heroSlides to HeroSlider:', heroSlides);
-  console.log('Passing banners to BannerSlider:', banners);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-gray-500 dark:text-gray-400 animate-pulse">
-          {t('common.loading', language)}
-        </div>
+  // Memoized loading component
+  const loadingComponent = useMemo(() => (
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+      <div className="text-gray-500 dark:text-gray-400 animate-pulse">
+        {t('common.loading', language)}
       </div>
-    );
-  }
+    </div>
+  ), [language]);
 
-  return (
+  // Memoized main content
+  const mainContent = useMemo(() => (
     <>
       <SEOHelmet 
         title={t('home.seo.title', language)}
@@ -120,11 +113,18 @@ const HomePage = () => {
           <CategoriesGrid />  
         </div>
         <DiscountSection />
+        <CustomerReviews />
         <ExtraSection1 />
         <ExtraSection2 />
       </div>
     </>
-  );
+  ), [language, heroSlides, banners]);
+
+  if (loading) {
+    return loadingComponent;
+  }
+
+  return mainContent;
 };
 
-export default HomePage;
+export default React.memo(HomePage);

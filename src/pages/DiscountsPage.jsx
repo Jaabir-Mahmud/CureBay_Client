@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Star, Eye, ArrowLeft, Calendar } from 'lucide-react';
+import { ShoppingCart, Eye, ArrowLeft, Calendar, X } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -10,6 +10,12 @@ import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { t } from '../lib/i18n';
 import SEOHelmet from '../components/SEOHelmet';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 
 const DiscountsPage = () => {
   const { addToCart } = useCart();
@@ -20,6 +26,8 @@ const DiscountsPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('discount'); // discount, price, name
+  const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch all discounted medicines
   useEffect(() => {
@@ -51,8 +59,6 @@ const DiscountsPage = () => {
             discountPercentage: typeof medicine.discountPercentage === 'number' ? medicine.discountPercentage : 0,
             discountStartDate: medicine.discountStartDate || null,
             discountEndDate: medicine.discountEndDate || null,
-            rating: typeof medicine.rating === 'number' ? medicine.rating : 4.5,
-            reviews: typeof medicine.reviews === 'number' ? medicine.reviews : 0,
             finalPrice: typeof medicine.finalPrice === 'number' ? medicine.finalPrice : 
               (typeof medicine.price === 'number' && typeof medicine.discountPercentage === 'number' ? 
                 medicine.price * (1 - medicine.discountPercentage / 100) : 0)
@@ -128,6 +134,18 @@ const DiscountsPage = () => {
     const isEnded = endDate && endDate < currentDate;
     
     return isStarted && !isEnded;
+  };
+
+  // Open medicine details modal
+  const openMedicineDetails = (medicine) => {
+    setSelectedMedicine(medicine);
+    setIsModalOpen(true);
+  };
+
+  // Close medicine details modal
+  const closeMedicineDetails = () => {
+    setIsModalOpen(false);
+    setSelectedMedicine(null);
   };
 
   if (loading) {
@@ -277,7 +295,7 @@ const DiscountsPage = () => {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-end justify-center pb-6">
                           <Button 
-                            onClick={() => console.log('View details for', medicine.name)}
+                            onClick={() => openMedicineDetails(medicine)}
                             className="opacity-0 group-hover:opacity-100 transition-all duration-300 bg-white/90 dark:bg-gray-700/90 text-gray-900 dark:text-white hover:bg-white dark:hover:bg-gray-600 shadow-xl transform translate-y-2 group-hover:translate-y-0 flex items-center gap-2"
                           >
                             <Eye className="w-4 h-4" />
@@ -295,7 +313,7 @@ const DiscountsPage = () => {
                           {medicine.company}
                         </p>
                         {/* Rating */}
-                        <div className="flex items-center mb-3">
+                        {/* <div className="flex items-center mb-3">
                           <div className="flex text-amber-400">
                             {[...Array(5)].map((_, i) => (
                               <Star
@@ -308,10 +326,7 @@ const DiscountsPage = () => {
                               />
                             ))}
                           </div>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                            ({medicine.reviews || 12} {t('discounts.reviews', language)})
-                          </span>
-                        </div>
+                        </div> */}
                         {/* Price */}
                         <div className="flex items-center justify-between">
                           <div>
@@ -348,6 +363,114 @@ const DiscountsPage = () => {
           )}
         </div>
       </div>
+
+      {/* Medicine Detail Dialog */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl sm:text-2xl">
+              {t('home.discount.productDetails', language)}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedMedicine && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gray-100 dark:bg-gray-700 rounded-xl p-4 flex items-center justify-center">
+                <img
+                  src={selectedMedicine.image}
+                  alt={selectedMedicine.name}
+                  className="w-full h-64 object-contain rounded-lg"
+                  onError={(e) => {
+                    e.target.src = 'https://placehold.co/300x300/cccccc/ffffff?text=Medicine';
+                  }}
+                />
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                  {selectedMedicine.name}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 mt-2">
+                  {selectedMedicine.genericName}
+                </p>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                  by {selectedMedicine.company}
+                </p>
+                
+                {/* Rating */}
+                {/* <div className="flex items-center mt-4">
+                  <div className="flex text-amber-400">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 sm:w-5 sm:h-5 ${
+                          i < Math.floor(selectedMedicine.rating || 4.5)
+                            ? 'fill-current'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div> */}
+                
+                {/* Price */}
+                <div className="mt-6">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                      ৳{(selectedMedicine.finalPrice || selectedMedicine.price * (1 - selectedMedicine.discountPercentage / 100)).toFixed(2)}
+                    </span>
+                    {selectedMedicine.discountPercentage > 0 && (
+                      <>
+                        <span className="text-lg text-gray-500 dark:text-gray-400 line-through">
+                          ৳{selectedMedicine.price.toFixed(2)}
+                        </span>
+                        <Badge className="bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg rounded-full px-2 py-1 text-xs sm:text-sm font-bold">
+                          {selectedMedicine.discountPercentage}% {t('home.discount.off', language)}
+                        </Badge>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-gray-500 dark:text-gray-400 mt-1">
+                    {selectedMedicine.massUnit} • In stock: {selectedMedicine.stockQuantity} units
+                  </p>
+                </div>
+                
+                {/* Description */}
+                <div className="mt-6">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    {t('home.discount.descriptionTitle', language)}
+                  </h4>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
+                    {selectedMedicine.description || t('home.discount.noDescription', language)}
+                  </p>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                  <Button
+                    onClick={() => {
+                      handleAddToCart(selectedMedicine);
+                      closeMedicineDetails();
+                    }}
+                    className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+                  >
+                    <ShoppingCart className="w-5 h-5 mr-2" />
+                    {t('home.discount.addToCart', language)}
+                  </Button>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <Link to={`/medicine/${selectedMedicine._id}`}>
+                      {t('home.discount.productDetails', language)}
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

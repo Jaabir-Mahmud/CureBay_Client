@@ -23,6 +23,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../../components/ui/dialog';
 import { Label } from '../../../components/ui/label';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../../components/ui/alert-dialog';
 import { useAuth } from '../../../contexts/AuthContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -92,10 +102,13 @@ const SellerDashboard = () => {
   const [categorySearchTerm, setCategorySearchTerm] = useState('');
   const [imageError, setImageError] = useState('');
   const [advertisementRequests, setAdvertisementRequests] = useState([]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [medicineToDelete, setMedicineToDelete] = useState(null);
   const [isAdvertisementRequestOpen, setIsAdvertisementRequestOpen] = useState(false);
   
   // Use the MongoDB ObjectId from profile as sellerId, not the Firebase UID
   const sellerId = profile?._id;
+  console.log('Seller ID from profile:', sellerId);
   
   // Debug logging
   useEffect(() => {
@@ -160,9 +173,25 @@ const SellerDashboard = () => {
     queryKey: ['sellerMedicines', sellerId],
     queryFn: async () => {
       if (!sellerId) return null;
-      const response = await fetch(`/api/medicines?sellerId=${sellerId}`);
+      
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {};
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const url = `/api/medicines?sellerId=${sellerId}&limit=100`;
+      console.log('Fetching medicines with URL:', url);
+      const response = await fetch(url, {
+        headers
+      });
       if (!response.ok) throw new Error('Failed to fetch medicines');
-      return response.json();
+      const data = await response.json();
+      console.log('Fetched medicines data:', data);
+      return data;
     },
     enabled: !!sellerId // Only enable when we have a valid sellerId
   });
@@ -172,7 +201,20 @@ const SellerDashboard = () => {
     queryKey: ['sellerPayments', sellerId],
     queryFn: async () => {
       if (!sellerId) return null;
-      const response = await fetch(`/api/payments/seller/${sellerId}`);
+      
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {};
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/payments/seller/${sellerId}`, {
+        headers
+      });
+      
       if (!response.ok) throw new Error('Failed to fetch payments');
       return response.json();
     },
@@ -183,7 +225,16 @@ const SellerDashboard = () => {
   const { data: categoriesData, error: categoriesError, isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const response = await fetch('/api/categories');
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {};
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch('/api/categories', { headers });
       if (!response.ok) throw new Error('Failed to fetch categories');
       const data = await response.json();
       console.log('Categories API response:', data); // Debug log
@@ -230,6 +281,9 @@ const SellerDashboard = () => {
                          medicine.company?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
+  
+  // Debug the filtered medicines
+  console.log('Filtered medicines count:', filteredMedicines.length, 'Search term:', searchTerm);
 
   // Calculate statistics
   const totalRevenue = payments
@@ -242,6 +296,9 @@ const SellerDashboard = () => {
 
   const totalMedicines = medicines.length;
   const activeMedicines = medicines.filter(m => m.isActive !== false).length;
+  
+  // Debug the medicine counts
+  console.log('Medicine counts - Total:', totalMedicines, 'Active:', activeMedicines, 'All medicines:', medicines);
 
   // Handle medicine image change for add
   const handleImageChange = (e) => {
@@ -299,8 +356,18 @@ const SellerDashboard = () => {
       
       console.log('Uploading image:', medicineImage);
       
+      // Get the ID token for authentication
+      const token = user ? await user.getIdToken() : null;
+      const headers = {};
+      
+      // Add Authorization header if token is available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/upload/image', {
         method: 'POST',
+        headers,
         body: formData,
       });
       
@@ -483,9 +550,9 @@ const SellerDashboard = () => {
       }
       
       // Prepare medicine data - ensure proper data types
+      // Note: We don't send the seller field as it should not be changeable
       const medicineData = {
         ...data,
-        seller: sellerId, // Use the MongoDB ObjectId
         image: imageUrl, // Use uploaded image URL or keep existing
         price: parseFloat(data.price), // Ensure price is a number
         discountPercentage: parseInt(data.discountPercentage) || 0 // Ensure discount is an integer
@@ -535,7 +602,14 @@ const SellerDashboard = () => {
   };
 
   const handleDeleteMedicine = async (medicineId) => {
-    if (!confirm('Are you sure you want to delete this medicine?')) return;
+    // Set the medicine to delete and open the confirmation dialog
+    setMedicineToDelete(medicineId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Function to actually delete the medicine after confirmation
+  const confirmDeleteMedicine = async () => {
+    if (!medicineToDelete) return;
     
     try {
       // Get the ID token for authentication
@@ -547,19 +621,34 @@ const SellerDashboard = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`/api/medicines/${medicineId}`, {
+      const response = await fetch(`/api/medicines/${medicineToDelete}`, {
         method: 'DELETE',
         headers
       });
 
-      if (!response.ok) throw new Error('Failed to delete medicine');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete medicine');
+      }
       
       toast.success('Medicine deleted successfully');
+      console.log('Medicine deleted, refetching medicines...');
       refetchMedicines();
+      console.log('Refetch called');
     } catch (error) {
-      toast.error('Failed to delete medicine');
+      toast.error(error.message || 'Failed to delete medicine');
       console.error('Error deleting medicine:', error);
+    } finally {
+      // Close the dialog and reset the state
+      setIsDeleteDialogOpen(false);
+      setMedicineToDelete(null);
     }
+  };
+
+  // Function to cancel the delete operation
+  const cancelDeleteMedicine = () => {
+    setIsDeleteDialogOpen(false);
+    setMedicineToDelete(null);
   };
 
   // Handle view medicine
@@ -1639,6 +1728,27 @@ const SellerDashboard = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this medicine?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the medicine and remove it from your catalog.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDeleteMedicine}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteMedicine}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

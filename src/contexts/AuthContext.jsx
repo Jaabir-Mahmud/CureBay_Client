@@ -68,14 +68,14 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = await firebaseUser.getIdToken();
       // Use relative URL as Vite proxy should handle the routing
-      const res = await fetch('/api/users/me', {
+      let res = await fetch('/api/users/me', {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Security-Policy': "default-src 'self'"
         },
         credentials: 'same-origin'
       });
-      
+
       if (res.ok) {
         try {
           const data = await res.json();
@@ -89,9 +89,7 @@ export const AuthProvider = ({ children }) => {
             address: data.address ? sanitizeInput(data.address) : null,
             profilePicture: sanitizeProfilePictureUrl(data.profilePicture)
           };
-          
           setProfile(sanitizedData);
-          
           // Check if user is active
           if (sanitizedData.isActive === false) {
             console.log('User account is inactive, logging out...');
@@ -107,65 +105,40 @@ export const AuthProvider = ({ children }) => {
           }
         } catch (jsonError) {
           console.error('Failed to parse JSON response:', jsonError);
-          // Handle case where response is not valid JSON
           setProfile(null);
           return;
         }
-      } else if (res.status === 404) {
-        // User not found in database - they may have been deleted or might be a new user
-        console.log('User not found in database');
-        
-        // Check if this might be a new user by looking at Firebase user metadata
-        // If creation time is very recent, it might be a new user still being processed
-        const creationTime = new Date(firebaseUser.metadata.creationTime).getTime();
-        const now = new Date().getTime();
-        const timeDiff = now - creationTime;
-        
-        // If user was created less than 10 seconds ago, wait a bit and try again
-        if (timeDiff < 10000) {
-          console.log('New user detected, waiting for profile creation...');
-          // Try again after a short delay
-          setTimeout(() => {
-            checkUserProfile(firebaseUser);
-          }, 2000);
-          return;
-        }
-        
-        // If it's been longer, treat as deleted user
-        console.log('User account appears to be deleted, logging out...');
-        setProfile(null);
-        await signOut(auth);
-        if (typeof window !== 'undefined') {
-          toast.error('Your account has been deleted by an administrator. You have been logged out. Please sign up again if you wish to use the service.', {
-            duration: 6000,
-            position: 'top-center',
-          });
-        }
-      } else if (res.status === 401) {
-        // Handle unauthorized access
-        let errorData = {};
-        try {
-          errorData = await res.json();
-        } catch (jsonError) {
-          // If response is not JSON, create a default error object
-          errorData = { error: `Unauthorized: ${res.statusText}` };
-        }
-        console.log('Profile check error (401):', errorData);
-        
-        // Try to refresh the token and retry once
-        try {
-          const newToken = await firebaseUser.getIdToken(true); // Force refresh
-          const retryRes = await fetch('/api/users/me', {
+      } else if (res.status === 404 || res.status === 401) {
+        // User not found or unauthorized, try to create user in backend
+        console.log('User not found or unauthorized, attempting to create user in backend...');
+        const userData = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          name: firebaseUser.displayName,
+          username: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+          role: 'user',
+          profilePicture: firebaseUser.photoURL
+        };
+        // Try to create user (Google sign-in flow)
+        const createRes = await fetch('/api/users/google', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(userData),
+          credentials: 'include'
+        });
+        if (createRes.ok) {
+          // Try fetching profile again
+          res = await fetch('/api/users/me', {
             headers: { 
-              Authorization: `Bearer ${newToken}`,
+              Authorization: `Bearer ${token}`,
               'Content-Security-Policy': "default-src 'self'"
             },
             credentials: 'same-origin'
           });
-          
-          if (retryRes.ok) {
-            const data = await retryRes.json();
-            // Sanitize profile data
+          if (res.ok) {
+            const data = await res.json();
             const sanitizedData = {
               ...data,
               name: sanitizeInput(data.name),
@@ -175,20 +148,32 @@ export const AuthProvider = ({ children }) => {
               address: data.address ? sanitizeInput(data.address) : null,
               profilePicture: sanitizeProfilePictureUrl(data.profilePicture)
             };
-            
             setProfile(sanitizedData);
             return;
           }
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
+        } else {
+          // Show backend error message if available
+          let backendError = 'Your account could not be found or created. Please try again or contact support.';
+          try {
+            const errData = await createRes.json();
+            if (errData && errData.error) backendError = errData.error;
+          } catch {}
+          setProfile(null);
+          await signOut(auth);
+          if (typeof window !== 'undefined') {
+            toast.error(backendError, {
+              duration: 6000,
+              position: 'top-center',
+            });
+          }
+          return;
         }
-        
-        // If still unauthorized, log out
+        // If still not found, log out
         setProfile(null);
         await signOut(auth);
         if (typeof window !== 'undefined') {
-          toast.error(errorData.error || 'Session expired. Please log in again.', {
-            duration: 4000,
+          toast.error('Your account could not be found or created. Please try again or contact support.', {
+            duration: 6000,
             position: 'top-center',
           });
         }

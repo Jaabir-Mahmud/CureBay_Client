@@ -1,2 +1,14 @@
 .env
 node_modules
+
+# Environment files
+.env.local
+.env.production
+.env.development
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp

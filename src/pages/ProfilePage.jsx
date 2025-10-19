@@ -579,9 +579,7 @@ const ProfilePage = () => {
                             <SelectItem value="admin">⚡ {t('profile.admin', language)}</SelectItem>
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-gray-500">
-                          {t('profile.roleHelp', language) || 'Contact support to change your account type'}
-                        </p>
+                       
                       </div>
                     </div>
 

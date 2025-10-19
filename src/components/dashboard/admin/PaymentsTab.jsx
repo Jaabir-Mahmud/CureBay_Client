@@ -139,7 +139,6 @@ function PaymentsTab({
       setPaymentModalOpen(false);
       
     } catch (error) {
-      console.error(`Error ${paymentAction}ing payment:`, error);
       toast.error(`Failed to ${paymentAction} payment. Please try again.`);
     } finally {
       setIsProcessingPayment(false);
@@ -201,7 +200,6 @@ function PaymentsTab({
       toast.success(`${validPaymentIds.length} payments ${action}ed successfully!`);
       
     } catch (error) {
-      console.error(`Error ${action}ing payments:`, error);
       toast.error(`Failed to ${action} payments. Please try again.`);
     } finally {
       setIsProcessingPayment(false);

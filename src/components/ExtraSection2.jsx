@@ -3,6 +3,7 @@ import { Shield, Truck, Clock, Award, Users, HeartHandshake } from 'lucide-react
 import { Card, CardContent } from './ui/card';
 import { useLanguage } from '../contexts/LanguageContext'; // Added LanguageContext import
 import { t } from '../lib/i18n'; // Added translations import
+import { Link } from 'react-router-dom'; // Changed from useNavigate to Link
 
 const ExtraSection2 = () => {
   const { language } = useLanguage(); // Use language context
@@ -131,9 +132,9 @@ const ExtraSection2 = () => {
           </div>
         </div>
 
-        {/* Call to Action */}
+        {/* Call to Action - Changed color to match Navbar CureBay icon */}
         <div className="text-center mt-16">
-          <div className="bg-gradient-to-r from-cyan-600 to-purple-600 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-8 lg:p-12 text-white dark:text-gray-100 border border-gray-200/20 dark:border-gray-600/30 transition-all duration-300">
+          <div className="bg-gradient-to-r from-cyan-600 to-cyan-800 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-8 lg:p-12 text-white dark:text-gray-100 border border-gray-200/20 dark:border-gray-600/30 transition-all duration-300">
             <h3 className="text-2xl lg:text-3xl font-bold mb-4">
               {t('extra2.betterHealthcare', language)}
             </h3>
@@ -141,12 +142,17 @@ const ExtraSection2 = () => {
               {t('extra2.join', language)}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-cyan-600 hover:bg-gray-100 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500 px-8 py-3 rounded-lg font-medium transition-all duration-300">
-                {t('extra2.browse', language)}
-              </button>
-              <button className="border-2 border-white text-white hover:bg-white hover:text-cyan-600 dark:border-gray-400 dark:text-gray-100 dark:hover:bg-gray-400 dark:hover:text-gray-900 px-8 py-3 rounded-lg font-medium transition-all duration-300">
-                {t('extra2.contactSupport', language)}
-              </button>
+              {/* Updated buttons with Link components */}
+              <Link to="/shop">
+                <button className="bg-white text-cyan-600 hover:bg-gray-100 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500 px-8 py-3 rounded-lg font-medium transition-all duration-300">
+                  {t('extra2.browse', language)}
+                </button>
+              </Link>
+              <Link to="/contact">
+                <button className="border-2 border-white text-white hover:bg-white hover:text-cyan-600 dark:border-gray-400 dark:text-gray-100 dark:hover:bg-gray-400 dark:hover:text-gray-900 px-8 py-3 rounded-lg font-medium transition-all duration-300">
+                  {t('extra2.contactSupport', language)}
+                </button>
+              </Link>
             </div>
           </div>
         </div>

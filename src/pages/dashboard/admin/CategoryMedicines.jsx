@@ -18,6 +18,7 @@ import {
 } from '../../../components/ui/dialog';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
+import './CategoryMedicines.css'; // Import the CSS file
 
 const CategoryMedicines = () => {
   const { user } = useAuth();
@@ -84,11 +85,8 @@ const CategoryMedicines = () => {
   };
 
   useEffect(() => {
-    console.log('CategoryMedicines mounted with categoryId:', categoryId);
-    
     // Validate categoryId before fetching data
     if (!categoryId || categoryId === 'undefined') {
-      console.error('Invalid categoryId:', categoryId);
       toast.error('Invalid category ID. Please select a valid category.');
       setLoading(false);
       return;
@@ -98,15 +96,8 @@ const CategoryMedicines = () => {
     fetchAllCategories();
   }, [categoryId]);
 
-  // Debug effect to track medicines state changes
-  useEffect(() => {
-    console.log('Medicines state changed:', medicines.length, 'medicines');
-    console.log('Current medicines:', medicines);
-  }, [medicines]);
-
   const fetchAllCategories = async () => {
     try {
-      console.log('Fetching categories...');
       const res = await fetch('/api/categories');
       if (res.ok) {
         // Handle potential empty or invalid JSON responses
@@ -114,21 +105,17 @@ const CategoryMedicines = () => {
         try {
           data = await res.json();
         } catch (jsonError) {
-          console.error('Failed to parse JSON response:', jsonError);
           data = []; // Use empty array as fallback
         }
-        console.log('Categories fetched:', data);
         setCategories(data);
         
         if (data.length === 0) {
           toast.error('No categories found. Please create categories first.');
         }
       } else {
-        console.error('Failed to fetch categories:', res.status, res.statusText);
         toast.error('Failed to load categories');
       }
     } catch (error) {
-      console.error('Error fetching categories:', error);
       toast.error('Error loading categories');
     }
   };
@@ -136,23 +123,19 @@ const CategoryMedicines = () => {
   const fetchCategoryMedicines = async () => {
     // Validate categoryId before making requests
     if (!categoryId || categoryId === 'undefined') {
-      console.error('Cannot fetch medicines: Invalid categoryId:', categoryId);
       setLoading(false);
       return;
     }
     
     try {
       setLoading(true);
-      console.log('Fetching medicines for category:', categoryId);
       
       // Fetch category details
       const categoryRes = await fetch(`/api/categories/${categoryId}`);
       if (categoryRes.ok) {
         const categoryData = await categoryRes.json();
-        console.log('Category data:', categoryData);
         setCategory(categoryData);
       } else {
-        console.error('Failed to fetch category:', categoryRes.status);
         toast.error('Failed to load category information');
       }
       
@@ -160,25 +143,26 @@ const CategoryMedicines = () => {
       const medicinesRes = await fetch(`/api/medicines?category=${categoryId}&limit=100`);
       if (medicinesRes.ok) {
         const medicinesData = await medicinesRes.json();
-        console.log('Medicines data:', medicinesData);
-        console.log('Medicines data type:', typeof medicinesData);
-        console.log('Medicines data.medicines:', medicinesData.medicines);
         
-        const medicinesList = medicinesData.medicines || medicinesData || [];
-        console.log('Setting medicines list with', medicinesList.length, 'items');
-        console.log('Sample medicine item:', medicinesList[0]);
+        // Ensure we have a proper array of medicines
+        let medicinesList = [];
+        if (Array.isArray(medicinesData)) {
+          medicinesList = medicinesData;
+        } else if (medicinesData && Array.isArray(medicinesData.medicines)) {
+          medicinesList = medicinesData.medicines;
+        } else if (medicinesData && typeof medicinesData === 'object') {
+          // Handle case where the response is a single object or other format
+          medicinesList = [medicinesData];
+        }
         
         setMedicines(medicinesList);
       } else {
-        console.error('Failed to fetch medicines:', medicinesRes.status, medicinesRes.statusText);
         const errorText = await medicinesRes.text();
-        console.error('Error response:', errorText);
         toast.error('Failed to load medicines');
         setMedicines([]); // Set empty array on error
       }
     } catch (error) {
-      console.error('Error fetching category medicines:', error);
-      toast.error('Error loading data');
+      toast.error('Error loading data: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -188,13 +172,13 @@ const CategoryMedicines = () => {
     .filter(medicine => {
       // Safety check for medicine properties
       if (!medicine || typeof medicine !== 'object') {
-        console.warn('Invalid medicine object:', medicine);
         return false;
       }
       
-      const name = medicine.name || '';
-      const genericName = medicine.genericName || '';
-      const company = medicine.company || '';
+      // Ensure medicine has required properties
+      const name = (medicine.name || '').toString();
+      const genericName = (medicine.genericName || '').toString();
+      const company = (medicine.company || '').toString();
       
       const matchesSearch = name.toLowerCase().includes(search.toLowerCase()) ||
                            genericName.toLowerCase().includes(search.toLowerCase()) ||
@@ -206,13 +190,34 @@ const CategoryMedicines = () => {
       
       return matchesSearch && matchesStock;
     })
+    .map(medicine => {
+      // Ensure all required properties exist
+      return {
+        _id: medicine._id,
+        id: medicine.id,
+        name: medicine.name || 'Unnamed Medicine',
+        genericName: medicine.genericName || 'No generic name',
+        company: medicine.company || 'Unknown company',
+        massUnit: medicine.massUnit || 'N/A',
+        image: medicine.image || 'https://placehold.co/300x225?text=No+Image',
+        price: parseFloat(medicine.price) || 0,
+        finalPrice: parseFloat(medicine.finalPrice) || 0,
+        discountPercentage: parseFloat(medicine.discountPercentage) || 0,
+        stockQuantity: parseInt(medicine.stockQuantity) || 0,
+        inStock: medicine.inStock !== undefined ? medicine.inStock : true,
+        ...medicine // Keep any other properties
+      };
+    })
     .sort((a, b) => {
+      // Ensure we have valid objects to sort
+      if (!a || !b) return 0;
+      
       switch (sortBy) {
         case 'name':
           return (a.name || '').localeCompare(b.name || '');
         case 'price':
-          const aFinalPrice = a.finalPrice || a.price * (1 - a.discountPercentage / 100) || 0;
-          const bFinalPrice = b.finalPrice || b.price * (1 - b.discountPercentage / 100) || 0;
+          const aFinalPrice = a.finalPrice || a.price * (1 - (a.discountPercentage || 0) / 100) || 0;
+          const bFinalPrice = b.finalPrice || b.price * (1 - (b.discountPercentage || 0) / 100) || 0;
           return aFinalPrice - bFinalPrice;
         case 'stock':
           return (b.stockQuantity || 0) - (a.stockQuantity || 0);
@@ -223,16 +228,10 @@ const CategoryMedicines = () => {
       }
     }) : [];
 
-  // Debug log to check medicines state
-  console.log('Total medicines in state:', medicines.length);
-  console.log('Filtered medicines count:', filteredMedicines.length);
-
   const openAddMedicineModal = () => {
     // Validate that we have a valid categoryId
     const objectIdRegex = /^[0-9a-fA-F]{24}$/;
     const validCategoryId = categoryId && objectIdRegex.test(categoryId) ? categoryId : '';
-    
-    console.log('Opening modal with categoryId:', categoryId, 'Valid:', !!validCategoryId);
     
     setMedicineForm({
       name: '',
@@ -355,12 +354,6 @@ const CategoryMedicines = () => {
       return;
     }
 
-    console.log('Form validation passed. Form data being processed:', {
-      ...medicineForm,
-      categoryId: categoryId,
-      selectedCategory: medicineForm.category
-    });
-
     setIsSubmitting(true);
     try {
       // Handle image upload if a file was selected
@@ -379,7 +372,6 @@ const CategoryMedicines = () => {
         } catch (uploadError) {
           toast.error(`Image upload failed: ${uploadError.message}`);
           // Continue with form submission even if image upload fails
-          console.error('Image upload error:', uploadError);
         } finally {
           setIsUploadingImage(false);
         }
@@ -397,9 +389,6 @@ const CategoryMedicines = () => {
 
       // Remove imageFile from the data being sent to server
       delete formData.imageFile;
-
-      console.log('Original form data:', medicineForm);
-      console.log('Processed form data being sent:', formData);
 
       // Get the ID token for authentication
       const token = user ? await user.getIdToken() : null;
@@ -422,7 +411,6 @@ const CategoryMedicines = () => {
 
       if (res.ok) {
         const newMedicine = JSON.parse(responseText);
-        console.log('Medicine created successfully:', newMedicine);
         
         // Add the new medicine directly to the state instead of refetching
         setMedicines(prevMedicines => {
@@ -441,17 +429,14 @@ const CategoryMedicines = () => {
         let errorMessage = 'Failed to add medicine';
         try {
           const errorData = JSON.parse(responseText);
-          console.error('Server error response:', errorData);
           errorMessage = errorData.message || errorMessage;
         } catch (e) {
           // If response is not JSON, use the raw text or status text
-          console.error('Non-JSON error response:', responseText);
           errorMessage = responseText || res.statusText || errorMessage;
         }
         toast.error(errorMessage);
       }
     } catch (error) {
-      console.error('Error adding medicine:', error);
       toast.error('Failed to add medicine. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
@@ -470,7 +455,6 @@ const CategoryMedicines = () => {
           const uploadResult = await uploadImageFile(medicineForm.imageFile);
           imageUrl = uploadResult.url;
         } catch (uploadError) {
-          console.error('Image upload failed:', uploadError);
           toast.error('Failed to upload image: ' + uploadError.message);
           setIsSubmitting(false);
           return;
@@ -512,7 +496,6 @@ const CategoryMedicines = () => {
 
       if (res.ok) {
         const updatedMedicine = JSON.parse(responseText);
-        console.log('Medicine updated successfully:', updatedMedicine);
         
         // Update the medicine in the state
         setMedicines(prevMedicines => {
@@ -529,17 +512,14 @@ const CategoryMedicines = () => {
         let errorMessage = 'Failed to update medicine';
         try {
           const errorData = JSON.parse(responseText);
-          console.error('Server error response:', errorData);
           errorMessage = errorData.message || errorMessage;
         } catch (e) {
           // If response is not JSON, use the raw text or status text
-          console.error('Non-JSON error response:', responseText);
           errorMessage = responseText || res.statusText || errorMessage;
         }
         toast.error(errorMessage);
       }
     } catch (error) {
-      console.error('Error updating medicine:', error);
       toast.error('Failed to update medicine. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
@@ -579,7 +559,6 @@ const CategoryMedicines = () => {
         toast.error(errorData.message || 'Failed to delete medicine');
       }
     } catch (error) {
-      console.error('Error deleting medicine:', error);
       toast.error('Failed to delete medicine. Please check your connection and try again.');
     }
   };
@@ -619,7 +598,6 @@ const CategoryMedicines = () => {
         toast.error(errorData.message || 'Failed to update medicine status');
       }
     } catch (error) {
-      console.error('Error updating medicine status:', error);
       toast.error('Failed to update medicine status. Please check your connection and try again.');
     }
   };
@@ -640,7 +618,7 @@ const CategoryMedicines = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <Button
               variant="outline"
               size="sm"
@@ -648,16 +626,16 @@ const CategoryMedicines = () => {
               className="flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
+              <span className="hidden sm:inline">Back to Dashboard</span>
             </Button>
             
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 onClick={openAddMedicineModal}
                 className="flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                Add Medicine
+                <span className="hidden sm:inline">Add Medicine</span>
               </Button>
               <Button
                 variant="outline"
@@ -665,18 +643,20 @@ const CategoryMedicines = () => {
                 className="flex items-center gap-2"
               >
                 <Package className="w-4 h-4" />
-                Refresh
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
             </div>
           </div>
           
-          <div className="flex items-center gap-4 mb-2">
-            <Package className="w-8 h-8 text-cyan-500" />
+          <div className="flex flex-wrap items-center gap-4 mb-2">
+            <div className="w-8 h-8 flex-shrink-0">
+              <Package className="w-8 h-8 text-cyan-500" />
+            </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white break-words">
                 {category?.name || 'Category'} Medicines
               </h1>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="text-gray-600 dark:text-gray-300 break-words">
                 {category?.description || 'Manage medicines in this category'}
               </p>
             </div>
@@ -697,7 +677,7 @@ const CategoryMedicines = () => {
         {/* Controls */}
         <Card className="mb-6">
           <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
               {/* Search */}
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -710,7 +690,7 @@ const CategoryMedicines = () => {
               </div>
 
               {/* Filters */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Sort by" />
@@ -734,27 +714,30 @@ const CategoryMedicines = () => {
                   </SelectContent>
                 </Select>
 
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                >
-                  <Grid className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className="px-3"
+                  >
+                    <Grid className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('list')}
+                    className="px-3"
+                  >
+                    <List className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Medicines Display */}
-        {console.log('Rendering medicines. Total:', medicines.length, 'Filtered:', filteredMedicines.length)}
         {filteredMedicines.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
@@ -762,198 +745,290 @@ const CategoryMedicines = () => {
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 No medicines found
               </h3>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-gray-600 dark:text-gray-400 px-4">
                 {search || filterInStock !== 'all' 
                   ? 'Try adjusting your search or filters.' 
                   : 'This category doesn\'t have any medicines yet.'}
               </p>
+              <div className="mt-6">
+                <Button onClick={openAddMedicineModal} className="flex items-center gap-2 mx-auto">
+                  <Plus className="w-4 h-4" />
+                  Add Your First Medicine
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredMedicines.map((medicine) => (
-              <Card key={`grid-${medicine._id || medicine.id}`} className="group hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="mb-4">
-                    <img
-                      src={medicine.image}
-                      alt={medicine.name}
-                      className="w-full h-40 object-cover rounded-lg mb-3"
-                    />
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-tight">
-                        {medicine.name}
-                      </h3>
-                      <Badge variant={medicine.inStock ? 'default' : 'secondary'} className="ml-2">
-                        {medicine.inStock ? 'In Stock' : 'Out of Stock'}
-                      </Badge>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+            {filteredMedicines.map((medicine) => {
+              // Additional safety check
+              if (!medicine) return null;
+              
+              const medicineId = medicine._id || medicine.id;
+              if (!medicineId) {
+                return null;
+              }
+              
+              return (
+                <Card key={`grid-${medicineId}`} className="group hover:shadow-lg transition-all duration-300 medicine-grid-card overflow-hidden h-full flex flex-col">
+                  <CardContent className="p-4 sm:p-6 card-content flex flex-col flex-grow">
+                    <div className="mb-4 flex-shrink-0">
+                      <div className="medicine-image-container">
+                        <img
+                          src={medicine.image || 'https://placehold.co/300x225?text=No+Image'}
+                          alt={medicine.name || 'Medicine'}
+                          className="object-cover w-full h-full"
+                          onError={(e) => {
+                            e.target.src = 'https://placehold.co/300x225?text=No+Image';
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-start justify-between mb-2 mt-3">
+                        <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-tight break-words max-w-[70%]">
+                          {medicine.name || 'Unnamed Medicine'}
+                        </h3>
+                        <Badge variant={medicine.inStock ? 'default' : 'secondary'} className="ml-2 flex-shrink-0 text-xs px-2 py-1">
+                          {medicine.inStock ? 'In Stock' : 'Out of Stock'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 break-words">
+                        {medicine.genericName || 'No generic name'}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500 break-words">
+                        {medicine.company || 'Unknown company'} • {medicine.massUnit || 'N/A'}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                      {medicine.genericName}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {medicine.company} • {medicine.massUnit}
-                    </p>
-                  </div>
 
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        {medicine.discountPercentage > 0 && (
-                          <span className="text-xs text-gray-500 line-through">
-                            ৳{(medicine.price || 0).toFixed(2)}
+                    <div className="mb-4 flex-shrink-0">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <div className="flex flex-wrap items-center gap-1">
+                          {medicine.discountPercentage > 0 && (
+                            <span className="text-xs text-gray-500 line-through">
+                              ৳{((medicine.price || 0).toFixed(2))}
+                            </span>
+                          )}
+                          <span className="text-lg font-bold text-green-600">
+                            ৳{((medicine.finalPrice || medicine.price * (1 - (medicine.discountPercentage || 0) / 100) || 0).toFixed(2))}
                           </span>
-                        )}
-                        <span className="text-lg font-bold text-green-600">
-                          ৳{(medicine.finalPrice || medicine.price * (1 - medicine.discountPercentage / 100) || 0).toFixed(2)}
-                        </span>
+                        </div>
                         {medicine.discountPercentage > 0 && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded ml-2">
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded whitespace-nowrap">
                             {medicine.discountPercentage}% OFF
                           </span>
                         )}
                       </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                        Stock: {medicine.stockQuantity || 0} units
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      Stock: {medicine.stockQuantity} units
-                    </p>
-                  </div>
 
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1">
-                      <Eye className="w-3 h-3 mr-1" />
-                      View
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => openEditMedicineModal(medicine)}
-                    >
-                      <Edit className="w-3 h-3" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant={medicine.inStock ? "outline" : "default"}
-                      onClick={() => toggleMedicineStatus(medicine._id || medicine.id, medicine.inStock)}
-                    >
-                      {medicine.inStock ? (
-                        <>
-                          <XCircle className="w-3 h-3 mr-1" />
-                          Deactivate
-                        </>
-                      ) : (
-                        <>
-                          <Check className="w-3 h-3 mr-1" />
-                          Activate
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="text-red-600 hover:text-red-700"
-                      onClick={() => deleteMedicine(medicine._id || medicine.id)}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="flex flex-wrap gap-2 card-actions mt-auto">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex-1 min-w-[50px] text-xs py-1 px-2 h-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const id = medicine._id || medicine.id;
+                          if (id) {
+                            navigate(`/medicine/${id}`);
+                          } else {
+                            toast.error('Cannot view medicine: Invalid ID');
+                          }
+                        }}
+                      >
+                        <Eye className="w-3 h-3 mr-1" />
+                        <span className="truncate hidden xs:inline">View</span>
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="min-w-[32px] text-xs py-1 px-2 h-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditMedicineModal(medicine);
+                        }}
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant={medicine.inStock ? "outline" : "default"}
+                        className="min-w-[32px] text-xs py-1 px-2 h-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const id = medicine._id || medicine.id;
+                          if (id) {
+                            toggleMedicineStatus(id, medicine.inStock);
+                          } else {
+                            toast.error('Cannot update medicine: Invalid ID');
+                          }
+                        }}
+                      >
+                        {medicine.inStock ? (
+                          <XCircle className="w-3 h-3" />
+                        ) : (
+                          <Check className="w-3 h-3" />
+                        )}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-red-600 hover:text-red-700 min-w-[32px] text-xs py-1 px-2 h-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const id = medicine._id || medicine.id;
+                          if (id) {
+                            deleteMedicine(id);
+                          } else {
+                            toast.error('Cannot delete medicine: Invalid ID');
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto responsive-table-container">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-gray-50 dark:bg-gray-800">
                       <th className="text-left p-4 font-medium">Medicine</th>
-                      <th className="text-left p-4 font-medium">Company</th>
+                      <th className="text-left p-4 font-medium hidden md:table-cell">Company</th>
                       <th className="text-left p-4 font-medium">Price</th>
-                      <th className="text-left p-4 font-medium">Stock</th>
+                      <th className="text-left p-4 font-medium hidden sm:table-cell">Stock</th>
                       <th className="text-left p-4 font-medium">Status</th>
                       <th className="text-left p-4 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredMedicines.map((medicine) => (
-                      <tr key={`list-${medicine._id || medicine.id}`} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={medicine.image}
-                              alt={medicine.name}
-                              className="w-12 h-12 object-cover rounded"
-                            />
-                            <div>
-                              <p className="font-medium text-gray-900 dark:text-white">
-                                {medicine.name}
-                              </p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {medicine.genericName}
-                              </p>
+                    {filteredMedicines.map((medicine) => {
+                      // Additional safety check
+                      if (!medicine) return null;
+                      
+                      const medicineId = medicine._id || medicine.id;
+                      if (!medicineId) {
+                        return null;
+                      }
+                      
+                      return (
+                        <tr key={`list-${medicineId}`} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 overflow-hidden rounded flex-shrink-0">
+                                <img
+                                  src={medicine.image || 'https://placehold.co/50x50?text=No+Image'}
+                                  alt={medicine.name || 'Medicine'}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.src = 'https://placehold.co/50x50?text=No+Image';
+                                  }}
+                                />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-900 dark:text-white truncate">
+                                  {medicine.name || 'Unnamed Medicine'}
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 md:hidden truncate">
+                                  {medicine.company || 'Unknown company'}
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 md:hidden truncate">
+                                  Stock: {medicine.stockQuantity || 0} units
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-4 text-gray-600 dark:text-gray-400">
-                          {medicine.company}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-green-600">
-                              ৳{(medicine.finalPrice || medicine.price * (1 - medicine.discountPercentage / 100) || 0).toFixed(2)}
-                            </span>
-                            {medicine.discountPercentage > 0 && (
-                              <span className="text-xs text-gray-500 line-through">
-                                ৳{(medicine.price || 0).toFixed(2)}
+                          </td>
+                          <td className="p-4 text-gray-600 dark:text-gray-400 hidden md:table-cell">
+                            {medicine.company || 'Unknown company'}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-green-600">
+                                ৳{((medicine.finalPrice || medicine.price * (1 - (medicine.discountPercentage || 0) / 100) || 0).toFixed(2))}
                               </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-4 text-gray-600 dark:text-gray-400">
-                          {medicine.stockQuantity} units
-                        </td>
-                        <td className="p-4">
-                          <Badge variant={medicine.inStock ? 'default' : 'secondary'}>
-                            {medicine.inStock ? 'In Stock' : 'Out of Stock'}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
-                              <Eye className="w-3 h-3" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => openEditMedicineModal(medicine)}
-                            >
-                              <Edit className="w-3 h-3" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant={medicine.inStock ? "outline" : "default"}
-                              onClick={() => toggleMedicineStatus(medicine._id || medicine.id, medicine.inStock)}
-                            >
-                              {medicine.inStock ? (
-                                <XCircle className="w-3 h-3" />
-                              ) : (
-                                <Check className="w-3 h-3" />
+                              {medicine.discountPercentage > 0 && (
+                                <span className="text-xs text-gray-500 line-through">
+                                  ৳{((medicine.price || 0).toFixed(2))}
+                                </span>
                               )}
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() => deleteMedicine(medicine._id || medicine.id)}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                            </div>
+                          </td>
+                          <td className="p-4 text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                            {medicine.stockQuantity || 0} units
+                          </td>
+                          <td className="p-4">
+                            <Badge variant={medicine.inStock ? 'default' : 'secondary'}>
+                              {medicine.inStock ? 'In Stock' : 'Out of Stock'}
+                            </Badge>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  const id = medicine._id || medicine.id;
+                                  if (id) {
+                                    navigate(`/medicine/${id}`);
+                                  } else {
+                                    toast.error('Cannot view medicine: Invalid ID');
+                                  }
+                                }}
+                              >
+                                <Eye className="w-3 h-3" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => openEditMedicineModal(medicine)}
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant={medicine.inStock ? "outline" : "default"}
+                                onClick={() => {
+                                  const id = medicine._id || medicine.id;
+                                  if (id) {
+                                    toggleMedicineStatus(id, medicine.inStock);
+                                  } else {
+                                    toast.error('Cannot update medicine: Invalid ID');
+                                  }
+                                }}
+                              >
+                                {medicine.inStock ? (
+                                  <XCircle className="w-3 h-3" />
+                                ) : (
+                                  <Check className="w-3 h-3" />
+                                )}
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => {
+                                  const id = medicine._id || medicine.id;
+                                  if (id) {
+                                    deleteMedicine(id);
+                                  } else {
+                                    toast.error('Cannot delete medicine: Invalid ID');
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

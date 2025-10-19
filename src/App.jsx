@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop'; // Added ScrollToTop import
 import HomePage from './pages/HomePage';
 import AuthPage from './pages/auth/AuthPage';
 import ShopPage from './pages/shop/ShopPage';
 import CategoryPage from './pages/CategoryPage';
+import MedicineDetailsPage from './pages/MedicineDetailsPage'; // Add this line
 import CartPage from './pages/cart/CartPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/dashboard/admin/AdminDashboard';
@@ -17,11 +19,27 @@ import UserDashboard from './pages/dashboard/user/UserDashboard';
 import SellerDashboard from './pages/dashboard/seller/SellerDashboard';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import InvoicePage from './pages/InvoicePage';
-import TestAPI from './test-api'; // Add this line
-import TestDiscountPage from './test-discount';
 import HealthTipsPage from './pages/HealthTipsPage';
 import DiscountsPage from './pages/DiscountsPage'; // Add DiscountsPage import
-import CouponTestPage from './pages/CouponTestPage'; // Add CouponTestPage import
+
+import AllCategoriesPage from './pages/AllCategoriesPage'; // Add AllCategoriesPage import
+
+// Quick Links Pages
+import AboutUsPage from './pages/quicklinks/AboutUsPage';
+import ContactPage from './pages/quicklinks/ContactPage';
+import PrivacyPolicyPage from './pages/quicklinks/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/quicklinks/TermsOfServicePage';
+import FAQPage from './pages/quicklinks/FAQPage';
+import HelpCenterPage from './pages/quicklinks/HelpCenterPage';
+
+// Services Pages
+import OnlineConsultationPage from './pages/services/OnlineConsultationPage';
+import PrescriptionUploadPage from './pages/services/PrescriptionUploadPage';
+import MedicineReminderPage from './pages/services/MedicineReminderPage';
+import HealthCheckupPage from './pages/services/HealthCheckupPage';
+import LabTestsPage from './pages/services/LabTestsPage';
+import HealthInsurancePage from './pages/services/HealthInsurancePage';
+
 import ProtectedRoute from './components/ProtectedRoute'; // Added ProtectedRoute import
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
@@ -45,14 +63,52 @@ function App() {
     return localStorage.getItem('darkMode') === 'true';
   });
 
+  // Optimized dark mode toggle function with debouncing
+  const toggleDarkMode = useCallback((newDarkMode) => {
+    setDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', newDarkMode);
+    
+    // Use requestAnimationFrame to batch DOM updates
+    requestAnimationFrame(() => {
+      // Apply dark mode class immediately
+      if (newDarkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      
+      // Trigger a reflow to ensure styles are applied
+      document.documentElement.offsetHeight;
+    });
+  }, []);
+
+  // Optimized useEffect for dark mode changes with cleanup
   useEffect(() => {
+    // Apply initial dark mode class
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
+    
+    // Store preference in localStorage
     localStorage.setItem('darkMode', darkMode);
+    
+    // Cleanup function
+    return () => {
+      // No specific cleanup needed for this effect
+    };
   }, [darkMode]);
+
+  // Memoized dark mode toggle component with optimized rendering
+  const DarkModeToggle = useMemo(() => (
+    <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}>
+      <div className="flex items-center gap-2 bg-white dark:bg-gray-900 shadow-lg rounded-full px-4 py-2 transition-all duration-200 ease-out">
+        <span className="text-xs text-gray-700 dark:text-gray-200">Dark Mode</span>
+        <Switch checked={darkMode} onCheckedChange={toggleDarkMode} />
+      </div>
+    </div>
+  ), [darkMode, toggleDarkMode]);
 
   return (
     <HelmetProvider>
@@ -61,6 +117,7 @@ function App() {
           <CartProvider>
             <QueryClientProvider client={queryClient}>
               <Router>
+                <ScrollToTop /> {/* Added ScrollToTop component */}
                 <div className="min-h-screen flex flex-col">
                   <Navbar />
                   <main className="flex-1">
@@ -69,6 +126,8 @@ function App() {
                       <Route path="/auth" element={<AuthPage />} />
                       <Route path="/shop" element={<ShopPage />} />
                       <Route path="/cart" element={<CartPage />} />
+                      <Route path="/medicine/:medicineId" element={<MedicineDetailsPage />} /> {/* Add this line */}
+                      <Route path="/all-categories" element={<AllCategoriesPage />} /> {/* Add this line */}
                       <Route path="/profile" element={
                         <ProtectedRoute>
                           <ProfilePage />
@@ -111,11 +170,25 @@ function App() {
                           <UserDashboard />
                         </ProtectedRoute>
                       } />
-                      <Route path="/test-api" element={<TestAPI />} /> {/* Add this line */}
-                      <Route path="/test-discount" element={<TestDiscountPage />} />
                       <Route path="/health-tips" element={<HealthTipsPage />} />
                       <Route path="/discounts" element={<DiscountsPage />} /> {/* Add DiscountsPage route */}
-                      <Route path="/coupon-test" element={<CouponTestPage />} /> {/* Add CouponTestPage route */}
+                      
+                      
+                      {/* Quick Links Routes */}
+                      <Route path="/about" element={<AboutUsPage />} />
+                      <Route path="/contact" element={<ContactPage />} />
+                      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                      <Route path="/terms" element={<TermsOfServicePage />} />
+                      <Route path="/faq" element={<FAQPage />} />
+                      <Route path="/help" element={<HelpCenterPage />} />
+                      
+                      {/* Services Routes */}
+                      <Route path="/consultation" element={<OnlineConsultationPage />} />
+                      <Route path="/prescription" element={<PrescriptionUploadPage />} />
+                      <Route path="/reminder" element={<MedicineReminderPage />} />
+                      <Route path="/checkup" element={<HealthCheckupPage />} />
+                      <Route path="/lab-tests" element={<LabTestsPage />} />
+                      <Route path="/insurance" element={<HealthInsurancePage />} />
                     </Routes>
                   </main>
                   <Footer />
@@ -135,13 +208,7 @@ function App() {
                       },
                     }}
                   />
-                  {/* Floating Dark Mode Toggle */}
-                  <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}>
-                    <div className="flex items-center gap-2 bg-white dark:bg-gray-900 shadow-lg rounded-full px-4 py-2">
-                      <span className="text-xs text-gray-700 dark:text-gray-200">Dark Mode</span>
-                      <Switch checked={darkMode} onCheckedChange={setDarkMode} />
-                    </div>
-                  </div>
+                  {DarkModeToggle}
                 </div>
               </Router>
             </QueryClientProvider>

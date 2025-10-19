@@ -70,7 +70,6 @@ function DiscountsTab() {
           throw new Error('Failed to fetch discounted medicines');
         }
       } catch (error) {
-        console.error('Error fetching discounted medicines:', error);
         toast.error('Failed to load discounted medicines');
         setMedicines([]);
       } finally {
@@ -103,7 +102,6 @@ function DiscountsTab() {
         throw new Error('Failed to fetch all medicines');
       }
     } catch (error) {
-      console.error('Error fetching all medicines:', error);
       toast.error('Failed to load medicines');
       setAllMedicines([]);
     }
@@ -215,7 +213,6 @@ function DiscountsTab() {
       refreshMedicines();
       
     } catch (error) {
-      console.error('Error saving discount:', error);
       toast.error('Failed to save discount. Please try again.');
     } finally {
       setIsSavingDiscount(false);
@@ -241,7 +238,6 @@ function DiscountsTab() {
         throw new Error('Failed to fetch discounted medicines');
       }
     } catch (error) {
-      console.error('Error fetching discounted medicines:', error);
       toast.error('Failed to load discounted medicines');
       setMedicines([]);
     } finally {

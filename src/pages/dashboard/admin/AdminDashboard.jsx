@@ -207,7 +207,6 @@ const AdminDashboard = () => {
         try {
           token = await user.getIdToken();
         } catch (tokenError) {
-          console.error('Failed to get user token:', tokenError);
           toast.error('Authentication error. Please try logging in again.');
           navigate('/auth');
           return;
@@ -258,25 +257,16 @@ const AdminDashboard = () => {
         }
         
         // Fetch categories
-        console.log('Fetching categories...'); // Debug log
         const categoriesResponse = await fetch('/api/categories');
-        console.log('Categories response status:', categoriesResponse.status); // Debug log
         if (categoriesResponse.ok) {
           const categoriesData = await categoriesResponse.json();
-          console.log('Fetched categories:', categoriesData); // Debug log
           // Ensure we have an array and handle potential null/undefined values
           const validCategories = Array.isArray(categoriesData) 
             ? categoriesData.filter(cat => cat !== null && cat !== undefined)
             : [];
           
-          // If no categories exist, we might want to show a message or create defaults
-          if (validCategories.length === 0) {
-            console.log('No categories found, consider creating default categories');
-          }
-          
           setCategories(validCategories);
         } else {
-          console.error('Failed to fetch categories:', categoriesResponse.status); // Debug log
           setCategories([]);
         }
         
@@ -297,14 +287,6 @@ const AdminDashboard = () => {
           })) : [];
           setPayments(payments);
         } else {
-          console.error('Failed to fetch orders:', allPaymentsResponse.status);
-          // Try to get error details
-          try {
-            const errorText = await allPaymentsResponse.text();
-            console.error('Orders fetch error details:', errorText);
-          } catch (e) {
-            console.error('Could not parse error response:', e);
-          }
           setPayments([]);
         }
         
@@ -326,7 +308,6 @@ const AdminDashboard = () => {
           setBannerAds([]);
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
         toast.error('Failed to load dashboard data. Please try again.');
       } finally {
         setIsLoading(false);
@@ -359,16 +340,22 @@ const AdminDashboard = () => {
 
     setCardColors();
 
-    // Watch for class changes on <html>
-    const observer = new MutationObserver(setCardColors);
+    // Watch for class changes on <html> with optimized performance
+    const observer = new MutationObserver(() => {
+      // Use requestAnimationFrame to batch DOM updates
+      requestAnimationFrame(setCardColors);
+    });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
     // Also listen for storage events in case dark mode is toggled in another tab
-    window.addEventListener('storage', setCardColors);
+    const handleStorageChange = () => {
+      requestAnimationFrame(setCardColors);
+    };
+    window.addEventListener('storage', handleStorageChange);
 
     return () => {
       observer.disconnect();
-      window.removeEventListener('storage', setCardColors);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 

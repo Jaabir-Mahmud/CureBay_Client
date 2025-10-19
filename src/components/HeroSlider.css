@@ -49,7 +49,7 @@
   min-width: 300px;
   max-width: 600px;
   padding: 20px;
-  animation: fadeInLeft 1s;
+  animation: fadeInLeft 0.3s ease-out;
   position: relative;
   box-sizing: border-box;
 }
@@ -60,7 +60,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeInRight 1s;
+  animation: fadeInRight 0.3s ease-out;
   position: relative;
   box-sizing: border-box;
 }
@@ -77,11 +77,11 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(0, 151, 167, 0.15);
   transform: translateY(0);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.2s ease-out;
 }
 
 .hero-featured-content:hover {
-  transform: translateY(-10px);
+  transform: translateY(-2px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
 
@@ -112,11 +112,11 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   position: relative;
   transform: perspective(1000px) rotateY(0deg);
-  transition: transform 0.4s ease;
+  transition: transform 0.2s ease-out;
 }
 
 .hero-product-image-container:hover {
-  transform: perspective(1000px) rotateY(5deg);
+  transform: perspective(1000px) rotateY(3deg);
 }
 
 .hero-product-image {
@@ -153,17 +153,6 @@
   gap: 12px;
   align-items: center;
   margin-bottom: 20px;
-}
-
-.hero-product-rating {
-  color: #ffc107;
-  font-size: 1.1rem;
-  letter-spacing: 2px;
-}
-
-.hero-product-reviews {
-  font-size: 0.9rem;
-  color: #888;
 }
 
 .hero-product-price {
@@ -227,7 +216,7 @@
   font-size: 1.1rem;
   font-weight: 700;
   text-decoration: none;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.2s ease-out;
   box-shadow: 0 6px 15px rgba(0, 151, 167, 0.3);
   white-space: nowrap;
   display: inline-block;
@@ -245,7 +234,7 @@
 .hero-btn.primary:hover {
   background: linear-gradient(120deg, #00796b 0%, #004d40 100%);
   box-shadow: 0 10px 25px rgba(0, 151, 167, 0.4);
-  transform: translateY(-3px);
+  transform: translateY(-2px);
 }
 
 .hero-btn.secondary {
@@ -257,7 +246,7 @@
 .hero-btn.secondary:hover {
   background: #e0f7fa;
   box-shadow: 0 10px 25px rgba(0, 151, 167, 0.25);
-  transform: translateY(-3px);
+  transform: translateY(-2px);
 }
 
 .hero-stats {
@@ -284,12 +273,12 @@
 }
 
 @keyframes fadeInLeft {
-  from { opacity: 0; transform: translateX(-50px); }
+  from { opacity: 0; transform: translateX(-15px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes fadeInRight {
-  from { opacity: 0; transform: translateX(50px); }
+  from { opacity: 0; transform: translateX(15px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
@@ -308,13 +297,13 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease-out;
 }
 
 .swiper-button-next:hover, .swiper-button-prev:hover {
   background: #fff;
   box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-  transform: translateY(-50%) scale(1.1);
+  transform: translateY(-50%) scale(1.05);
 }
 
 .swiper-button-next {
@@ -335,12 +324,12 @@
   opacity: 1;
   width: 12px;
   height: 12px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease-out;
 }
 
 .swiper-pagination-bullet-active {
   background: #0097a7;
-  transform: scale(1.3);
+  transform: scale(1.2);
 }
 
 .swiper-button-disabled {
@@ -528,4 +517,137 @@
 .swiper-slide-prev .hero-slide-left,
 .swiper-slide-prev .hero-slide-right {
   z-index: 1;
+}
+
+/* Reduce animation intensity for better performance */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .hero-slide-left,
+  .hero-slide-right,
+  .hero-featured-content,
+  .hero-btn,
+  .swiper-button-next,
+  .swiper-button-prev,
+  .swiper-pagination-bullet {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Dark mode styles */
+.dark .hero-slide-overlay {
+  background: linear-gradient(120deg, rgba(10, 50, 55, 0.85) 0%, rgba(15, 30, 35, 0.85) 100%);
+}
+
+.dark .hero-featured-content {
+  background: rgba(30, 40, 45, 0.95);
+  border: 1px solid rgba(0, 151, 167, 0.3);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+}
+
+.dark .hero-featured-content:hover {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.dark .hero-title {
+  color: #e0f7fa;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.dark .hero-subtitle {
+  color: #80deea;
+}
+
+.dark .hero-desc {
+  color: #b2ebf2;
+}
+
+.dark .hero-product-title {
+  color: #b2ebf2;
+}
+
+.dark .hero-product-desc {
+  color: #b2ebf2;
+}
+
+.dark .hero-product-old-price {
+  color: #90a4ae;
+}
+
+.dark .hero-product-new-price {
+  color: #4db6ac;
+}
+
+.dark .hero-stats {
+  color: #80deea;
+}
+
+.dark .hero-stats span {
+  color: #e0f7fa;
+}
+
+.dark .hero-btn.primary {
+  background: linear-gradient(120deg, #00bcd4 0%, #00838f 100%);
+  box-shadow: 0 6px 15px rgba(0, 188, 212, 0.3);
+}
+
+.dark .hero-btn.primary:hover {
+  background: linear-gradient(120deg, #00838f 0%, #006064 100%);
+  box-shadow: 0 10px 25px rgba(0, 188, 212, 0.4);
+}
+
+.dark .hero-btn.secondary {
+  background: rgba(30, 40, 45, 0.95);
+  color: #4db6ac;
+  border: 2px solid #4db6ac;
+}
+
+.dark .hero-btn.secondary:hover {
+  background: rgba(38, 50, 56, 0.95);
+  box-shadow: 0 10px 25px rgba(0, 188, 212, 0.25);
+}
+
+.dark .swiper-button-next,
+.dark .swiper-button-prev {
+  color: #4db6ac;
+  background: rgba(30, 40, 45, 0.95);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+}
+
+.dark .swiper-button-next:hover,
+.dark .swiper-button-prev:hover {
+  background: rgba(38, 50, 56, 0.95);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+
+.dark .swiper-pagination-bullet {
+  background: rgba(0, 188, 212, 0.5);
+}
+
+.dark .swiper-pagination-bullet-active {
+  background: #4db6ac;
+}
+
+/* Reduce transition durations for better performance */
+.hero-slide-left,
+.hero-slide-right,
+.hero-featured-content,
+.hero-btn,
+.swiper-button-next,
+.swiper-button-prev,
+.swiper-pagination-bullet {
+  transition-duration: 0.2s !important;
+}
+
+/* Optimize animations for smoother performance */
+.hero-slide-left,
+.hero-slide-right {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }

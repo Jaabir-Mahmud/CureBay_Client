@@ -20,7 +20,7 @@ import { Separator } from "../components/ui/separator";
 import { Badge } from "../components/ui/badge";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
-import { CreditCard, Lock, ShoppingBag, MapPin, CheckCircle, AlertCircle, Shield, Truck, RotateCcw } from "lucide-react";
+import { CreditCard, Lock, ShoppingBag, MapPin, CheckCircle, AlertCircle, Shield, Truck, RotateCcw, Ticket } from "lucide-react";
 import toast from "react-hot-toast";
 import SEOHelmet from "../components/SEOHelmet";
 import { useForm } from 'react-hook-form';
@@ -124,7 +124,11 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
           items: orderData.items,
           shippingAddress: shippingData,
           totalAmount: orderData.total,
-          currency: 'usd'
+          currency: 'usd',
+          coupon: orderData.coupon ? {
+            code: orderData.coupon.coupon.code,
+            discountAmount: orderData.coupon.discountAmount
+          } : undefined
         })
       });
 
@@ -134,6 +138,24 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
       }
 
       const order = await orderResponse.json();
+
+      // Apply coupon if one was used
+      if (orderData.coupon) {
+        try {
+          await fetch('/api/coupons/apply', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              code: orderData.coupon.coupon.code
+            })
+          });
+        } catch (applyError) {
+          console.error('Failed to apply coupon:', applyError);
+          // Don't fail the order if coupon application fails
+        }
+      }
 
       // Create payment intent
       const paymentIntentResponse = await fetch('/api/payments/create-payment-intent', {
@@ -332,8 +354,8 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {orderData.cartItems.map((item) => (
-              <div key={item.id} className="flex justify-between items-center">
+            {orderData.cartItems.map((item, index) => (
+              <div key={`${item.id || item.name}-${index}-${item.quantity}`} className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <img 
                     src={item.image} 
@@ -358,6 +380,16 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
               <span>Subtotal</span>
               <span>৳{orderData.subtotal.toFixed(2)}</span>
             </div>
+            
+            {orderData.coupon && (
+              <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                <span>
+                  Coupon ({orderData.coupon.coupon.code})
+                </span>
+                <span>-৳{orderData.coupon.discountAmount.toFixed(2)}</span>
+              </div>
+            )}
+            
             <div className="flex justify-between text-sm">
               <span>Tax</span>
               <span>৳{orderData.tax.toFixed(2)}</span>
@@ -433,12 +465,13 @@ const CheckoutPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { cartItems } = useCart(); // Get cart items from context
+  const { cartItems, clearCart } = useCart(); // Get cart items and clearCart from context
   const [orderData, setOrderData] = useState(null);
 
   useEffect(() => {
-    // Get cart data from location state or from CartContext
+    // Get cart data and coupon from location state or from CartContext
     const cartData = location.state?.cartData || cartItems;
+    const coupon = location.state?.coupon || null;
     
     if (!cartData || cartData.length === 0) {
       toast.error('No items to checkout');
@@ -454,9 +487,12 @@ const CheckoutPage = () => {
       return sum + (price * item.quantity);
     }, 0);
 
+    // Calculate discount if coupon is applied
+    const discountAmount = coupon?.valid ? coupon.discountAmount : 0;
+    
     const tax = subtotal * 0.08; // 8% tax
     const shipping = subtotal > 50 ? 0 : 9.99; // Free shipping over ৳50
-    const total = subtotal + tax + shipping;
+    const total = subtotal + tax + shipping - discountAmount;
 
     setOrderData({
       items: cartData.map(item => ({
@@ -467,13 +503,14 @@ const CheckoutPage = () => {
       subtotal,
       tax,
       shipping,
-      total
+      total,
+      coupon: coupon?.valid ? coupon : null
     });
   }, [location.state, cartItems, navigate]);
 
   const handlePaymentSuccess = (order, paymentIntent, paymentRecord) => {
     // Clear cart
-    localStorage.removeItem('cartItems');
+    clearCart();
     
     // Navigate to invoice page
     navigate('/invoice', {
@@ -577,26 +614,39 @@ const CheckoutPage = () => {
               {/* Order Summary Preview */}
               <Card className="mt-6">
                 <CardHeader>
-                  <CardTitle>Order Summary</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Ticket className="w-5 h-5" />
+                    Order Summary
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-300">Subtotal</span>
-                      <span className="font-medium">${orderData?.subtotal?.toFixed(2) || '0.00'}</span>
+                      <span className="font-medium">৳{orderData?.subtotal?.toFixed(2) || '0.00'}</span>
                     </div>
+                    
+                    {orderData?.coupon && (
+                      <div className="flex justify-between text-green-600 dark:text-green-400">
+                        <span>
+                          Coupon ({orderData.coupon.coupon.code})
+                        </span>
+                        <span>-৳{orderData.coupon.discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-300">Tax</span>
-                      <span className="font-medium">${orderData?.tax?.toFixed(2) || '0.00'}</span>
+                      <span className="font-medium">৳{orderData?.tax?.toFixed(2) || '0.00'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-300">Shipping</span>
-                      <span className="font-medium">{orderData?.shipping === 0 ? 'Free' : `$${orderData?.shipping?.toFixed(2) || '0.00'}`}</span>
+                      <span className="font-medium">{orderData?.shipping === 0 ? 'Free' : `৳${orderData?.shipping?.toFixed(2) || '0.00'}`}</span>
                     </div>
                     <Separator className="my-2" />
                     <div className="flex justify-between font-bold text-lg">
                       <span>Total</span>
-                      <span>${orderData?.total?.toFixed(2) || '0.00'}</span>
+                      <span>৳{orderData?.total?.toFixed(2) || '0.00'}</span>
                     </div>
                   </div>
                 </CardContent>

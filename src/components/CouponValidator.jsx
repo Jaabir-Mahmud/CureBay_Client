@@ -82,7 +82,7 @@ const CouponValidator = () => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="order-amount">Order Amount ($)</Label>
+          <Label htmlFor="order-amount">Order Amount (৳)</Label>
           <Input
             id="order-amount"
             type="number"
@@ -115,11 +115,11 @@ const CouponValidator = () => {
                     Code: {validationResult.coupon.code}
                   </p>
                   <p className="text-sm text-green-700 dark:text-green-300">
-                    Discount: ${validationResult.discountAmount.toFixed(2)}
+                    Discount: ৳{validationResult.discountAmount.toFixed(2)}
                   </p>
                   {validationResult.coupon.maximumDiscountAmount && (
                     <p className="text-xs text-green-600 dark:text-green-400">
-                      Max discount: ${validationResult.coupon.maximumDiscountAmount}
+                      Max discount: ৳{validationResult.coupon.maximumDiscountAmount}
                     </p>
                   )}
                 </div>

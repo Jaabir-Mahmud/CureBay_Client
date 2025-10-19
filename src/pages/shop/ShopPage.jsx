@@ -1,224 +1,195 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Search, Filter, Eye, ShoppingCart, Star, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Heart, Shield, Loader2, X, Tag } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, Filter, Grid, List, ShoppingCart, Eye, Heart, Package, Shield } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import MedicineCard from '../../components/shop/MedicineCard';
+import MedicineDetailsModal from '../../components/shop/MedicineDetailsModal';
 import { useCart } from '../../contexts/CartContext';
-import { useQuery } from '@tanstack/react-query';
-import SEOHelmet from '../../components/SEOHelmet';
-import toast from 'react-hot-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '../../components/ui/dialog';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { t } from '../../lib/i18n';
+import SEOHelmet from '../../components/SEOHelmet';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from '../../components/ui/pagination';
 
 const ShopPage = () => {
-  const { addToCart } = useCart();
   const { language } = useLanguage();
-  const [searchParams] = useSearchParams();
+  const { addToCart, isInCart, wishlist = [], toggleWishlist } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [viewMode, setViewMode] = useState('grid');
+  const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(12);
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [showDiscountsOnly, setShowDiscountsOnly] = useState(false);
+  const itemsPerPage = 20; // Show 20 items per page
 
-  // Check if discounts filter is active from URL
-  useEffect(() => {
-    const discountsParam = searchParams.get('discounts');
-    setShowDiscountsOnly(discountsParam === 'true');
-  }, [searchParams]);
+  // Fetch medicines with pagination
+  const { data: medicinesData = { medicines: [], pagination: { total: 0, pages: 1 } }, isLoading, error, refetch } = useQuery({
+    queryKey: ['medicines', selectedCategory, currentPage, sortBy, sortOrder, searchTerm],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.append('page', currentPage);
+      params.append('limit', itemsPerPage);
+      params.append('sortBy', sortBy);
+      params.append('sortOrder', sortOrder);
+      
+      if (selectedCategory) {
+        params.append('category', selectedCategory);
+      }
+      
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
+      
+      const response = await fetch(`/api/medicines?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch medicines');
+      return response.json();
+    }
+  });
 
-  // Debounce search term to avoid excessive API calls
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-      setCurrentPage(1); // Reset to first page when searching
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory, sortBy, sortOrder, itemsPerPage, showDiscountsOnly]);
-
-  // Fetch categories for filter dropdown
-  const { data: categoriesData } = useQuery({
+  // Fetch categories
+  const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
       const response = await fetch('/api/categories');
       if (!response.ok) throw new Error('Failed to fetch categories');
       return response.json();
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    }
   });
 
-  // Fetch medicines with filters
-  const { data: medicinesData, isLoading, error, refetch } = useQuery({
-    queryKey: ['medicines', {
-      page: currentPage,
-      limit: itemsPerPage,
-      search: debouncedSearchTerm,
-      category: selectedCategory !== 'all' ? selectedCategory : undefined,
-      sortBy,
-      sortOrder,
-      inStock: true, // Only show in-stock items in shop
-      discount: showDiscountsOnly ? true : undefined // Add discount filter
-    }],
-    queryFn: async ({ queryKey }) => {
-      const [, filters] = queryKey;
-      
-      // If showing discounts only, use the discounted endpoint
-      if (showDiscountsOnly) {
-        const params = new URLSearchParams();
-        params.append('limit', 100); // Get more discounted items
-        
-        const response = await fetch(`/api/medicines/discounted?${params.toString()}`);
-        if (!response.ok) throw new Error('Failed to fetch discounted medicines');
-        
-        const data = await response.json();
-        
-        // Apply client-side filtering for search and category
-        let filteredMedicines = data.medicines || [];
-        
-        if (debouncedSearchTerm) {
-          filteredMedicines = filteredMedicines.filter(medicine => 
-            medicine.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-            medicine.genericName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-            medicine.company?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-          );
-        }
-        
-        if (selectedCategory !== 'all') {
-          filteredMedicines = filteredMedicines.filter(medicine => 
-            medicine.category?._id === selectedCategory || medicine.category === selectedCategory
-          );
-        }
-        
-        // Apply sorting
-        if (sortBy && sortOrder) {
-          filteredMedicines.sort((a, b) => {
-            let aValue = a[sortBy];
-            let bValue = b[sortBy];
-            
-            // Handle nested category name
-            if (sortBy === 'category' && typeof aValue === 'object') {
-              aValue = aValue.name;
-              bValue = bValue.name;
-            }
-            
-            if (sortOrder === 'asc') {
-              return aValue > bValue ? 1 : -1;
-            } else {
-              return aValue < bValue ? 1 : -1;
-            }
-          });
-        }
-        
-        // Apply pagination
-        const totalMedicines = filteredMedicines.length;
-        const totalPages = Math.ceil(totalMedicines / itemsPerPage);
-        const skip = (currentPage - 1) * itemsPerPage;
-        const paginatedMedicines = filteredMedicines.slice(skip, skip + itemsPerPage);
-        
-        return {
-          medicines: paginatedMedicines,
-          pagination: {
-            currentPage,
-            totalPages,
-            totalMedicines,
-            hasNext: currentPage < totalPages,
-            hasPrev: currentPage > 1
-          }
-        };
-      } else {
-        // Regular medicines endpoint with server-side filtering
-        const params = new URLSearchParams();
-        
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== '') {
-            params.append(key, value.toString());
-          }
-        });
+  const { medicines = [], pagination = { total: 0, pages: 1 } } = medicinesData;
 
-        const response = await fetch(`/api/medicines?${params.toString()}`);
-        if (!response.ok) throw new Error('Failed to fetch medicines');
-        return response.json();
+  // Filter and sort medicines (this is now handled by the backend)
+  const filteredAndSortedMedicines = useMemo(() => {
+    return medicines;
+  }, [medicines]);
+
+  const handleQuickView = (medicine) => {
+    setSelectedMedicine(medicine);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedMedicine(null);
+  };
+
+  const getSortIcon = (field) => {
+    if (sortBy !== field) return null;
+    return sortOrder === 'asc' ? '↑' : '↓';
+  };
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= pagination.pages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Generate pagination items
+  const generatePaginationItems = () => {
+    const items = [];
+    const maxVisiblePages = 5;
+    const totalPages = pagination.pages;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages
+      for (let i = 1; i <= totalPages; i++) {
+        items.push(
+          <PaginationItem key={i}>
+            <PaginationLink 
+              isActive={i === currentPage}
+              onClick={() => handlePageChange(i)}
+            >
+              {i}
+            </PaginationLink>
+          </PaginationItem>
+        );
       }
-    },
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    keepPreviousData: true, // Keep previous data while loading new data
-  });
-
-  const medicines = medicinesData?.medicines || [];
-  const pagination = medicinesData?.pagination || {};
-  const categories = categoriesData || [];
-
-  const handleAddToCart = (medicine, quantity = 1, selectedVariant) => {
-    try {
-      // Convert medicine data to cart format
-      const cartProduct = {
-        id: medicine.id || medicine._id,
-        name: medicine.name,
-        company: medicine.company,
-        price: medicine.finalPrice || medicine.price,
-        originalPrice: medicine.price,
-        discount: medicine.discountPercentage || 0,
-        image: medicine.image,
-        category: medicine.category?.name || medicine.category,
-        genericName: medicine.genericName,
-        massUnit: medicine.massUnit,
-        inStock: medicine.inStock,
-      };
-      
-      addToCart(cartProduct, quantity, selectedVariant || medicine.massUnit);
-    } catch (error) {
-      toast.error('Failed to add item to cart. Please try again.');
-      console.error('Error adding to cart:', error);
-    }
-  };
-
-  const handleSearch = (value) => {
-    setSearchTerm(value);
-  };
-
-  const handleSortChange = (newSortBy) => {
-    if (sortBy === newSortBy) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      setSortBy(newSortBy);
-      setSortOrder('asc');
+      // Show first page
+      items.push(
+        <PaginationItem key={1}>
+          <PaginationLink 
+            isActive={1 === currentPage}
+            onClick={() => handlePageChange(1)}
+          >
+            1
+          </PaginationLink>
+        </PaginationItem>
+      );
+      
+      // Show ellipsis and nearby pages
+      if (currentPage > 3) {
+        items.push(<PaginationEllipsis key="ellipsis1" />);
+      }
+      
+      // Show pages around current page
+      const startPage = Math.max(2, currentPage - 1);
+      const endPage = Math.min(totalPages - 1, currentPage + 1);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        items.push(
+          <PaginationItem key={i}>
+            <PaginationLink 
+              isActive={i === currentPage}
+              onClick={() => handlePageChange(i)}
+            >
+              {i}
+            </PaginationLink>
+          </PaginationItem>
+        );
+      }
+      
+      // Show ellipsis before last page
+      if (currentPage < totalPages - 2) {
+        items.push(<PaginationEllipsis key="ellipsis2" />);
+      }
+      
+      // Show last page
+      items.push(
+        <PaginationItem key={totalPages}>
+          <PaginationLink 
+            isActive={totalPages === currentPage}
+            onClick={() => handlePageChange(totalPages)}
+          >
+            {totalPages}
+          </PaginationLink>
+        </PaginationItem>
+      );
     }
+    
+    return items;
   };
 
-  // Render sort indicator
-  const renderSortIndicator = (column) => {
-    if (sortBy !== column) return null;
-    return sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">{t('shop.loading', language)}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Error Loading Medicines</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">Failed to load medicines. Please try again later.</p>
-          <Button onClick={() => refetch()} className="bg-cyan-500 hover:bg-cyan-600">
-            Retry
-          </Button>
+          <p className="text-red-500 dark:text-red-400 text-lg mb-4">{t('shop.error', language)}</p>
+          <p className="text-gray-600 dark:text-gray-300">{error.message}</p>
         </div>
       </div>
     );
@@ -227,224 +198,307 @@ const ShopPage = () => {
   return (
     <>
       <SEOHelmet
-        title={t('shop.seo.title', language)}
-        description={t('shop.seo.description', language)}
-        keywords={t('shop.seo.keywords', language)}
+        title="Shop Medicines - CureBay Online Pharmacy"
+        description="Browse and shop for medicines, healthcare products, and supplements at CureBay. Fast delivery and genuine products."
+        keywords="shop medicines, online pharmacy, healthcare products, buy medicines online"
         url={window.location.href}
       />
+      
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{t('shop.title', language)}</h1>
-            <p className="text-gray-600 dark:text-gray-300">{t('shop.description', language)}</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              {t('shop.allMedicines', language)}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              {t('shop.discover', language)}
+            </p>
           </div>
 
           {/* Search and Filters */}
-          <div className="mb-8 space-y-4">
-            {/* Search Bar */}
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8 transition-colors">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
                   type="text"
                   placeholder={t('shop.searchPlaceholder', language)}
+                  className="pl-10"
                   value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10 h-12"
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1); // Reset to first page when search changes
+                  }}
                 />
-                {searchTerm && (
-                  <button
-                    onClick={() => handleSearch('')}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                )}
               </div>
               
-              <div className="flex gap-2">
-                <Button
-                  variant={showDiscountsOnly ? "default" : "outline"}
-                  onClick={() => setShowDiscountsOnly(!showDiscountsOnly)}
-                  className="flex items-center gap-2"
+              {/* Category Filter */}
+              <div>
+                <select
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  value={selectedCategory}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value);
+                    setCurrentPage(1); // Reset to first page when category changes
+                  }}
                 >
-                  <Tag className="w-4 h-4" />
-                  Discounts
-                </Button>
-                
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-48 h-12">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('shop.allCategories', language)}</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category._id} value={category._id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">{t('shop.allCategories', language)}</option>
+                  {categories.map(category => (
+                    <option key={category._id} value={category._id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Sort */}
+              <div>
+                <select
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  value={`${sortBy}-${sortOrder}`}
+                  onChange={(e) => {
+                    const [field, order] = e.target.value.split('-');
+                    setSortBy(field);
+                    setSortOrder(order);
+                    setCurrentPage(1); // Reset to first page when sort changes
+                  }}
+                >
+                  <option value="name-asc">{t('shop.sortByNameAsc', language)}</option>
+                  <option value="name-desc">{t('shop.sortByNameDesc', language)}</option>
+                  <option value="price-asc">{t('shop.sortByPriceAsc', language)}</option>
+                  <option value="price-desc">{t('shop.sortByPriceDesc', language)}</option>
+                  <option value="company-asc">{t('shop.sortByCompanyAsc', language)}</option>
+                  <option value="company-desc">{t('shop.sortByCompanyDesc', language)}</option>
+                </select>
               </div>
             </div>
-
-            {/* Sort Options */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={() => handleSortChange('name')}
-                className="flex items-center gap-2"
-              >
-                {t('shop.sortByName', language)}
-                {renderSortIndicator('name')}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleSortChange('price')}
-                className="flex items-center gap-2"
-              >
-                {t('shop.sortByPrice', language)}
-                {renderSortIndicator('price')}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleSortChange('createdAt')}
-                className="flex items-center gap-2"
-              >
-                {t('shop.sortByNewest', language)}
-                {renderSortIndicator('createdAt')}
-              </Button>
+            
+            {/* View Mode and Results Count */}
+            <div className="flex justify-between items-center mt-6">
+              <p className="text-gray-600 dark:text-gray-300">
+                {t('shop.showing', language)} <span className="font-semibold">{filteredAndSortedMedicines.length}</span> {t('shop.results', language)} {t('shop.of', language)} <span className="font-semibold">{pagination.total}</span> {t('shop.results', language)}
+              </p>
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-600 dark:text-gray-300">{t('shop.view', language)}:</span>
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <Grid className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* Medicine Grid */}
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
+          {/* Medicine Grid/List */}
+          {filteredAndSortedMedicines.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-12 text-center">
+              <ShoppingCart className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                {t('shop.noMedicinesFound', language)}
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                {t('shop.tryDifferentSearch', language)}
+              </p>
             </div>
-          ) : medicines.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-gray-400 text-6xl mb-4">💊</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{t('shop.noMedicinesFound', language)}</h3>
-              <p className="text-gray-600 dark:text-gray-300">{t('shop.tryAdjustingSearch', language)}</p>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredAndSortedMedicines.map(medicine => (
+                <MedicineCard
+                  key={medicine._id}
+                  medicine={{
+                    ...medicine,
+                    // Ensure proper data types
+                    name: typeof medicine.name === 'string' ? medicine.name : 'Unknown Medicine',
+                    company: typeof medicine.company === 'string' ? medicine.company : 'Unknown Company',
+                    description: typeof medicine.description === 'string' ? medicine.description : '',
+                    image: typeof medicine.image === 'string' ? medicine.image : 'https://placehold.co/300x300/cccccc/ffffff?text=Medicine',
+                    price: typeof medicine.price === 'number' ? medicine.price : 0,
+                    discountPercentage: typeof medicine.discountPercentage === 'number' ? medicine.discountPercentage : 0,
+                    finalPrice: typeof medicine.finalPrice === 'number' ? medicine.finalPrice : 
+                      (typeof medicine.price === 'number' && typeof medicine.discountPercentage === 'number' ? 
+                        medicine.price * (1 - medicine.discountPercentage / 100) : 0)
+                  }}
+                  onQuickView={handleQuickView}
+                  onToggleWishlist={toggleWishlist}
+                  isWishlisted={wishlist.some(item => item._id === medicine._id)}
+                  showOnlyEyeIcon={true} // Pass this prop to show only eye icon
+                />
+              ))}
             </div>
           ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {medicines.map((medicine) => (
-                  <Card key={`${medicine._id}-${medicine.massUnit}`} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                    <CardContent className="p-4">
-                      <div className="relative mb-4">
-                        <img
-                          src={medicine.image}
-                          alt={medicine.name}
-                          className="w-full h-48 object-cover rounded-lg"
-                        />
-                        {medicine.discountPercentage > 0 && (
-                          <Badge className="absolute top-2 left-2 bg-red-500">
-                            {medicine.discountPercentage}% OFF
-                          </Badge>
-                        )}
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="secondary"
+            <div className="space-y-4">
+              {filteredAndSortedMedicines.map(medicine => (
+                <div key={medicine._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 transition-all duration-200 hover:shadow-lg border border-gray-100 dark:border-gray-700">
+                  <div className="flex flex-col sm:flex-row gap-5">
+                    {/* Medicine Image */}
+                    <div className="relative w-full sm:w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      <img
+                        src={medicine.image}
+                        alt={medicine.name}
+                        className="w-16 h-16 object-contain"
+                        onError={(e) => {
+                          e.target.src = 'https://placehold.co/300x300/cccccc/ffffff?text=Medicine';
+                        }}
+                      />
+                      {medicine.discountPercentage > 0 && (
+                        <Badge className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                          -{medicine.discountPercentage}%
+                        </Badge>
+                      )}
+                      {!medicine.inStock && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">OUT OF STOCK</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Medicine Details */}
+                    <div className="flex-grow">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                        {/* Left side - Medicine info */}
+                        <div className="flex-grow">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <Badge variant="secondary" className="text-xs px-2 py-0.5 rounded-full">
+                              {typeof medicine.category === 'object' && medicine.category !== null 
+                                ? medicine.category.name 
+                                : medicine.category || 'Uncategorized'}
+                            </Badge>
+                            {medicine.prescriptionRequired && (
+                              <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full border-amber-500 text-amber-500">
+                                <Shield className="w-3 h-3 mr-1" />
+                                Rx
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                            {medicine.name}
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">
+                            {medicine.genericName}
+                          </p>
+                          <p className="text-gray-500 dark:text-gray-400 text-sm">
+                            by {medicine.company}
+                          </p>
+                          
+                          {/* Price Section */}
+                          <div className="mt-3 flex flex-wrap items-baseline gap-2">
+                            <span className="text-xl font-bold text-gray-900 dark:text-white">
+                              ৳{(medicine.finalPrice || medicine.price * (1 - (medicine.discountPercentage || 0) / 100)).toFixed(2)}
+                            </span>
+                            {medicine.discountPercentage > 0 && (
+                              <>
+                                <span className="text-sm text-gray-500 dark:text-gray-400 line-through">
+                                  ৳{medicine.price.toFixed(2)}
+                                </span>
+                                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs font-medium px-1.5 py-0.5 rounded">
+                                  Save ৳{(medicine.price - (medicine.finalPrice || medicine.price * (1 - (medicine.discountPercentage || 0) / 100))).toFixed(2)}
+                                </Badge>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Right side - Actions */}
+                        <div className="flex flex-col sm:items-end gap-2">
+                          <Button 
+                            className={`px-4 py-2 text-sm font-medium ${
+                              isInCart(medicine._id, medicine.massUnit) 
+                                ? 'bg-green-500 hover:bg-green-600' 
+                                : 'bg-cyan-500 hover:bg-cyan-600'
+                            } text-white rounded-lg shadow`}
+                            onClick={() => {
+                              try {
+                                addToCart(medicine, 1);
+                              } catch (err) {
+                                console.error('Error adding to cart:', err);
+                              }
+                            }}
+                            disabled={!medicine.inStock}
+                          >
+                            <ShoppingCart className="w-4 h-4 mr-1.5" />
+                            {isInCart(medicine._id, medicine.massUnit) ? t('shop.addedToCart', language) : t('shop.addToCart', language)}
+                          </Button>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
                               size="sm"
-                              className="absolute top-2 right-2 bg-white/80 hover:bg-white"
+                              className="px-3 py-1.5 rounded-lg border-2"
+                              onClick={() => handleQuickView(medicine)}
                             >
                               <Eye className="w-4 h-4" />
+                              <span className="ml-1.5">{t('shop.quickView', language)}</span>
                             </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                              <DialogTitle>{medicine.name}</DialogTitle>
-                            </DialogHeader>
-                            <div className="grid md:grid-cols-2 gap-6">
-                              <img
-                                src={medicine.image}
-                                alt={medicine.name}
-                                className="w-full h-64 object-cover rounded-lg"
-                              />
-                              <div className="space-y-4">
-                                <div>
-                                  <h3 className="font-semibold text-lg">{medicine.name}</h3>
-                                  <p className="text-gray-600">{t('shop.by', language)} {medicine.company}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                                  <span className="text-sm">4.5 (128 {t('shop.reviews', language)})</span>
-                                </div>
-                                <div className="space-y-2">
-                                  <p><span className="font-medium">{t('shop.genericName', language)}:</span> {medicine.genericName}</p>
-                                  <p><span className="font-medium">{t('shop.category', language)}:</span> {medicine.category?.name || medicine.category}</p>
-                                  <p><span className="font-medium">{t('shop.mass', language)}:</span> {medicine.mass} {medicine.massUnit}</p>
-                                  <p><span className="font-medium">{t('shop.description', language)}:</span> {medicine.description}</p>
-                                </div>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                      
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{medicine.name}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{t('shop.by', language)} {medicine.company}</p>
-                      
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          {medicine.discountPercentage > 0 ? (
-                            <>
-                              <span className="text-lg font-bold text-cyan-600">৳{typeof medicine.finalPrice === 'number' ? medicine.finalPrice.toFixed(2) : medicine.finalPrice}</span>
-                              <span className="text-sm text-gray-500 line-through ml-2">৳{typeof medicine.price === 'number' ? medicine.price.toFixed(2) : medicine.price}</span>
-                            </>
-                          ) : (
-                            <span className="text-lg font-bold text-cyan-600">৳{typeof medicine.price === 'number' ? medicine.price.toFixed(2) : medicine.price}</span>
-                          )}
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className={`px-3 py-1.5 rounded-lg border-2 ${
+                                wishlist.some(item => item._id === medicine._id) 
+                                  ? "text-red-500 border-red-500" 
+                                  : ""
+                              }`}
+                              onClick={() => toggleWishlist(medicine)}
+                            >
+                              <Heart className={`w-4 h-4 ${wishlist.some(item => item._id === medicine._id) ? 'fill-current' : ''}`} />
+                            </Button>
+                          </div>
                         </div>
-                        <Badge variant="secondary">{medicine.mass} {medicine.massUnit}</Badge>
                       </div>
-
-                      <Button
-                        onClick={() => handleAddToCart(medicine, 1, medicine.massUnit)}
-                        className="w-full bg-cyan-500 hover:bg-cyan-600"
-                        disabled={!medicine.inStock}
-                      >
-                        <ShoppingCart className="w-4 h-4 mr-2" />
-                        {medicine.inStock ? t('shop.addToCart', language) : t('shop.outOfStock', language)}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Pagination */}
-              {pagination.totalPages > 1 && (
-                <div className="flex justify-center items-center mt-8 space-x-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={!pagination.hasPrev}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  
-                  <span className="text-sm text-gray-600 dark:text-gray-300">
-                    {t('shop.page', language)} {pagination.currentPage} {t('shop.of', language)} {pagination.totalPages}
-                  </span>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
-                    disabled={!pagination.hasNext}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {pagination.pages > 1 && (
+            <div className="mt-8 flex justify-center">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  
+                  {generatePaginationItems()}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      className={currentPage === pagination.pages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Medicine Details Modal */}
+      {isModalOpen && selectedMedicine && (
+        <MedicineDetailsModal
+          medicine={selectedMedicine}
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+          isWishlisted={wishlist.some(item => item._id === selectedMedicine._id)}
+          onToggleWishlist={toggleWishlist}
+        />
+      )}
     </>
   );
 };

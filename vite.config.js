@@ -4,41 +4,51 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    {
-      name: 'mock-api',
-      configureServer(server) {
-        server.middlewares.use('/api/stats', (req, res, next) => {
-          if (req.url === '/api/stats') {
-            // Generate new random values for each request to ensure truly dynamic data
-            const stats = {
-              products: Math.floor(Math.random() * 300) + 250, // Random number between 250-550
-              customers: Math.floor(Math.random() * 400) + 900, // Random number between 900-1300
-              support: 24 // Fixed at 24 for 24/7 support
-            };
-            
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 200;
-            res.end(JSON.stringify(stats));
-          } else {
-            next();
+export default defineConfig(({ mode }) => {
+  // Default to development mode
+  const isProduction = mode === 'production';
+  
+  return {
+    plugins: [
+      react(),
+      tailwindcss()
+    ],
+    server: {
+      proxy: {
+        '/api': 'http://localhost:5000',
+        '/uploads': 'http://localhost:5000',
+      },
+      host: true,
+      port: 3001,  // Changed from 3000 to avoid conflicts
+      open: true,
+      middleware: [
+        (req, res, next) => {
+          if (!req.url.includes('.') && !req.url.startsWith('/api')) {
+            req.url = '/index.html';
           }
-        });
+          next();
+        }
+      ]
+    },
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: isProduction ? false : true,
+      minify: isProduction ? 'esbuild' : false,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+            firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tooltip']
+          }
+        }
       }
-    }
-  ],
-  server: {
-    proxy: {
-      '/api': 'http://localhost:5000',
-      '/uploads': 'http://localhost:5000',
     },
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
-  },
+  }
 })

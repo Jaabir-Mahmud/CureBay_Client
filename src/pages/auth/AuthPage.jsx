@@ -12,6 +12,7 @@ import Swal from 'sweetalert2';
 import toast from 'react-hot-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 import SEOHelmet from '../../components/SEOHelmet';
+import NetworkStatus from '../../components/ui/NetworkStatus';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -66,6 +67,10 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
+  
+  // Debug logging
+  console.log('Location state:', location.state);
+  console.log('From location:', from);
 
   // React Hook Form setup
   const {
@@ -229,6 +234,7 @@ const AuthPage = () => {
         }
         
         toast.success('Login successful!');
+        console.log('Navigating to:', from);
         navigate(from, { replace: true });
       } else {
         // Signup
@@ -308,51 +314,97 @@ const AuthPage = () => {
     }
   };
 
+  const checkInternetConnection = () => {
+    return navigator.onLine;
+  };
+
   const handleGoogleSignIn = async () => {
+    if (!checkInternetConnection()) {
+      toast.error('No internet connection. Please check your connection and try again.');
+      return;
+    }
+
+    let loadingToast;
     try {
+      // Create and configure Google provider
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+      provider.addScope('profile');
+      provider.addScope('email');
       
-      // Get the Firebase ID token
-      const idToken = await user.getIdToken();
+      // Set custom parameters
+      provider.setCustomParameters({
+        prompt: 'select_account',
+        auth_type: 'rerequest',
+        // Add these parameters to help with popup issues
+        access_type: 'offline',
+        include_granted_scopes: 'true'
+      });
+      
+
+      // Show loading toast
+      loadingToast = toast.loading('Connecting to Google...');
+      
+      const result = await signInWithPopup(auth, provider);
+      toast.dismiss(loadingToast);
+      
+      // Update loading message
+      loadingToast = toast.loading('Setting up your account...');
+      
+      // Get fresh ID token with forced refresh
+      const freshIdToken = await result.user.getIdToken(true);
+      
+      // Debug logging
+      console.log('Google sign-in successful, from location:', from);
       
       // Send user data and token to backend
       try {
         const userData = {
-          uid: user.uid,
-          email: user.email,
-          name: user.displayName,
-          profilePicture: user.photoURL
+          uid: result.user.uid,
+          email: result.user.email,
+          name: result.user.displayName,
+          profilePicture: result.user.photoURL
         };
         
+        // Send idToken in the body for /api/auth/firebase-login
         const response = await fetch('/api/auth/firebase-login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            idToken,
-            ...userData
-          })
+          body: JSON.stringify({ idToken: freshIdToken, ...userData }),
+          credentials: 'include'
         });
+
+        const responseData = await response.json();
         
         if (!response.ok) {
-          const errorText = await response.text();
-          let errorMessage = 'Failed to authenticate with server';
-          
-          try {
-            const errorData = JSON.parse(errorText);
-            errorMessage = errorData.error || errorMessage;
-          } catch (parseError) {
-            // If response is not JSON, use the raw text
-            errorMessage = errorText || errorMessage;
+          // If user not found, try to create a new account
+          if (response.status === 404) {
+            const createResponse = await fetch('/api/users/signup', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${freshIdToken}`
+              },
+              body: JSON.stringify({
+                ...userData,
+                username: result.user.displayName || result.user.email.split('@')[0],
+                role: 'user'
+              }),
+              credentials: 'include'
+            });
+
+            if (!createResponse.ok) {
+              throw new Error('Failed to create new account. Please try again.');
+            }
+
+            toast.success('New account created successfully!');
+          } else {
+            throw new Error(responseData.error || 'Failed to authenticate with server');
           }
-          
-          throw new Error(errorMessage);
         }
         
-        // Wait a moment for the user to be fully created in the database
+        // Short delay to ensure user data is properly synchronized
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (error) {
         console.error('Error authenticating with server:', error);
@@ -362,10 +414,23 @@ const AuthPage = () => {
       }
       
       toast.success('Login successful!');
+      console.log('Navigating to:', from);
       navigate(from, { replace: true });
     } catch (error) {
       console.error('Google sign-in error:', error);
-      toast.error('Google sign-in failed. Please try again.');
+      
+      // Handle specific error cases
+      if (error.code === 'auth/internal-error') {
+        toast.error('Authentication service temporarily unavailable. Please check your internet connection and try again.');
+      } else if (error.code === 'auth/network-request-failed') {
+        toast.error('Network error. Please check your internet connection and try again.');
+      } else if (error.message && error.message.includes('net::ERR_INTERNET_DISCONNECTED')) {
+        toast.error('Internet connection appears to be offline. Please check your connection and try again.');
+      } else if (error.message && error.message.includes('Failed to create new account')) {
+        toast.error('Could not create your account. Please try again or contact support.');
+      } else {
+        toast.error(error.message || 'Google sign-in failed. Please try again.');
+      }
     }
   };
 
@@ -399,6 +464,7 @@ const AuthPage = () => {
         keywords={isLogin ? "login, sign in, CureBay account, pharmacy login" : "sign up, register, create account, CureBay signup, pharmacy account"}
       />
       <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4 transition-colors duration-300">
+        <NetworkStatus />
         <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -533,6 +599,7 @@ const AuthPage = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     className="pl-10 pr-10 h-12"
+                    autoComplete={isLogin ? "current-password" : "new-password"}
                     {...register('password')}
                   />
                   <button
@@ -591,10 +658,15 @@ const AuthPage = () => {
               type="button"
               onClick={handleGoogleSignIn}
               variant="outline"
-              className="w-full h-12 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="w-full h-12 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center gap-2"
             >
-              <Github className="w-5 h-5 mr-2" />
-              Google
+              <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"
+                />
+              </svg>
+              Continue with Google
             </Button>
 
             {/* Toggle Mode */}

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Package, Eye, Edit, Trash2, Check, X, Pill, ShoppingCart, Tag, Monitor } from 'lucide-react';
+import { Search, Package, Eye, Edit, Trash2, Check, X, Pill, ShoppingCart, Tag, Monitor, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Badge } from '../../ui/badge';
 import { Label } from '../../ui/label';
 import { Textarea } from '../../ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import {
   Dialog,
   DialogContent,
@@ -23,11 +24,14 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
   const { user } = useAuth();
   const { language } = useLanguage();
   const [medicines, setMedicines] = useState([]);
+  const [sellers, setSellers] = useState([]);
+  const [categories, setCategories] = useState([]); // New state for categories
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedMedicine, setSelectedMedicine] = useState(null);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [editMedicineModalOpen, setEditMedicineModalOpen] = useState(false);
+  const [addMedicineModalOpen, setAddMedicineModalOpen] = useState(false);
   const [medicineForm, setMedicineForm] = useState({
     name: '',
     genericName: '',
@@ -43,12 +47,29 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
     stockQuantity: '',
     isAdvertised: false
   });
+  const [newMedicineForm, setNewMedicineForm] = useState({
+    name: '',
+    genericName: '',
+    description: '',
+    image: '',
+    category: '',
+    company: '',
+    massUnit: 'mg',
+    price: '',
+    unitPrice: '',
+    stripPrice: '',
+    discountPercentage: '0',
+    stockQuantity: '100',
+    seller: ''
+  });
   const [editingMedicine, setEditingMedicine] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch all medicines
   useEffect(() => {
     fetchMedicines();
+    fetchSellers();
+    fetchCategories(); // Fetch categories when component mounts
   }, []);
 
   const fetchMedicines = async () => {
@@ -59,7 +80,27 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
       const response = await fetch('/api/medicines?limit=1000', { headers });
       if (response.ok) {
         const data = await response.json();
-        setMedicines(data.medicines || []);
+        // Deduplicate medicines by their id/_id to avoid duplicate React keys and duplicate render entries
+        const raw = data.medicines || [];
+        const seen = new Set();
+        const unique = [];
+        raw.forEach((m) => {
+          const id = m._id || m.id;
+          if (!id) {
+            // If no id available, push as-is (will fallback to index key later)
+            unique.push(m);
+            return;
+          }
+          if (!seen.has(id)) {
+            seen.add(id);
+            unique.push(m);
+          } else {
+            // Log duplicate occurrence for easier debugging
+            // eslint-disable-next-line no-console
+            console.warn('Duplicate medicine skipped when setting state:', id);
+          }
+        });
+        setMedicines(unique);
       } else {
         throw new Error('Failed to fetch medicines');
       }
@@ -68,6 +109,40 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
       toast.error(t('admin.medicines.fetchError', language));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch sellers
+  const fetchSellers = async () => {
+    try {
+      const token = user ? await user.getIdToken() : null;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await fetch('/api/users?role=seller', { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setSellers(Array.isArray(data) ? data : []);
+      } else {
+        console.error('Failed to fetch sellers');
+      }
+    } catch (error) {
+      console.error('Error fetching sellers:', error);
+    }
+  };
+
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const token = user ? await user.getIdToken() : null;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await fetch('/api/categories', { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(Array.isArray(data) ? data : []);
+      } else {
+        console.error('Failed to fetch categories');
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
     }
   };
 
@@ -130,6 +205,26 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
       discountPercentage: '',
       stockQuantity: '',
       isAdvertised: false
+    });
+  };
+
+  // Close add modal
+  const closeAddModal = () => {
+    setAddMedicineModalOpen(false);
+    setNewMedicineForm({
+      name: '',
+      genericName: '',
+      description: '',
+      image: '',
+      category: '',
+      company: '',
+      massUnit: 'mg',
+      price: '',
+      unitPrice: '',
+      stripPrice: '',
+      discountPercentage: '0',
+      stockQuantity: '100',
+      seller: ''
     });
   };
 
@@ -225,6 +320,102 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
     } catch (error) {
       console.error('Error updating medicine:', error);
       toast.error(t('admin.medicines.updateError', language));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle add medicine
+  const handleAddMedicine = async (e) => {
+    e.preventDefault();
+    
+    // Validate required fields
+    if (!newMedicineForm.name.trim()) {
+      toast.error(t('admin.medicines.nameRequired', language));
+      return;
+    }
+    if (!newMedicineForm.genericName.trim()) {
+      toast.error(t('admin.medicines.genericNameRequired', language));
+      return;
+    }
+    if (!newMedicineForm.description.trim()) {
+      toast.error(t('admin.medicines.descriptionRequired', language));
+      return;
+    }
+    if (!newMedicineForm.category) {
+      toast.error(t('admin.medicines.categoryRequired', language));
+      return;
+    }
+    if (!newMedicineForm.company.trim()) {
+      toast.error(t('admin.medicines.companyRequired', language));
+      return;
+    }
+    if (!newMedicineForm.massUnit.trim()) {
+      toast.error(t('admin.medicines.massUnitRequired', language));
+      return;
+    }
+    if (!newMedicineForm.price || isNaN(newMedicineForm.price) || parseFloat(newMedicineForm.price) <= 0) {
+      toast.error(t('admin.medicines.priceRequired', language));
+      return;
+    }
+    if (!newMedicineForm.stockQuantity || isNaN(newMedicineForm.stockQuantity) || parseInt(newMedicineForm.stockQuantity) < 0) {
+      toast.error(t('admin.medicines.stockRequired', language));
+      return;
+    }
+    if (user?.role === 'admin' && !newMedicineForm.seller) {
+      toast.error('Please select a seller for this medicine');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const token = await user.getIdToken();
+      const formData = {
+        ...newMedicineForm,
+        price: parseFloat(newMedicineForm.price),
+        unitPrice: parseFloat(newMedicineForm.unitPrice) || 0,
+        stripPrice: parseFloat(newMedicineForm.stripPrice) || 0,
+        discountPercentage: parseFloat(newMedicineForm.discountPercentage) || 0,
+        stockQuantity: parseInt(newMedicineForm.stockQuantity) || 0,
+      };
+
+      const res = await fetch('/api/medicines', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const responseText = await res.text();
+
+      if (res.ok) {
+        const newMedicine = JSON.parse(responseText);
+        console.log('Medicine created successfully:', newMedicine);
+        
+        // Add the new medicine to the state
+        setMedicines(prevMedicines => [...prevMedicines, newMedicine]);
+        
+        toast.success(t('admin.medicines.created', language));
+        closeAddModal();
+        fetchMedicines(); // Refresh the medicine list
+      } else {
+        let errorMessage = t('admin.medicines.createFailed', language);
+        try {
+          const errorData = JSON.parse(responseText);
+          console.error('Server error response:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // If response is not JSON, use the raw text or status text
+          console.error('Non-JSON error response:', responseText);
+          errorMessage = responseText || res.statusText || errorMessage;
+        }
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Error creating medicine:', error);
+      toast.error(t('admin.medicines.createError', language));
     } finally {
       setIsSubmitting(false);
     }
@@ -344,6 +535,10 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
             Manage medicines and their usage in banners and hero slides
           </p>
         </div>
+        <Button onClick={() => setAddMedicineModalOpen(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Add Medicine
+        </Button>
       </div>
 
       {/* Search Bar */}
@@ -370,12 +565,14 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
 
       {/* Medicines Grid - Enhanced UI */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {displayMedicines.map((medicine) => {
+        {displayMedicines.map((medicine, idx) => {
           const inBanners = isMedicineInBanners(medicine._id);
           const inHeroSlides = isMedicineInHeroSlides(medicine._id);
-          
+          // Construct a stable key: prefer _id or id, otherwise use name+index or index
+          const keyId = medicine._id || medicine.id || (medicine.name ? `${medicine.name}-${idx}` : `med-${idx}`);
+
           return (
-            <Card key={medicine._id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <Card key={keyId} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
               <div className="p-4">
                 <div className="flex items-start gap-3">
                   <div className="relative">
@@ -649,6 +846,28 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
               />
             </div>
 
+            {/* Category */}
+            <div>
+              <Label htmlFor="edit-category" className="text-sm font-medium">
+                {t('admin.medicines.category', language)} <span className="text-red-500">*</span>
+              </Label>
+              <Select 
+                value={medicineForm.category} 
+                onValueChange={(value) => setMedicineForm(prev => ({ ...prev, category: value }))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category._id} value={category._id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Company */}
             <div>
               <Label htmlFor="edit-company" className="text-sm font-medium">
@@ -829,6 +1048,252 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
                   <>
                     <Edit className="w-4 h-4" />
                     {t('admin.medicines.updateMedicine', language)}
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Medicine Modal */}
+      <Dialog open={addMedicineModalOpen} onOpenChange={closeAddModal}>
+        <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+              <Plus className="w-5 h-5" />
+              Add New Medicine
+            </DialogTitle>
+            <DialogDescription>
+              Create a new medicine entry
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddMedicine} className="space-y-4">
+            {/* Medicine Name */}
+            <div>
+              <Label htmlFor="add-name" className="text-sm font-medium">
+                Medicine Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="add-name"
+                type="text"
+                value={newMedicineForm.name}
+                onChange={(e) => setNewMedicineForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Enter medicine name"
+                required
+                className="mt-1"
+              />
+            </div>
+
+            {/* Generic Name */}
+            <div>
+              <Label htmlFor="add-genericName" className="text-sm font-medium">
+                Generic Name
+              </Label>
+              <Input
+                id="add-genericName"
+                type="text"
+                value={newMedicineForm.genericName}
+                onChange={(e) => setNewMedicineForm(prev => ({ ...prev, genericName: e.target.value }))}
+                placeholder="Enter generic name"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <Label htmlFor="add-description" className="text-sm font-medium">
+                Brief Description
+              </Label>
+              <Textarea
+                id="add-description"
+                value={newMedicineForm.description}
+                onChange={(e) => setNewMedicineForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Enter medicine description"
+                rows={3}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Category */}
+            <div>
+              <Label htmlFor="add-category" className="text-sm font-medium">
+                Category <span className="text-red-500">*</span>
+              </Label>
+              <Select 
+                value={newMedicineForm.category} 
+                onValueChange={(value) => setNewMedicineForm(prev => ({ ...prev, category: value }))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category._id} value={category._id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Company */}
+            <div>
+              <Label htmlFor="add-company" className="text-sm font-medium">
+                Company
+              </Label>
+              <Input
+                id="add-company"
+                type="text"
+                value={newMedicineForm.company}
+                onChange={(e) => setNewMedicineForm(prev => ({ ...prev, company: e.target.value }))}
+                placeholder="Enter company name"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Mass Unit */}
+            <div>
+              <Label htmlFor="add-massUnit" className="text-sm font-medium">
+                Mass Unit
+              </Label>
+              <Input
+                id="add-massUnit"
+                type="text"
+                value={newMedicineForm.massUnit}
+                onChange={(e) => setNewMedicineForm(prev => ({ ...prev, massUnit: e.target.value }))}
+                placeholder="e.g., 500mg, 100ml"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Price */}
+            <div>
+              <Label htmlFor="add-price" className="text-sm font-medium">
+                Price (৳) <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="add-price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={newMedicineForm.price}
+                onChange={(e) => setNewMedicineForm(prev => ({ ...prev, price: e.target.value }))}
+                placeholder="Enter price"
+                required
+                className="mt-1"
+              />
+            </div>
+
+            {/* Discount Percentage */}
+            <div>
+              <Label htmlFor="add-discountPercentage" className="text-sm font-medium">
+                Discount Percentage
+              </Label>
+              <Input
+                id="add-discountPercentage"
+                type="number"
+                min="0"
+                max="100"
+                value={newMedicineForm.discountPercentage}
+                onChange={(e) => setNewMedicineForm(prev => ({ ...prev, discountPercentage: e.target.value }))}
+                placeholder="Enter discount percentage"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Stock Quantity */}
+            <div>
+              <Label htmlFor="add-stockQuantity" className="text-sm font-medium">
+                Stock Quantity <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="add-stockQuantity"
+                type="number"
+                min="0"
+                value={newMedicineForm.stockQuantity}
+                onChange={(e) => setNewMedicineForm(prev => ({ ...prev, stockQuantity: e.target.value }))}
+                placeholder="Enter quantity"
+                required
+                className="mt-1"
+              />
+            </div>
+
+            {/* Seller Selection (Admin only) */}
+            {user?.role === 'admin' && (
+              <div>
+                <Label htmlFor="add-seller" className="text-sm font-medium">
+                  Assign to Seller <span className="text-red-500">*</span>
+                </Label>
+                <Select 
+                  value={newMedicineForm.seller} 
+                  onValueChange={(value) => setNewMedicineForm(prev => ({ ...prev, seller: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a seller" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sellers.map((seller) => (
+                      <SelectItem key={seller._id} value={seller._id}>
+                        {seller.name} ({seller.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Medicine Image */}
+            <div>
+              <Label htmlFor="add-image" className="text-sm font-medium">
+                Medicine Image URL
+              </Label>
+              <Input
+                id="add-image"
+                type="url"
+                value={newMedicineForm.image}
+                onChange={(e) => setNewMedicineForm(prev => ({ ...prev, image: e.target.value }))}
+                placeholder="Enter image URL"
+                className="mt-1"
+              />
+              {newMedicineForm.image && (
+                <div className="mt-2">
+                  <img 
+                    src={newMedicineForm.image} 
+                    alt="Preview" 
+                    className="h-20 w-20 object-cover rounded-md border border-gray-200 dark:border-gray-700"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeAddModal}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Add Medicine
                   </>
                 )}
               </Button>

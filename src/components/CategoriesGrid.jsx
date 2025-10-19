@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from './ui/card';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -26,7 +26,9 @@ const CategoriesGrid = () => {
         ...category,
         name: typeof category.name === 'string' ? category.name : 'Unknown Category',
         description: typeof category.description === 'string' ? category.description : '',
-        count: typeof category.count === 'number' ? category.count : 0,
+        // Use medicineCount from backend, which is the correct field
+        count: typeof category.medicineCount === 'number' ? category.medicineCount : 
+               (typeof category.count === 'number' ? category.count : 0),
         icon: typeof category.icon === 'string' ? category.icon : 'Pill',
         color: typeof category.color === 'string' ? category.color : 'cyan',
         image: typeof category.image === 'string' ? category.image : null
@@ -92,71 +94,70 @@ const CategoriesGrid = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between mb-12">
-          <div className="text-left">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-64 mb-4 animate-pulse"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96 animate-pulse"></div>
-          </div>
-          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse"></div>
+  // Memoized loading skeleton
+  const loadingSkeleton = useMemo(() => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-12">
+        <div className="text-left">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-64 mb-4 animate-pulse"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96 animate-pulse"></div>
         </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, index) => (
-            <Card key={index} className="overflow-hidden animate-pulse">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="bg-gray-200 dark:bg-gray-700 rounded-lg w-12 h-12"></div>
-                  <div className="bg-gray-200 dark:bg-gray-700 rounded-full w-8 h-8"></div>
-                </div>
-                <div className="mt-4 space-y-2">
-                  <div className="bg-gray-200 dark:bg-gray-700 h-4 rounded w-3/4"></div>
-                  <div className="bg-gray-200 dark:bg-gray-700 h-3 rounded w-full"></div>
-                  <div className="bg-gray-200 dark:bg-gray-700 h-3 rounded w-2/3"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse"></div>
       </div>
-    );
-  }
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, index) => (
+          <Card key={index} className="overflow-hidden animate-pulse">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="bg-gray-200 dark:bg-gray-700 rounded-lg w-12 h-12"></div>
+                <div className="bg-gray-200 dark:bg-gray-700 rounded-full w-8 h-8"></div>
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="bg-gray-200 dark:bg-gray-700 h-4 rounded w-3/4"></div>
+                <div className="bg-gray-200 dark:bg-gray-700 h-3 rounded w-full"></div>
+                <div className="bg-gray-200 dark:bg-gray-700 h-3 rounded w-2/3"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  ), []);
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between mb-12">
-          <div className="text-left">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              {t('home.categories.title', language)}
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl">
-              {t('home.categories.description', language)}
-            </p>
-          </div>
-          <Link 
-            to="/shop" 
-            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
-          >
-            {t('home.categories.viewAll', language)}
-          </Link>
-        </div>
-        
-        <div className="text-center py-8">
-          <p className="text-red-500 dark:text-red-400">
-            {t('home.categories.error', language)}
-          </p>
-          <p className="text-gray-500 dark:text-gray-400 mt-2">
-            Failed to load categories. Please try again later.
+  // Memoized error component
+  const errorComponent = useMemo(() => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-12">
+        <div className="text-left">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            {t('home.categories.title', language)}
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl">
+            {t('home.categories.description', language)}
           </p>
         </div>
+        <Link 
+          to="/all-categories" 
+          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
+        >
+          {t('home.categories.viewAll', language)}
+        </Link>
       </div>
-    );
-  }
+      
+      <div className="text-center py-8">
+        <p className="text-red-500 dark:text-red-400">
+          {t('home.categories.error', language)}
+        </p>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">
+          Failed to load categories. Please try again later.
+        </p>
+      </div>
+    </div>
+  ), [language]);
 
-  return (
+  // Memoized no categories component
+  const noCategoriesComponent = useMemo(() => (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
         <div className="text-left">
@@ -168,7 +169,35 @@ const CategoriesGrid = () => {
           </p>
         </div>
         <Link 
-          to="/shop" 
+          to="/all-categories" 
+          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl whitespace-nowrap"
+        >
+          {t('home.categories.viewAll', language)}
+        </Link>
+      </div>
+      
+      <div className="text-center py-12">
+        <p className="text-gray-500 dark:text-gray-400">
+          {t('home.categories.noCategories', language)}
+        </p>
+      </div>
+    </div>
+  ), [language]);
+
+  // Memoized main content
+  const mainContent = useMemo(() => (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
+        <div className="text-left">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            {t('home.categories.title', language)}
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl">
+            {t('home.categories.description', language)}
+          </p>
+        </div>
+        <Link 
+          to="/all-categories" 
           className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl whitespace-nowrap"
         >
           {t('home.categories.viewAll', language)}
@@ -207,6 +236,7 @@ const CategoriesGrid = () => {
                           // Fallback image on error
                           e.target.src = 'https://placehold.co/400x200/cccccc/ffffff?text=Category';
                         }}
+                        loading="lazy"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
                     </div>
@@ -218,8 +248,9 @@ const CategoriesGrid = () => {
                         <IconComponent className={`w-7 h-7 ${colorClasses.text}`} />
                       </div>
                       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-800 dark:text-gray-200 text-sm font-bold px-3 py-1.5 rounded-full shadow-md animate-fade-in">
-                        {category.count || 0} {t('home.categories.medicines', language)}
+                        {category.count} {t('home.categories.medicines', language)}
                       </div>
+
                     </div>
                     <h3 className="font-extrabold text-2xl text-gray-900 dark:text-white mt-5 mb-3 tracking-tight animate-fade-in group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors duration-300">
                       {category.name}
@@ -235,7 +266,17 @@ const CategoriesGrid = () => {
         </div>
       )}
     </div>
-  );
+  ), [categories, language, iconMap, colorMap]);
+
+  if (isLoading) {
+    return loadingSkeleton;
+  }
+
+  if (error) {
+    return errorComponent;
+  }
+
+  return mainContent;
 };
 
-export default CategoriesGrid;
+export default React.memo(CategoriesGrid);

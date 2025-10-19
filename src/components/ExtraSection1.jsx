@@ -5,6 +5,7 @@ import { Badge } from './ui/badge';
 import { Phone, Mail, Clock, MapPin } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext'; // Added LanguageContext import
 import { t } from '../lib/i18n'; // Added translations import
+import { Link } from 'react-router-dom'; // Changed from useNavigate to Link
 
 const ExtraSection1 = () => {
   const { language } = useLanguage(); // Use language context
@@ -74,12 +75,17 @@ const ExtraSection1 = () => {
               {t('extra1.experts', language)}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button className="bg-cyan-500 hover:bg-cyan-600 text-white px-8 py-3">
-                {t('extra1.contact', language)}
-              </Button>
-              <Button variant="outline" className="px-8 py-3">
-                {t('extra1.faq', language)}
-              </Button>
+              {/* Updated buttons with Link components */}
+              <Link to="/contact">
+                <Button className="bg-cyan-500 hover:bg-cyan-600 text-white px-8 py-3">
+                  {t('extra1.contact', language)}
+                </Button>
+              </Link>
+              <Link to="/faq">
+                <Button variant="outline" className="px-8 py-3">
+                  {t('extra1.faq', language)}
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

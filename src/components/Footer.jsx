@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Mail, 
@@ -18,6 +18,8 @@ import { t } from '../lib/i18n'; // Added translation import
 
 const Footer = () => {
   const { language } = useLanguage(); // Use language context
+  const [email, setEmail] = useState(''); // Added state for email input
+  const [isSubscribed, setIsSubscribed] = useState(false); // Added state for subscription status
   const currentYear = new Date().getFullYear();
 
   const quickLinks = [
@@ -54,6 +56,21 @@ const Footer = () => {
     { icon: Heart, text: t('footer.expertCare', language) }
   ];
 
+  // Added function to handle newsletter subscription
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    if (email) {
+      // In a real application, you would send this to your backend
+      console.log(`Subscribed with email: ${email}`);
+      setIsSubscribed(true);
+      setEmail('');
+      // Reset the subscription status after 3 seconds
+      setTimeout(() => {
+        setIsSubscribed(false);
+      }, 3000);
+    }
+  };
+
   return (
     <footer className="relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-white transition-all duration-300">
       {/* Decorative Elements */}
@@ -67,11 +84,11 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Company Info */}
           <div className="lg:col-span-1">
-            <div className="flex items-center space-x-3 mb-8">
+            <div className="flex items-center space-x-1 mb-8">
               <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-xl">C</span>
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-purple-600 bg-clip-text text-transparent">CureBay</span>
+              <span className="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-purple-600 bg-clip-text text-transparent">ureBay</span>
             </div>
             
             <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed text-base transition-colors duration-300">
@@ -84,7 +101,7 @@ const Footer = () => {
                 <div className="w-10 h-10 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg flex items-center justify-center group-hover:bg-cyan-200 dark:group-hover:bg-cyan-900/50 transition-colors duration-300">
                   <Phone className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
                 </div>
-                <span className="text-gray-700 dark:text-gray-300 transition-colors duration-300 hover:text-cyan-600 dark:hover:text-cyan-400">+1 (555) 123-4567</span>
+                <span className="text-gray-700 dark:text-gray-300 transition-colors duration-300 hover:text-cyan-600 dark:hover:text-cyan-400">+880 1571151277</span>
               </div>
               <div className="flex items-center space-x-3 group">
                 <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/50 transition-colors duration-300">
@@ -96,7 +113,7 @@ const Footer = () => {
                 <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50 transition-colors duration-300 mt-1">
                   <MapPin className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 </div>
-                <span className="text-gray-700 dark:text-gray-300 transition-colors duration-300 hover:text-purple-600 dark:hover:text-purple-400 leading-relaxed">306 Chapmans Lane, San Ysidro, NM 87053</span>
+                <span className="text-gray-700 dark:text-gray-300 transition-colors duration-300 hover:text-purple-600 dark:hover:text-purple-400 leading-relaxed">Dhaka, Bangladesh</span>
               </div>
             </div>
           </div>
@@ -163,10 +180,10 @@ const Footer = () => {
         </div>
 
         {/* Features Section */}
-        <div className="border-t border-gray-200/50 dark:border-gray-700/50 mt-16 pt-12 transition-colors duration-300">
+        <div className="border-t border-gray-200/50 dark:border-gray-700/50 mt-16 pt-12 transition-colors duration-200">
           <div className="text-center mb-8">
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('extra1.whyChoose', language)}</h3>
-            <p className="text-gray-600 dark:text-gray-300">{t('footer.whyChooseDescription', language)}</p>
+            <p className="text-gray-600 dark:text-gray-300 transition-colors duration-200">{t('footer.whyChooseDescription', language)}</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {features.map((feature, index) => {
@@ -180,55 +197,70 @@ const Footer = () => {
               const colorSet = colors[index];
               return (
                 <div key={index} className="flex flex-col items-center text-center group">
-                  <div className={`w-16 h-16 ${colorSet.bg} ${colorSet.hover} rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg mb-4`}>
-                    <IconComponent className={`w-8 h-8 ${colorSet.icon}`} />
+                  <div className={`w-16 h-16 ${colorSet.bg} ${colorSet.hover} rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg mb-4`}>
+                    <IconComponent className={`w-8 h-8 ${colorSet.icon} transition-colors duration-200`} />
                   </div>
-                  <span className="text-gray-700 dark:text-gray-300 font-semibold transition-colors duration-300 group-hover:text-gray-900 dark:group-hover:text-white">{feature.text}</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-semibold transition-colors duration-200 group-hover:text-gray-900 dark:group-hover:text-white">{feature.text}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Newsletter Signup */}
-        <div className="border-t border-gray-200/50 dark:border-gray-700/50 mt-16 pt-12 transition-colors duration-300">
+        {/* Newsletter Signup - Updated color to match Navbar CureBay icon */}
+        <div className="border-t border-gray-200/50 dark:border-gray-700/50 mt-16 pt-12 transition-colors duration-200">
           <div className="max-w-2xl mx-auto text-center">
-            <div className="bg-gradient-to-r from-cyan-600 to-purple-600 dark:from-gray-800 dark:to-gray-700 rounded-3xl p-8 shadow-2xl border border-gray-200/20 dark:border-gray-600/30 transition-all duration-300">
-              <h3 className="text-2xl font-bold mb-4 text-white dark:text-gray-100">{t('footer.stayUpdated', language)}</h3>
-              <p className="text-cyan-100 dark:text-gray-300 mb-8 text-lg transition-colors duration-300">
+            <div className="bg-gradient-to-r from-cyan-600 to-cyan-800 dark:from-gray-800 dark:to-gray-700 rounded-3xl p-8 shadow-2xl border border-gray-200/20 dark:border-gray-600/30 transition-all duration-200">
+              <h3 className="text-2xl font-bold mb-4 text-white dark:text-gray-100 transition-colors duration-200">{t('footer.stayUpdated', language)}</h3>
+              <p className="text-cyan-100 dark:text-gray-300 mb-8 text-lg transition-colors duration-200">
                 {t('footer.stayUpdatedDescription', language)}
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-                <input
-                  type="email"
-                  placeholder={t('footer.emailPlaceholder', language)}
-                  className="flex-1 px-4 py-3 rounded-lg border-0 focus:ring-2 focus:ring-cyan-500 dark:bg-white/10 dark:text-white dark:placeholder-gray-300"
-                />
-                <button className="px-6 py-3 bg-white text-cyan-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-300 shadow-lg">
-                  {t('footer.subscribe', language)}
-                </button>
-              </div>
+              
+              {isSubscribed ? (
+                <div className="bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6 transition-colors duration-200">
+                  <p className="text-green-800 dark:text-green-200 font-medium transition-colors duration-200">
+                    Thank you for subscribing! You'll receive updates from CureBay.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('footer.emailPlaceholder', language)}
+                    className="flex-1 px-4 py-3 rounded-lg border-0 focus:ring-2 focus:ring-cyan-500 dark:bg-white/10 dark:text-white dark:placeholder-gray-300 transition-colors duration-200"
+                    required
+                  />
+                  <button 
+                    type="submit"
+                    className="px-6 py-3 bg-white text-cyan-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200 shadow-lg"
+                  >
+                    {t('footer.subscribe', language)}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>
 
         {/* Copyright */}
-        <div className="border-t border-gray-200/50 dark:border-gray-700/50 mt-12 pt-8 text-center">
+        <div className="border-t border-gray-200/50 dark:border-gray-700/50 mt-12 pt-8 text-center transition-colors duration-200">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4 md:mb-0">
+            <p className="text-gray-600 dark:text-gray-400 mb-4 md:mb-0 transition-colors duration-200">
               © {currentYear} CureBay. {t('footer.allRightsReserved', language)}
             </p>
             <div className="flex space-x-6">
-              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-300">
+              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-200">
                 <Facebook className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-300">
+              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-200">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-300">
+              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-200">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-300">
+              <a href="#" className="text-gray-500 hover:text-cyan-500 dark:text-gray-400 dark:hover:text-cyan-400 transition-colors duration-200">
                 <Linkedin className="w-5 h-5" />
               </a>
             </div>

@@ -113,6 +113,7 @@
 
 body {
   font-family: 'Outfit', Arial, sans-serif;
+  transition: background-color 0.2s ease-out, color 0.2s ease-out;
 }
 h1, h2, h3, h4, h5, h6, .font-serif {
   font-family: 'Noto Serif', serif;
@@ -131,14 +132,24 @@ h1, h2, h3, h4, h5, h6, .font-serif {
 }
 
 .group\/card > * {
-  transition: transform 0.3s cubic-bezier(.25,.8,.25,1);
+  transition: transform 0.2s ease-out;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out, fill 0.2s ease-out, stroke 0.2s ease-out;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Reduce transition durations for better performance during theme switching */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

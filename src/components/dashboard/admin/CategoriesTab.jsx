@@ -60,12 +60,6 @@ function CategoriesTab({
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
 
-  // Debug log to see what categories are being passed
-  useEffect(() => {
-    console.log('CategoriesTab received categories:', categories);
-    console.log('Number of categories:', categories.length);
-  }, [categories]);
-
   // Category helper functions
   const getIconComponent = (iconName) => {
     const icons = {
@@ -143,12 +137,6 @@ function CategoriesTab({
     return nameMatch || descriptionMatch;
   });
 
-  // Debug log to see filtered categories
-  useEffect(() => {
-    console.log('Filtered categories:', filteredCategories);
-    console.log('Number of filtered categories:', filteredCategories.length);
-  }, [filteredCategories]);
-
   const openCategoryModal = (category = null) => {
     if (category) {
       setEditingCategory(category);
@@ -173,14 +161,14 @@ function CategoriesTab({
   const viewCategoryMedicines = (category) => {
     // Basic validation for category before navigation
     if (!category) {
-      toast.error('Invalid category selected');
+      toast.error(t('admin.categories.invalidSelected', language));
       return;
     }
     
     // Use category._id if category.id is not available
     const categoryId = category.id || category._id;
     if (!categoryId) {
-      toast.error('Category ID is missing');
+      toast.error(t('admin.categories.idMissing', language));
       return;
     }
     
@@ -190,7 +178,7 @@ function CategoriesTab({
     const isValidString = typeof categoryId === 'string' && categoryId.length > 0;
     
     if (!isValidObjectId && !isValidString) {
-      toast.error('Invalid category ID format');
+      toast.error(t('admin.categories.invalidIdFormat', language));
       return;
     }
     
@@ -285,7 +273,6 @@ function CategoriesTab({
       
       closeCategoryModal();
     } catch (error) {
-      console.error('Error saving category:', error);
       toast.error(error.message || t('admin.categories.error', language));
     }
   };
@@ -323,7 +310,6 @@ function CategoriesTab({
       setDeleteCategoryModalOpen(false);
       setCategoryToDelete(null);
     } catch (error) {
-      console.error('Error deleting category:', error);
       toast.error(error.message || t('admin.categories.deleteError', language));
     } finally {
       setIsDeletingCategory(false);
@@ -402,7 +388,6 @@ function CategoriesTab({
       </div>
 
       {/* Categories Grid/List */}
-      {console.log('Rendering categories section, filteredCategories.length:', filteredCategories.length)}
       {filteredCategories.length === 0 ? (
         <div className="text-center py-12">
           <Package className="w-12 h-12 mx-auto text-gray-400 mb-4" />
@@ -412,7 +397,6 @@ function CategoriesTab({
       ) : categoryViewMode === 'grid' ? (
         // Grid View
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {console.log('Rendering grid view with', filteredCategories.length, 'categories')}
           {filteredCategories.map((category) => {
             // Basic safety check
             if (!category) {
@@ -429,7 +413,10 @@ function CategoriesTab({
             const colorClasses = getColorClasses(category.color || 'cyan');
             const categoryName = category.name || 'Unnamed Category';
             const categoryDescription = category.description || 'No description available';
-            const medicineCount = category.medicineCount || category.count || 0; // Use medicineCount first, fallback to count
+            // Compute medicine count: prefer nested medicines array length, then medicineCount, then count
+            const medicineCount = Array.isArray(category.medicines)
+              ? category.medicines.length
+              : (category.medicineCount || category.count || 0);
             const categoryStatus = category.status || 'active';
             
             return (
@@ -486,7 +473,6 @@ function CategoriesTab({
         <Card>
           <CardContent className="p-0">
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {console.log('Rendering list view with', filteredCategories.length, 'categories')}
               {filteredCategories.map((category) => {
                 // Basic safety check
                 if (!category) {
@@ -503,7 +489,10 @@ function CategoriesTab({
                 const colorClasses = getColorClasses(category.color || 'cyan');
                 const categoryName = category.name || 'Unnamed Category';
                 const categoryDescription = category.description || 'No description available';
-                const medicineCount = category.medicineCount || category.count || 0; // Use medicineCount first, fallback to count
+                // Compute medicine count: prefer nested medicines array length, then medicineCount, then count
+                const medicineCount = Array.isArray(category.medicines)
+                  ? category.medicines.length
+                  : (category.medicineCount || category.count || 0);
                 const categoryStatus = category.status || 'active';
                 
                 return (

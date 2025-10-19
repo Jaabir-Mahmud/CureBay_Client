@@ -81,7 +81,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors duration-300 backdrop-blur-md sticky top-0 z-50">
+    <nav className="bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors duration-200 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
@@ -90,7 +90,7 @@ const Navbar = () => {
               <div className="w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">C</span>
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white transition-colors">ureBay</span>
+              <span className="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-200">ureBay</span>
             </Link>
           </div>
 
@@ -99,7 +99,7 @@ const Navbar = () => {
             <NavLink
               to="/"
               className={({ isActive }) =>
-                `font-medium transition-colors px-2 py-1 rounded-lg ${isActive ? 'bg-cyan-600 text-white dark:bg-cyan-400 dark:text-gray-900 shadow' : 'text-gray-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400'}`
+                `font-medium transition-colors duration-200 px-2 py-1 rounded-lg ${isActive ? 'bg-cyan-600 text-white dark:bg-cyan-400 dark:text-gray-900 shadow' : 'text-gray-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400'}`
               }
               end
             >
@@ -108,7 +108,7 @@ const Navbar = () => {
             <NavLink
               to="/shop"
               className={({ isActive }) =>
-                `font-medium transition-colors px-2 py-1 rounded-lg ${isActive ? 'bg-cyan-600 text-white dark:bg-cyan-400 dark:text-gray-900 shadow' : 'text-gray-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400'}`
+                `font-medium transition-colors duration-200 px-2 py-1 rounded-lg ${isActive ? 'bg-cyan-600 text-white dark:bg-cyan-400 dark:text-gray-900 shadow' : 'text-gray-700 dark:text-gray-200 hover:text-cyan-600 dark:hover:text-cyan-400'}`
               }
             >
               {t('nav.shop', language)} {/* Translated text */}
@@ -116,7 +116,7 @@ const Navbar = () => {
           </div>
 
           {/* Digital Clock - Desktop Only */}
-          <div className="hidden lg:flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
+          <div className="hidden lg:flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300 transition-colors duration-200">
             <Clock className="w-4 h-4" />
             <div className="flex flex-col items-center">
               <span className="font-mono font-semibold">{formatTime(currentTime)}</span>
@@ -129,9 +129,9 @@ const Navbar = () => {
             {/* Language Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="flex items-center space-x-1">
+                <Button variant="ghost" size="sm" className="flex items-center space-x-1 transition-colors duration-200">
                   <Globe className="w-4 h-4" />
-                  <span className="text-sm">{language}</span> {/* Use context language */}
+                  <span className="text-sm transition-colors duration-200">{language}</span> {/* Use context language */}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 

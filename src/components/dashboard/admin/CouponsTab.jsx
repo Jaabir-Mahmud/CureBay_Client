@@ -532,7 +532,7 @@ function CouponsTab() {
                             {coupon.maximumDiscountAmount && (
                               <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                                 <span>
-                                  Max. Discount: ${coupon.maximumDiscountAmount}
+                                  Max. Discount: ৳{coupon.maximumDiscountAmount}
                                 </span>
                               </div>
                             )}
@@ -646,7 +646,7 @@ function CouponsTab() {
                     onChange={(e) => setCouponForm({...couponForm, discountValue: parseFloat(e.target.value) || 0})}
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                    {couponForm.discountType === 'percentage' ? '%' : '$'}
+                    {couponForm.discountType === 'percentage' ? '%' : '৳'}
                   </span>
                 </div>
               </div>
@@ -664,7 +664,7 @@ function CouponsTab() {
                       value={couponForm.maximumDiscountAmount || ''}
                       onChange={(e) => setCouponForm({...couponForm, maximumDiscountAmount: e.target.value ? parseFloat(e.target.value) : null})}
                     />
-                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">৳</span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Maximum discount amount (optional)</p>
                 </div>
@@ -684,7 +684,7 @@ function CouponsTab() {
                     value={couponForm.minimumOrderAmount}
                     onChange={(e) => setCouponForm({...couponForm, minimumOrderAmount: parseFloat(e.target.value) || 0})}
                   />
-                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">৳</span>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Minimum order amount to apply coupon</p>
               </div>

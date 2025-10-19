@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Ticket } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import { useCart } from '../../contexts/CartContext';
-import { useAuth } from '../../contexts/AuthContext'; // Added AuthContext import
+import { useAuth } from '../../contexts/AuthContext';
 import SEOHelmet from '../../components/SEOHelmet';
-import { useLanguage } from '../../contexts/LanguageContext'; // Added LanguageContext import
-import { t } from '../../lib/i18n'; // Added translation import
+import { useLanguage } from '../../contexts/LanguageContext';
+import { t } from '../../lib/i18n';
 
 const CartPage = () => {
   const {
@@ -22,25 +24,93 @@ const CartPage = () => {
     getFinalTotal
   } = useCart();
   
-  const { user } = useAuth(); // Get user from AuthContext
-  const { language } = useLanguage(); // Use language context
+  const { user } = useAuth();
+  const { language } = useLanguage();
   const navigate = useNavigate();
+  
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [couponValidationResult, setCouponValidationResult] = useState(null);
+  const [isCouponLoading, setIsCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
 
   const subtotal = getSubtotal();
   const tax = getTax();
   const shipping = getShipping();
   const total = getFinalTotal();
 
+  // Calculate discount amount
+  const discountAmount = couponValidationResult?.valid ? couponValidationResult.discountAmount : 0;
+  
+  // Calculate final total with discount
+  const finalTotal = total - discountAmount;
+
   const handleCheckout = () => {
-    // Check if user is logged in before proceeding to checkout
     if (!user) {
-      // Redirect to login page
       navigate('/auth');
       return;
     }
     
-    // Navigate to checkout with cart data
-    navigate('/checkout', { state: { cartData: cartItems } });
+    // Navigate to checkout with cart data and coupon info
+    navigate('/checkout', { 
+      state: { 
+        cartData: cartItems,
+        coupon: couponValidationResult?.valid ? couponValidationResult : null
+      } 
+    });
+  };
+
+  // Validate coupon
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+
+    setIsCouponLoading(true);
+    setCouponError('');
+    
+    try {
+      const response = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: couponCode.trim().toUpperCase(),
+          orderAmount: subtotal
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCouponValidationResult({
+          valid: true,
+          coupon: data.coupon,
+          discountAmount: data.discountAmount
+        });
+      } else {
+        setCouponValidationResult({
+          valid: false,
+          error: data.error
+        });
+      }
+    } catch (error) {
+      setCouponValidationResult({
+        valid: false,
+        error: 'Failed to validate coupon. Please try again.'
+      });
+    } finally {
+      setIsCouponLoading(false);
+    }
+  };
+
+  // Remove coupon
+  const removeCoupon = () => {
+    setCouponCode('');
+    setCouponValidationResult(null);
+    setCouponError('');
   };
 
   if (cartItems.length === 0) {
@@ -144,6 +214,77 @@ const CartPage = () => {
                 ))}
               </CardContent>
             </Card>
+            
+            {/* Coupon Section */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Ticket className="w-5 h-5" />
+                  Apply Coupon
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Label htmlFor="coupon-code">Coupon Code</Label>
+                      <Input
+                        id="coupon-code"
+                        placeholder="Enter coupon code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        className="uppercase"
+                        disabled={couponValidationResult?.valid}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      {couponValidationResult?.valid ? (
+                        <Button onClick={removeCoupon} variant="outline">
+                          Remove
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={validateCoupon} 
+                          disabled={isCouponLoading || !couponCode.trim()}
+                        >
+                          {isCouponLoading ? 'Applying...' : 'Apply'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {couponError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                      <p className="text-red-700 dark:text-red-300 text-sm">{couponError}</p>
+                    </div>
+                  )}
+                  
+                  {couponValidationResult && (
+                    <div className={`p-3 rounded-lg ${couponValidationResult.valid ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+                      {couponValidationResult.valid ? (
+                        <div>
+                          <div className="flex justify-between items-center">
+                            <p className="font-medium text-green-800 dark:text-green-200">
+                              Coupon Applied Successfully!
+                            </p>
+                            <Badge variant="secondary" className="bg-green-500 text-white">
+                              {couponValidationResult.coupon.code}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                            You save: ৳{couponValidationResult.discountAmount.toFixed(2)}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-red-700 dark:text-red-300 text-sm">
+                          {couponValidationResult.error}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Order Summary */}
@@ -158,6 +299,14 @@ const CartPage = () => {
                     <span>Subtotal</span>
                     <span>৳{subtotal.toFixed(2)}</span>
                   </div>
+                  
+                  {couponValidationResult?.valid && (
+                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                      <span>Discount</span>
+                      <span>-৳{discountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between">
                     <span>Tax</span>
                     <span>৳{tax.toFixed(2)}</span>
@@ -175,7 +324,7 @@ const CartPage = () => {
                   <hr />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span>৳{total.toFixed(2)}</span>
+                    <span>৳{finalTotal.toFixed(2)}</span>
                   </div>
                 </div>
 

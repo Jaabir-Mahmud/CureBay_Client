@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom'; // Add useNavigate import
-import { ShoppingCart, Star, X, Eye } from 'lucide-react';
+import { ShoppingCart, X, Eye } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -18,158 +18,154 @@ const DiscountSection = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch discounted medicines with better error handling
-  useEffect(() => {
-    const fetchDiscountedMedicines = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Changed limit from 12 back to 8 as requested
-        const response = await fetch('/api/medicines/discounted?limit=8');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch discounted medicines: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        // Validate and sanitize medicine data
-        if (data && Array.isArray(data.medicines)) {
-          const sanitizedMedicines = data.medicines.map(medicine => ({
-            ...medicine,
-            _id: typeof medicine._id === 'string' ? medicine._id : '',
-            name: typeof medicine.name === 'string' ? medicine.name : 'Unknown Medicine',
-            company: typeof medicine.company === 'string' ? medicine.company : 'Unknown Company',
-            description: typeof medicine.description === 'string' ? medicine.description : '',
-            image: typeof medicine.image === 'string' ? medicine.image : 'https://placehold.co/300x300/cccccc/ffffff?text=Medicine',
-            price: typeof medicine.price === 'number' ? medicine.price : 0,
-            discountPercentage: typeof medicine.discountPercentage === 'number' ? medicine.discountPercentage : 0,
-            rating: typeof medicine.rating === 'number' ? medicine.rating : 4.5,
-            reviews: typeof medicine.reviews === 'number' ? medicine.reviews : 0,
-            finalPrice: typeof medicine.finalPrice === 'number' ? medicine.finalPrice : 
-              (typeof medicine.price === 'number' && typeof medicine.discountPercentage === 'number' ? 
-                medicine.price * (1 - medicine.discountPercentage / 100) : 0)
-          }));
-          
-          setMedicines(sanitizedMedicines);
-        } else {
-          setMedicines([]);
-        }
-      } catch (error) {
-        console.error('Error fetching discounted medicines:', error);
-        setError(error.message);
-        setMedicines([]);
-      } finally {
-        setLoading(false);
+  // Memoized fetch function
+  const fetchDiscountedMedicines = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Changed limit from 12 back to 8 as requested
+      const response = await fetch('/api/medicines/discounted?limit=8');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch discounted medicines: ${response.status} ${response.statusText}`);
       }
-    };
-
-    fetchDiscountedMedicines();
+      
+      const data = await response.json();
+      
+      // Validate and sanitize medicine data
+      if (data && Array.isArray(data.medicines)) {
+        const sanitizedMedicines = data.medicines.map(medicine => ({
+          ...medicine,
+          _id: typeof medicine._id === 'string' ? medicine._id : '',
+          name: typeof medicine.name === 'string' ? medicine.name : 'Unknown Medicine',
+          company: typeof medicine.company === 'string' ? medicine.company : 'Unknown Company',
+          description: typeof medicine.description === 'string' ? medicine.description : '',
+          image: typeof medicine.image === 'string' ? medicine.image : 'https://placehold.co/300x300/cccccc/ffffff?text=Medicine',
+          price: typeof medicine.price === 'number' ? medicine.price : 0,
+          discountPercentage: typeof medicine.discountPercentage === 'number' ? medicine.discountPercentage : 0,
+          finalPrice: typeof medicine.finalPrice === 'number' ? medicine.finalPrice : 
+            (typeof medicine.price === 'number' && typeof medicine.discountPercentage === 'number' ? 
+              medicine.price * (1 - medicine.discountPercentage / 100) : 0)
+        }));
+        
+        setMedicines(sanitizedMedicines);
+      } else {
+        setMedicines([]);
+      }
+    } catch (error) {
+      console.error('Error fetching discounted medicines:', error);
+      setError(error.message);
+      setMedicines([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  if (loading) {
-    return (
-      <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
-            <div className="text-left">
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-64 mb-4 animate-pulse"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96 animate-pulse"></div>
-            </div>
-            <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse"></div>
+  // Fetch discounted medicines with better error handling
+  useEffect(() => {
+    fetchDiscountedMedicines();
+  }, [fetchDiscountedMedicines]);
+
+  // Memoized loading skeleton
+  const loadingSkeleton = useMemo(() => (
+    <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
+          <div className="text-left">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-64 mb-4 animate-pulse"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96 animate-pulse"></div>
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Show only 8 loading skeletons */}
-            {[...Array(8)].map((_, index) => (
-              <Card key={index} className="overflow-hidden animate-pulse">
-                <CardContent className="p-0">
-                  <div className="h-52 bg-gray-200 dark:bg-gray-700 rounded-t-2xl"></div>
-                  <div className="p-5">
-                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-3"></div>
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-6"></div>
-                    <div className="flex justify-between">
-                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-                      <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded-full w-10"></div>
-                    </div>
+          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse"></div>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Show only 8 loading skeletons */}
+          {[...Array(8)].map((_, index) => (
+            <Card key={index} className="overflow-hidden animate-pulse">
+              <CardContent className="p-0">
+                <div className="h-52 bg-gray-200 dark:bg-gray-700 rounded-t-2xl"></div>
+                <div className="p-5">
+                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-3"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-6"></div>
+                  <div className="flex justify-between">
+                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                    <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded-full w-10"></div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </section>
-    );
-  }
+      </div>
+    </section>
+  ), []);
 
-  if (error) {
-    return (
-      <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
-            <div className="text-left">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
-                {t('home.discount.specialOffers', language)}
-              </h2>
-              <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl">
-                {t('home.discount.description', language)}
-              </p>
-            </div>
-            <Button
-              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
-              onClick={() => navigate('/discounts')} // Redirect to discounts page
-            >
-              {t('home.discount.viewAllOffers', language)}
-            </Button>
-          </div>
-          
-          <div className="text-center py-12">
-            <p className="text-red-500 dark:text-red-400">
-              {t('home.discount.error', language) || 'Failed to load special offers'}
-            </p>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">
-              {error}
+  // Memoized error component
+  const errorComponent = useMemo(() => (
+    <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
+          <div className="text-left">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
+              {t('home.discount.specialOffers', language)}
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl">
+              {t('home.discount.description', language)}
             </p>
           </div>
+          <Button
+            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
+            onClick={() => navigate('/discounts')} // Redirect to discounts page
+          >
+            {t('home.discount.viewAllOffers', language)}
+          </Button>
         </div>
-      </section>
-    );
-  }
+        
+        <div className="text-center py-12">
+          <p className="text-red-500 dark:text-red-400">
+            {t('home.discount.error', language) || 'Failed to load special offers'}
+          </p>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">
+            {error}
+          </p>
+        </div>
+      </div>
+    </section>
+  ), [language, error, navigate]);
 
-  if (medicines.length === 0) {
-    return (
-      <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
-            <div className="text-left">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
-                {t('home.discount.specialOffers', language)}
-              </h2>
-              <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl">
-                {t('home.discount.description', language)}
-              </p>
-            </div>
-            <Button
-              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
-              onClick={() => navigate('/discounts')} // Redirect to discounts page
-            >
-              {t('home.discount.viewAllOffers', language)}
-            </Button>
-          </div>
-          
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">
-              {t('home.discount.noOffers', language) || 'No special offers available at the moment'}
+  // Memoized no offers component
+  const noOffersComponent = useMemo(() => (
+    <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
+          <div className="text-left">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
+              {t('home.discount.specialOffers', language)}
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl">
+              {t('home.discount.description', language)}
             </p>
           </div>
+          <Button
+            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl"
+            onClick={() => navigate('/discounts')} // Redirect to discounts page
+          >
+            {t('home.discount.viewAllOffers', language)}
+          </Button>
         </div>
-      </section>
-    );
-  }
+        
+        <div className="text-center py-12">
+          <p className="text-gray-500 dark:text-gray-400">
+            {t('home.discount.noOffers', language) || 'No special offers available at the moment'}
+          </p>
+        </div>
+      </div>
+    </section>
+  ), [language, navigate]);
 
-  const handleAddToCart = (medicine) => {
+  const handleAddToCart = useCallback((medicine) => {
     // Validate medicine before adding to cart
     if (!medicine || typeof medicine !== 'object') {
       console.error('Invalid medicine data');
@@ -177,9 +173,9 @@ const DiscountSection = () => {
     }
     
     addToCart(medicine);
-  };
+  }, [addToCart]);
 
-  const openMedicineDetails = (medicine) => {
+  const openMedicineDetails = useCallback((medicine) => {
     // Validate medicine before opening details
     if (!medicine || typeof medicine !== 'object') {
       console.error('Invalid medicine data');
@@ -187,13 +183,14 @@ const DiscountSection = () => {
     }
     
     setSelectedMedicine(medicine);
-  };
+  }, []);
 
-  const closeMedicineDetails = () => {
+  const closeMedicineDetails = useCallback(() => {
     setSelectedMedicine(null);
-  };
+  }, []);
 
-  return (
+  // Memoized main content
+  const mainContent = useMemo(() => (
     <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
@@ -237,6 +234,7 @@ const DiscountSection = () => {
                         // Fallback image on error
                         e.target.src = 'https://placehold.co/300x300/cccccc/ffffff?text=Medicine';
                       }}
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-end justify-center pb-6">
                       <Button 
@@ -258,7 +256,7 @@ const DiscountSection = () => {
                       {medicine.company}
                     </p>
                     {/* Rating */}
-                    <div className="flex items-center mb-3">
+                    {/* <div className="flex items-center mb-3">
                       <div className="flex text-amber-400">
                         {[...Array(5)].map((_, i) => (
                           <Star
@@ -271,10 +269,7 @@ const DiscountSection = () => {
                           />
                         ))}
                       </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                        ({medicine.reviews || 12} {t('home.discount.reviews', language)})
-                      </span>
-                    </div>
+                    </div> */}
                     {/* Price */}
                     <div className="flex items-center justify-between">
                       <div>
@@ -304,13 +299,10 @@ const DiscountSection = () => {
 
       {/* Medicine Detail Dialog */}
       <Dialog open={!!selectedMedicine} onOpenChange={closeMedicineDetails}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-4xl">
           <DialogHeader>
-            <DialogTitle className="flex justify-between items-center text-2xl">
-              <span>{t('home.discount.productDetails', language)}</span>
-              <Button variant="ghost" size="sm" onClick={closeMedicineDetails} className="rounded-full">
-                <X className="w-5 h-5" />
-              </Button>
+            <DialogTitle className="text-xl sm:text-2xl">
+              {t('home.discount.productDetails', language)}
             </DialogTitle>
           </DialogHeader>
           
@@ -325,10 +317,11 @@ const DiscountSection = () => {
                     // Fallback image on error
                     e.target.src = 'https://placehold.co/300x300/cccccc/ffffff?text=Medicine';
                   }}
+                  loading="lazy"
                 />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                   {selectedMedicine.name}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300 mt-2">
@@ -336,7 +329,7 @@ const DiscountSection = () => {
                 </p>
                 
                 {/* Rating */}
-                <div className="flex items-center mt-4">
+                {/* <div className="flex items-center mt-4">
                   <div className="flex text-amber-400">
                     {[...Array(5)].map((_, i) => (
                       <Star
@@ -349,23 +342,20 @@ const DiscountSection = () => {
                       />
                     ))}
                   </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                    ({selectedMedicine.reviews || 12} {t('home.discount.reviews', language)})
-                  </span>
-                </div>
+                </div> */}
                 
                 {/* Price */}
                 <div className="mt-6">
-                  <div className="flex items-center">
-                    <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
                       ৳{(selectedMedicine.finalPrice || selectedMedicine.price * (1 - selectedMedicine.discountPercentage / 100)).toFixed(2)}
                     </span>
                     {selectedMedicine.discountPercentage > 0 && (
                       <>
-                        <span className="text-lg text-gray-500 dark:text-gray-400 line-through ml-3">
+                        <span className="text-lg text-gray-500 dark:text-gray-400 line-through">
                           ৳{selectedMedicine.price.toFixed(2)}
                         </span>
-                        <Badge className="ml-3 bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg rounded-full px-3 py-1 text-sm font-bold">
+                        <Badge className="bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg rounded-full px-2 py-1 text-xs sm:text-sm font-bold">
                           {selectedMedicine.discountPercentage}% {t('home.discount.off', language)}
                         </Badge>
                       </>
@@ -378,7 +368,7 @@ const DiscountSection = () => {
                   <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                     {t('home.discount.descriptionTitle', language)}
                   </h4>
-                  <p className="text-gray-600 dark:text-gray-300">
+                  <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
                     {selectedMedicine.description || t('home.discount.noDescription', language)}
                   </p>
                 </div>
@@ -399,7 +389,21 @@ const DiscountSection = () => {
         </DialogContent>
       </Dialog>
     </section>
-  );
+  ), [medicines, language, selectedMedicine, openMedicineDetails, handleAddToCart, closeMedicineDetails, navigate]);
+
+  if (loading) {
+    return loadingSkeleton;
+  }
+
+  if (error) {
+    return errorComponent;
+  }
+
+  if (medicines.length === 0) {
+    return noOffersComponent;
+  }
+
+  return mainContent;
 };
 
-export default DiscountSection;
+export default React.memo(DiscountSection);

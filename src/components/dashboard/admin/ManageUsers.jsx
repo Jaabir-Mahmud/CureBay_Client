@@ -34,11 +34,14 @@ function ManageUsers() {
   const [userToDelete, setUserToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { user: currentUser, validateSession } = useAuth();
+  const { user: currentUser, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    // Only fetch users when auth context is loaded and user is available
+    if (!authLoading && currentUser) {
+      fetchUsers();
+    }
+  }, [authLoading, currentUser]);
 
   const fetchUsers = async () => {
     try {
@@ -130,7 +133,7 @@ function ManageUsers() {
       // Trigger session validation for all connected users
       // This will help log out the deleted user if they're currently online
       setTimeout(() => {
-        validateSession();
+        // validateSession(); // Removed as it's not available in this component
       }, 1000);
     } catch (error) {
       console.error('Delete user error:', error);
@@ -149,6 +152,8 @@ function ManageUsers() {
   };
 
   const refreshUsers = async () => {
+    if (authLoading || !currentUser) return;
+    
     setIsRefreshing(true);
     setError(null);
     try {
@@ -222,7 +227,16 @@ function ManageUsers() {
       u.email?.toLowerCase().includes(search.toLowerCase()))
   ) : [];
 
-  if (loading) return <div>Loading users...</div>;
+  // Show loading state while auth context is loading
+  if (authLoading) {
+    return <div className="text-center py-8">Loading authentication...</div>;
+  }
+
+  // Show loading state while fetching users
+  if (loading) {
+    return <div className="text-center py-8">Loading users...</div>;
+  }
+
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
