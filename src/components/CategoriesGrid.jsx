@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { t } from '../lib/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { Pill, Heart, Circle, Syringe, Stethoscope, Tag } from 'lucide-react';
+import { createApiUrl } from '../lib/utils';
 
 const CategoriesGrid = () => {
   const { language } = useLanguage();
@@ -13,7 +14,7 @@ const CategoriesGrid = () => {
   const { data: categories = [], isLoading, error } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const response = await fetch('/api/categories');
+      const response = await fetch(createApiUrl('/api/categories'));
       if (!response.ok) throw new Error('Failed to fetch categories');
       const data = await response.json();
       

@@ -3,6 +3,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { t } from '../lib/i18n';
 import toast from 'react-hot-toast';
+import { createApiUrl } from '../lib/utils';
 
 const CustomerReviews = () => {
   const { language } = useLanguage();
@@ -33,7 +34,7 @@ const CustomerReviews = () => {
           headers = { 'Authorization': `Bearer ${token}` };
         }
         
-        const reviewsResponse = await fetch('/api/reviews/featured?limit=3', { headers });
+        const reviewsResponse = await fetch(createApiUrl('/api/reviews/featured?limit=3'), { headers });
         
         if (reviewsResponse.ok) {
           const reviewsData = await reviewsResponse.json();
@@ -154,7 +155,7 @@ const CustomerReviews = () => {
       // Get Firebase ID token for authentication
       const token = await user.getIdToken();
       
-      const response = await fetch('/api/reviews/general', {
+      const response = await fetch(createApiUrl('/api/reviews/general'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -174,7 +175,7 @@ const CustomerReviews = () => {
         // Refresh reviews list
         // For simplicity, we'll just fetch the featured reviews again
         const token = await user.getIdToken();
-        const reviewsResponse = await fetch('/api/reviews/featured?limit=3', {
+        const reviewsResponse = await fetch(createApiUrl('/api/reviews/featured?limit=3'), {
           headers: {
             'Authorization': `Bearer ${token}`
           }

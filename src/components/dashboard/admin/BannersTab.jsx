@@ -31,6 +31,7 @@ import {
 } from '../../ui/dialog';
 import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { createApiUrl } from '../../../lib/utils';
 
 function BannersTab({ 
   bannerAds, 
@@ -94,7 +95,7 @@ function BannersTab({
       const token = await user.getIdToken();
       if (editingBanner) {
         // Update existing banner
-        const response = await fetch(`/api/banners/${editingBanner._id || editingBanner.id}`, {
+        const response = await fetch(createApiUrl(`/api/banners/${editingBanner._id || editingBanner.id}`), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -124,7 +125,7 @@ function BannersTab({
         toast.success('Banner updated successfully!');
       } else {
         // Create new banner
-        const response = await fetch('/api/banners', {
+        const response = await fetch(createApiUrl('/api/banners'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -169,7 +170,7 @@ function BannersTab({
     if (window.confirm(`Are you sure you want to delete "${banner?.title}"?`)) {
       try {
         const token = await user.getIdToken();
-        const response = await fetch(`/api/banners/${bannerId}`, {
+        const response = await fetch(createApiUrl(`/api/banners/${bannerId}`), {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -196,7 +197,7 @@ function BannersTab({
     
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/banners/${bannerId}/toggle-status`, {
+      const response = await fetch(createApiUrl(`/api/banners/${bannerId}/toggle-status`), {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -237,7 +238,7 @@ function BannersTab({
     
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/banners/${bannerId}/priority`, {
+      const response = await fetch(createApiUrl(`/api/banners/${bannerId}/priority`), {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',

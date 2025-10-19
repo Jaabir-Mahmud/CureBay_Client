@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { createApiUrl } from '../lib/utils';
 
 const CouponValidator = () => {
   const [couponCode, setCouponCode] = useState('');
@@ -26,7 +27,7 @@ const CouponValidator = () => {
     setValidationResult(null);
 
     try {
-      const response = await fetch('/api/coupons/validate', {
+      const response = await fetch(createApiUrl('/api/coupons/validate'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

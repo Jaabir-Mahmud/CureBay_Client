@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => {
   // Default to development mode
   const isProduction = mode === 'production';
   
+  // Define API base URL based on environment
+  const apiBaseUrl = isProduction 
+    ? 'https://curebay-backend.onrender.com' 
+    : 'http://localhost:5000';
+  
   return {
     plugins: [
       react(),
@@ -50,5 +55,9 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    // Define global constants for the application
+    define: {
+      __API_BASE_URL__: JSON.stringify(apiBaseUrl),
+    }
   }
 })

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { t } from '../lib/i18n';
+import { createApiUrl } from '../lib/utils';
 
 const DiscountSection = () => {
   const { addToCart } = useCart();
@@ -25,7 +26,7 @@ const DiscountSection = () => {
       setError(null);
       
       // Changed limit from 12 back to 8 as requested
-      const response = await fetch('/api/medicines/discounted?limit=8');
+      const response = await fetch(createApiUrl('/api/medicines/discounted?limit=8'));
       if (!response.ok) {
         throw new Error(`Failed to fetch discounted medicines: ${response.status} ${response.statusText}`);
       }

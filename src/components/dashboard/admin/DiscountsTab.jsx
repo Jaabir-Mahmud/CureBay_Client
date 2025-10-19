@@ -30,6 +30,7 @@ import {
 } from '../../ui/dialog';
 import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { createApiUrl } from '../../../lib/utils';
 
 function DiscountsTab() {
   const { user } = useAuth();
@@ -56,7 +57,7 @@ function DiscountsTab() {
       try {
         setLoading(true);
         // Fetch up to 100 discounted medicines to ensure we get all of them
-        const response = await fetch('/api/medicines/discounted?limit=100');
+        const response = await fetch(createApiUrl('/api/medicines/discounted?limit=100'));
         if (response.ok) {
           const data = await response.json();
           // Validate that we're only getting valid medicines
@@ -84,7 +85,7 @@ function DiscountsTab() {
   const fetchAllMedicines = async () => {
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/medicines?limit=1000', {
+      const response = await fetch(createApiUrl('/api/medicines?limit=1000'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -162,7 +163,7 @@ function DiscountsTab() {
     setIsSavingDiscount(true);
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/medicines/${editingMedicine._id}`, {
+      const response = await fetch(createApiUrl(`/api/medicines/${editingMedicine._id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -224,7 +225,7 @@ function DiscountsTab() {
     try {
       setLoading(true);
       // Fetch up to 100 discounted medicines to ensure we get all of them
-      const response = await fetch('/api/medicines/discounted?limit=100');
+      const response = await fetch(createApiUrl('/api/medicines/discounted?limit=100'));
       if (response.ok) {
         const data = await response.json();
         // Validate that we're only getting valid medicines

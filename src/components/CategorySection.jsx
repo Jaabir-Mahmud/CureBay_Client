@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { useLanguage } from '../contexts/LanguageContext';
 import { t } from '../lib/i18n';
+import { createApiUrl } from '../lib/utils';
 
 const CategorySection = () => {
   const { language } = useLanguage();
@@ -15,7 +16,7 @@ const CategorySection = () => {
   const { data: categories = [], isLoading, error } = useQuery({
     queryKey: ['categoriesWithCounts'],
     queryFn: async () => {
-      const response = await fetch('/api/categories');
+      const response = await fetch(createApiUrl('/api/categories'));
       if (!response.ok) throw new Error('Failed to fetch categories');
       const data = await response.json();
       

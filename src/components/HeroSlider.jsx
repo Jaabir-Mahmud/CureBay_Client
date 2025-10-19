@@ -6,6 +6,7 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 import './HeroSlider.css';
+import { createApiUrl } from '../lib/utils';
 
 // Memoized component to prevent unnecessary re-renders
 const HeroSlide = React.memo(({ slide, stats, isDarkMode }) => {
@@ -182,7 +183,7 @@ const HeroSlider = ({ heroSlides = [] }) => {
     try {
       // Try to fetch from the proper stats endpoint first
       try {
-        const statsResponse = await fetch('/api/stats');
+        const statsResponse = await fetch(createApiUrl('/api/stats'));
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();
           
@@ -201,7 +202,7 @@ const HeroSlider = ({ heroSlides = [] }) => {
       
       // Fallback to medicines count (this endpoint works without auth)
       try {
-        const medicinesResponse = await fetch('/api/medicines');
+        const medicinesResponse = await fetch(createApiUrl('/api/medicines'));
         
         if (medicinesResponse.ok) {
           const medicinesData = await medicinesResponse.json();

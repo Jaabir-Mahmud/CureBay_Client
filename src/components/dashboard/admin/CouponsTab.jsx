@@ -30,6 +30,7 @@ import {
 } from '../../ui/dialog';
 import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { createApiUrl } from '../../../lib/utils';
 
 function CouponsTab() {
   const { user } = useAuth();
@@ -68,7 +69,7 @@ function CouponsTab() {
           headers['x-local-test'] = 'true';
         }
         
-        const response = await fetch('/api/coupons', {
+        const response = await fetch(createApiUrl('/api/coupons'), {
           headers,
         });
         if (response.ok) {
@@ -175,7 +176,7 @@ function CouponsTab() {
         headers['x-local-test'] = 'true';
       }
       
-      const response = await fetch(url, {
+      const response = await fetch(createApiUrl(url), {
         method,
         headers,
         body: JSON.stringify({
@@ -232,7 +233,7 @@ function CouponsTab() {
         headers['x-local-test'] = 'true';
       }
       
-      const response = await fetch(`/api/coupons/${couponId}`, {
+      const response = await fetch(createApiUrl(`/api/coupons/${couponId}`), {
         method: 'DELETE',
         headers,
       });

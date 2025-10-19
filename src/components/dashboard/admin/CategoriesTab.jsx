@@ -37,6 +37,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { useLanguage } from '../../../contexts/LanguageContext'; // Added LanguageContext import
 import { t } from '../../../lib/i18n'; // Added translation import
+import { createApiUrl } from '../../../lib/utils';
 
 function CategoriesTab({ 
   categories, 
@@ -220,7 +221,7 @@ function CategoriesTab({
         
         if (isDefaultCategory) {
           // Create new category for default ones
-          res = await fetch('/api/categories', {
+          res = await fetch(createApiUrl('/api/categories'), {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
@@ -230,7 +231,7 @@ function CategoriesTab({
           });
         } else {
           // Update existing category with valid MongoDB ObjectId
-          res = await fetch(`/api/categories/${editingCategory.id}`, {
+          res = await fetch(createApiUrl(`/api/categories/${editingCategory.id}`), {
             method: 'PUT',
             headers: { 
               'Content-Type': 'application/json',
@@ -240,7 +241,7 @@ function CategoriesTab({
           });
         }
       } else {
-        res = await fetch('/api/categories', {
+        res = await fetch(createApiUrl('/api/categories'), {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -293,7 +294,7 @@ function CategoriesTab({
       
       if (!isDefaultCategory) {
         // Delete from backend only if it's not a default category
-        const res = await fetch(`/api/categories/${categoryToDelete.id}`, {
+        const res = await fetch(createApiUrl(`/api/categories/${categoryToDelete.id}`), {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         });
