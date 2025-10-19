@@ -10,10 +10,10 @@ export function cn(...inputs) {
  * @returns {string} The API base URL
  */
 export function getApiBaseUrl() {
-  // In production, use the Render backend URL
+  // In production, use the VITE_API_URL environment variable
   // In development, use relative paths with proxy
   return import.meta.env.MODE === 'production' 
-    ? 'https://curebay-backend.onrender.com'
+    ? import.meta.env.VITE_API_URL || 'https://curebay-backend.onrender.com'
     : '';
 }
 
