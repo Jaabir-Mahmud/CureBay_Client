@@ -19,6 +19,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { t } from '../../../lib/i18n';
+import { createApiUrl } from '../../../lib/utils';
 
 function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSlides }) {
   const { user } = useAuth();
@@ -77,7 +78,7 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
       setLoading(true);
       const token = user ? await user.getIdToken() : null;
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await fetch('/api/medicines?limit=1000', { headers });
+      const response = await fetch(createApiUrl('/api/medicines?limit=1000'), { headers });
       if (response.ok) {
         const data = await response.json();
         // Deduplicate medicines by their id/_id to avoid duplicate React keys and duplicate render entries
@@ -117,7 +118,7 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
     try {
       const token = user ? await user.getIdToken() : null;
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await fetch('/api/users?role=seller', { headers });
+      const response = await fetch(createApiUrl('/api/users?role=seller'), { headers });
       if (response.ok) {
         const data = await response.json();
         setSellers(Array.isArray(data) ? data : []);
@@ -134,7 +135,7 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
     try {
       const token = user ? await user.getIdToken() : null;
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await fetch('/api/categories', { headers });
+      const response = await fetch(createApiUrl('/api/categories'), { headers });
       if (response.ok) {
         const data = await response.json();
         setCategories(Array.isArray(data) ? data : []);
@@ -274,58 +275,41 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
         price: parseFloat(medicineForm.price),
         unitPrice: parseFloat(medicineForm.unitPrice) || 0,
         stripPrice: parseFloat(medicineForm.stripPrice) || 0,
-        discountPercentage: parseFloat(medicineForm.discountPercentage) || 0,
-        stockQuantity: parseInt(medicineForm.stockQuantity) || 0,
+        discountPercentage: parseInt(medicineForm.discountPercentage) || 0,
+        stockQuantity: parseInt(medicineForm.stockQuantity) || 0
       };
 
-      const res = await fetch(`/api/medicines/${editingMedicine._id || editingMedicine.id}`, {
+      const res = await fetch(createApiUrl(`/api/medicines/${editingMedicine._id || editingMedicine.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(formData)
       });
 
-      const responseText = await res.text();
-
       if (res.ok) {
-        const updatedMedicine = JSON.parse(responseText);
-        console.log('Medicine updated successfully:', updatedMedicine);
-        
-        // Update the medicine in the state
-        setMedicines(prevMedicines => {
-          return prevMedicines.map(medicine => 
-            (medicine._id === editingMedicine._id || medicine.id === editingMedicine.id) 
-              ? updatedMedicine 
-              : medicine
-          );
-        });
-        
-        toast.success(t('admin.medicines.updated', language));
+        const updatedMedicine = await res.json();
+        setMedicines(medicines.map(m => 
+          (m._id === editingMedicine._id || m.id === editingMedicine.id) 
+            ? { ...updatedMedicine, id: updatedMedicine._id } 
+            : m
+        ));
         closeEditModal();
+        toast.success(t('admin.medicines.updateSuccess', language));
       } else {
-        let errorMessage = t('admin.medicines.updateFailed', language);
-        try {
-          const errorData = JSON.parse(responseText);
-          console.error('Server error response:', errorData);
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // If response is not JSON, use the raw text or status text
-          console.error('Non-JSON error response:', responseText);
-          errorMessage = responseText || res.statusText || errorMessage;
-        }
-        toast.error(errorMessage);
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to update medicine');
       }
     } catch (error) {
       console.error('Error updating medicine:', error);
-      toast.error(t('admin.medicines.updateError', language));
+      toast.error(`${t('admin.medicines.updateError', language)}: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle add medicine
+  // Handle add new medicine
   const handleAddMedicine = async (e) => {
     e.preventDefault();
     
@@ -362,10 +346,6 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
       toast.error(t('admin.medicines.stockRequired', language));
       return;
     }
-    if (user?.role === 'admin' && !newMedicineForm.seller) {
-      toast.error('Please select a seller for this medicine');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -375,129 +355,97 @@ function MedicineSlidesManager({ bannerAds, heroSlides, setBannerAds, setHeroSli
         price: parseFloat(newMedicineForm.price),
         unitPrice: parseFloat(newMedicineForm.unitPrice) || 0,
         stripPrice: parseFloat(newMedicineForm.stripPrice) || 0,
-        discountPercentage: parseFloat(newMedicineForm.discountPercentage) || 0,
-        stockQuantity: parseInt(newMedicineForm.stockQuantity) || 0,
+        discountPercentage: parseInt(newMedicineForm.discountPercentage) || 0,
+        stockQuantity: parseInt(newMedicineForm.stockQuantity) || 0
       };
 
-      const res = await fetch('/api/medicines', {
+      const res = await fetch(createApiUrl('/api/medicines'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(formData)
       });
 
-      const responseText = await res.text();
-
       if (res.ok) {
-        const newMedicine = JSON.parse(responseText);
-        console.log('Medicine created successfully:', newMedicine);
-        
-        // Add the new medicine to the state
-        setMedicines(prevMedicines => [...prevMedicines, newMedicine]);
-        
-        toast.success(t('admin.medicines.created', language));
+        const newMedicine = await res.json();
+        // Convert _id to id for frontend compatibility
+        const medicineWithId = {
+          ...newMedicine,
+          id: newMedicine._id
+        };
+        setMedicines([...medicines, medicineWithId]);
         closeAddModal();
-        fetchMedicines(); // Refresh the medicine list
+        toast.success(t('admin.medicines.addSuccess', language));
       } else {
-        let errorMessage = t('admin.medicines.createFailed', language);
-        try {
-          const errorData = JSON.parse(responseText);
-          console.error('Server error response:', errorData);
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // If response is not JSON, use the raw text or status text
-          console.error('Non-JSON error response:', responseText);
-          errorMessage = responseText || res.statusText || errorMessage;
-        }
-        toast.error(errorMessage);
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to add medicine');
       }
     } catch (error) {
-      console.error('Error creating medicine:', error);
-      toast.error(t('admin.medicines.createError', language));
+      console.error('Error adding medicine:', error);
+      toast.error(`${t('admin.medicines.addError', language)}: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Delete medicine
-  const deleteMedicine = async (medicineId) => {
-    if (!window.confirm(t('admin.medicines.deleteConfirm', language))) {
-      return;
-    }
+  // Handle delete medicine
+  const handleDeleteMedicine = async (medicineId) => {
+    if (!user) return;
     
-    try {
-      // Get the ID token for authentication
-      const token = user ? await user.getIdToken() : null;
-      const headers = {};
-      
-      // Add Authorization header if token is available
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+    const medicine = medicines.find(m => m._id === medicineId || m.id === medicineId);
+    if (window.confirm(`${t('admin.medicines.deleteConfirm', language)} "${medicine?.name}"?`)) {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(createApiUrl(`/api/medicines/${medicineId}`), {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      const res = await fetch(`/api/medicines/${medicineId}`, {
-        method: 'DELETE',
-        headers,
-      });
-
-      if (res.ok) {
-        // Remove the medicine from the state
-        setMedicines(prevMedicines => 
-          prevMedicines.filter(medicine => 
-            medicine._id !== medicineId && medicine.id !== medicineId
-          )
-        );
-        toast.success(t('admin.medicines.deleted', language));
-      } else {
-        const errorData = await res.json();
-        toast.error(errorData.message || t('admin.medicines.deleteError', language));
+        if (res.ok) {
+          setMedicines(medicines.filter(m => m._id !== medicineId && m.id !== medicineId));
+          toast.success(t('admin.medicines.deleteSuccess', language));
+        } else {
+          const errorData = await res.json();
+          throw new Error(errorData.message || 'Failed to delete medicine');
+        }
+      } catch (error) {
+        console.error('Error deleting medicine:', error);
+        toast.error(`${t('admin.medicines.deleteError', language)}: ${error.message}`);
       }
-    } catch (error) {
-      console.error('Error deleting medicine:', error);
-      toast.error(t('admin.medicines.deleteError', language));
     }
   };
 
-  // Toggle medicine status
-  const toggleMedicineStatus = async (medicineId, currentStatus) => {
+  // Toggle medicine advertisement status
+  const toggleAdvertisedStatus = async (medicineId) => {
+    if (!user) return;
+    
     try {
-      // Get the ID token for authentication
-      const token = user ? await user.getIdToken() : null;
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add Authorization header if token is available
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const res = await fetch(`/api/medicines/${medicineId}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ inStock: !currentStatus }),
+      const token = await user.getIdToken();
+      const res = await fetch(createApiUrl(`/api/medicines/${medicineId}/toggle-advertised`), {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
         const updatedMedicine = await res.json();
-        // Update the medicine in the state
-        setMedicines(prevMedicines => {
-          return prevMedicines.map(medicine => 
-            (medicine._id === medicineId || medicine.id === medicineId) 
-              ? updatedMedicine 
-              : medicine
-          );
-        });
-        toast.success(`Medicine ${!currentStatus ? t('admin.heroSlides.activate', language) : t('admin.heroSlides.deactivate', language)} successfully!`);
+        setMedicines(medicines.map(medicine => 
+          (medicine._id === medicineId || medicine.id === medicineId) 
+            ? { ...updatedMedicine, id: updatedMedicine._id }
+            : medicine
+        ));
+        toast.success(updatedMedicine.isAdvertised 
+          ? t('admin.medicines.advertisedEnabled', language) 
+          : t('admin.medicines.advertisedDisabled', language)
+        );
       } else {
         const errorData = await res.json();
-        toast.error(errorData.message || t('admin.medicines.deleteError', language));
+        throw new Error(errorData.message || 'Failed to toggle advertised status');
       }
     } catch (error) {
-      console.error('Error updating medicine status:', error);
-      toast.error(t('admin.medicines.deleteError', language));
+      console.error('Error toggling advertised status:', error);
+      toast.error(`${t('admin.medicines.advertisedError', language)}: ${error.message}`);
     }
   };
 

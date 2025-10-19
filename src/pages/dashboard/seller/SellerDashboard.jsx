@@ -39,6 +39,7 @@ import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { createApiUrl } from '../../../lib/utils';
 
 // Validation schema for medicine form
 const medicineSchema = yup.object({
@@ -183,7 +184,7 @@ const SellerDashboard = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const url = `/api/medicines?sellerId=${sellerId}&limit=100`;
+      const url = createApiUrl(`/api/medicines?sellerId=${sellerId}&limit=100`);
       console.log('Fetching medicines with URL:', url);
       const response = await fetch(url, {
         headers
@@ -211,7 +212,7 @@ const SellerDashboard = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch(`/api/payments/seller/${sellerId}`, {
+      const response = await fetch(createApiUrl(`/api/payments/seller/${sellerId}`), {
         headers
       });
       
@@ -234,7 +235,7 @@ const SellerDashboard = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch('/api/categories', { headers });
+      const response = await fetch(createApiUrl('/api/categories'), { headers });
       if (!response.ok) throw new Error('Failed to fetch categories');
       const data = await response.json();
       console.log('Categories API response:', data); // Debug log
@@ -365,7 +366,7 @@ const SellerDashboard = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch('/api/upload/image', {
+      const response = await fetch(createApiUrl('/api/upload/image'), {
         method: 'POST',
         headers,
         body: formData,
@@ -491,7 +492,7 @@ const SellerDashboard = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch('/api/medicines', {
+      const response = await fetch(createApiUrl('/api/medicines'), {
         method: 'POST',
         headers,
         body: JSON.stringify(medicineData)
@@ -569,7 +570,7 @@ const SellerDashboard = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`/api/medicines/${selectedMedicine._id}`, {
+      const response = await fetch(createApiUrl(`/api/medicines/${selectedMedicine._id}`), {
         method: 'PUT',
         headers,
         body: JSON.stringify(medicineData)
@@ -621,7 +622,7 @@ const SellerDashboard = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`/api/medicines/${medicineToDelete}`, {
+      const response = await fetch(createApiUrl(`/api/medicines/${medicineToDelete}`), {
         method: 'DELETE',
         headers
       });
@@ -712,6 +713,96 @@ const SellerDashboard = () => {
         return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
       default:
         return 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300';
+    }
+  };
+
+  // Add new medicine
+  const addMedicine = async (medicineData) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(createApiUrl('/api/medicines'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ...medicineData, seller: sellerId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to add medicine');
+      }
+
+      const newMedicine = await response.json();
+      toast.success('Medicine added successfully!');
+      setIsAddMedicineOpen(false);
+      resetAdd();
+      setMedicineImage(null);
+      refetchMedicines();
+      return newMedicine;
+    } catch (error) {
+      console.error('Error adding medicine:', error);
+      toast.error(error.message || 'Failed to add medicine');
+      throw error;
+    }
+  };
+
+  // Update medicine
+  const updateMedicine = async (medicineId, medicineData) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(createApiUrl(`/api/medicines/${medicineId}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(medicineData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update medicine');
+      }
+
+      const updatedMedicine = await response.json();
+      toast.success('Medicine updated successfully!');
+      setIsEditMedicineOpen(false);
+      resetEdit();
+      setMedicineImage(null);
+      refetchMedicines();
+      return updatedMedicine;
+    } catch (error) {
+      console.error('Error updating medicine:', error);
+      toast.error(error.message || 'Failed to update medicine');
+      throw error;
+    }
+  };
+
+  // Delete medicine
+  const deleteMedicine = async (medicineId) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(createApiUrl(`/api/medicines/${medicineId}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to delete medicine');
+      }
+
+      toast.success('Medicine deleted successfully!');
+      setIsDeleteDialogOpen(false);
+      setMedicineToDelete(null);
+      refetchMedicines();
+    } catch (error) {
+      console.error('Error deleting medicine:', error);
+      toast.error(error.message || 'Failed to delete medicine');
     }
   };
 

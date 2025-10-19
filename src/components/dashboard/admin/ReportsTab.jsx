@@ -16,8 +16,11 @@ import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import toast from 'react-hot-toast';
+import { createApiUrl } from '../../../lib/utils';
+import { useAuth } from '../../../contexts/AuthContext'; // Import AuthContext
 
 function ReportsTab() {
+  const { user } = useAuth(); // Get user from AuthContext
   const [reportDateRange, setReportDateRange] = useState('month'); // week, month, quarter, year, custom
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -60,117 +63,20 @@ function ReportsTab() {
           endDate = now;
       }
       
+      // Get user token
+      const token = await user.getIdToken();
+      
       // In real implementation, this would call the API
-      // const response = await fetch(`/api/admin/reports/sales?start=${startDate.toISOString()}&end=${endDate.toISOString()}&type=${reportType}`);
-      // const data = await response.json();
+      const response = await fetch(createApiUrl(`/api/admin/reports/sales?start=${startDate.toISOString()}&end=${endDate.toISOString()}&type=${reportType}`), {
+        headers: { Authorization: `Bearer ${token}` }, // Add Authorization header
+      });
       
-      // Mock data for demonstration
-      const mockData = {
-        overview: {
-          period: getReportPeriodLabel(),
-          totalSales: 125000,
-          totalOrders: 1250,
-          totalCustomers: 850,
-          averageOrderValue: 100.00,
-          growth: {
-            sales: 12.5,
-            orders: 8.3,
-            customers: 15.2
-          }
-        },
-        medicines: [
-          {
-            id: 1,
-            name: 'Paracetamol 500mg',
-            category: 'Pain Relief',
-            quantitySold: 2500,
-            revenue: 12500.00,
-            avgPrice: 5.00,
-            seller: 'MediCorp'
-          },
-          {
-            id: 2,
-            name: 'Amoxicillin 250mg',
-            category: 'Antibiotics',
-            quantitySold: 1800,
-            revenue: 9000.00,
-            avgPrice: 5.00,
-            seller: 'PharmaPlus'
-          },
-          {
-            id: 3,
-            name: 'Insulin Pen',
-            category: 'Diabetes',
-            quantitySold: 1200,
-            revenue: 84000.00,
-            avgPrice: 70.00,
-            seller: 'HealthFirst'
-          }
-        ],
-        sellers: [
-          {
-            id: 1,
-            name: 'MediCorp',
-            totalSales: 45000.00,
-            totalOrders: 450,
-            totalMedicines: 15,
-            averageOrderValue: 100.00,
-            commission: 4500.00
-          },
-          {
-            id: 2,
-            name: 'PharmaPlus',
-            totalSales: 38000.00,
-            totalOrders: 380,
-            totalMedicines: 12,
-            averageOrderValue: 100.00,
-            commission: 3800.00
-          },
-          {
-            id: 3,
-            name: 'HealthFirst',
-            totalSales: 42000.00,
-            totalOrders: 420,
-            totalMedicines: 18,
-            averageOrderValue: 100.00,
-            commission: 4200.00
-          }
-        ],
-        customers: [
-          {
-            id: 1,
-            name: 'John Smith',
-            email: 'john@example.com',
-            totalSpent: 2500.00,
-            totalOrders: 25,
-            averageOrderValue: 100.00,
-            lastOrderDate: '2024-01-15'
-          },
-          {
-            id: 2,
-            name: 'Sarah Johnson',
-            email: 'sarah@example.com',
-            totalSpent: 1800.00,
-            totalOrders: 18,
-            averageOrderValue: 100.00,
-            lastOrderDate: '2024-01-14'
-          },
-          {
-            id: 3,
-            name: 'Mike Davis',
-            email: 'mike@example.com',
-            totalSpent: 3200.00,
-            totalOrders: 32,
-            averageOrderValue: 100.00,
-            lastOrderDate: '2024-01-13'
-          }
-        ]
-      };
+      if (!response.ok) {
+        throw new Error(`Failed to fetch report: ${response.status} ${response.statusText}`);
+      }
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setReportData(mockData);
+      const data = await response.json();
+      setReportData(data);
       toast.success('Report generated successfully!');
       
     } catch (error) {
@@ -189,59 +95,34 @@ function ReportsTab() {
     
     setIsExportingReport(true);
     try {
+      // Get user token
+      const token = await user.getIdToken();
+      
       // In real implementation, this would call the API to generate and download the file
-      // const response = await fetch(`/api/admin/reports/export?format=${format}&type=${reportType}`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ reportData, dateRange: reportDateRange })
-      // });
+      const response = await fetch(createApiUrl(`/api/admin/reports/export?format=${format}&type=${reportType}`), {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // Add Authorization header
+        },
+        body: JSON.stringify({ reportData, dateRange: reportDateRange })
+      });
       
-      // Mock implementation - would normally trigger a file download
-      const filename = `sales-report-${reportType}-${new Date().toISOString().split('T')[0]}.${format}`;
-      
-      // Create mock content for demonstration
-      let content = '';
-      if (format === 'csv') {
-        switch (reportType) {
-          case 'medicines':
-            content = 'Medicine Name,Category,Quantity Sold,Revenue,Average Price,Seller\n';
-            reportData.medicines.forEach(medicine => {
-              content += `"${medicine.name}","${medicine.category}",${medicine.quantitySold},${medicine.revenue},${medicine.avgPrice},"${medicine.seller}"\n`;
-            });
-            break;
-          case 'sellers':
-            content = 'Seller Name,Total Sales,Total Orders,Total Medicines,Average Order Value,Commission\n';
-            reportData.sellers.forEach(seller => {
-              content += `"${seller.name}",${seller.totalSales},${seller.totalOrders},${seller.totalMedicines},${seller.averageOrderValue},${seller.commission}\n`;
-            });
-            break;
-          case 'customers':
-            content = 'Customer Name,Email,Total Spent,Total Orders,Average Order Value,Last Order Date\n';
-            reportData.customers.forEach(customer => {
-              content += `"${customer.name}","${customer.email}",${customer.totalSpent},${customer.totalOrders},${customer.averageOrderValue},"${customer.lastOrderDate}"\n`;
-            });
-            break;
-          default:
-            content = 'Metric,Value\n';
-            content += `Total Sales,${reportData.overview.totalSales}\n`;
-            content += `Total Orders,${reportData.overview.totalOrders}\n`;
-            content += `Total Customers,${reportData.overview.totalCustomers}\n`;
-            content += `Average Order Value,${reportData.overview.averageOrderValue}\n`;
-        }
+      if (response.ok) {
+        // Handle file download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sales-report-${reportType}-${new Date().toISOString().split('T')[0]}.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('Report exported successfully!');
+      } else {
+        throw new Error('Failed to export report');
       }
-      
-      // Create and download file
-      const blob = new Blob([content], { type: format === 'csv' ? 'text/csv' : 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      
-      toast.success(`${format.toUpperCase()} report exported successfully!`);
       
     } catch (error) {
       console.error('Error exporting report:', error);
@@ -260,6 +141,14 @@ function ReportsTab() {
       case 'custom': return `${customStartDate} to ${customEndDate}`;
       default: return 'This Month';
     }
+  };
+
+  // Add a helper function to safely access report data
+  const getReportOverviewPeriod = () => {
+    if (!reportData || !reportData.overview || !reportData.overview.period) {
+      return getReportPeriodLabel();
+    }
+    return reportData.overview.period;
   };
 
   return (
@@ -403,7 +292,9 @@ function ReportsTab() {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>Sales Overview - {getReportPeriodLabel()}</span>
-                    <Badge variant="outline">{reportData.overview.period}</Badge>
+                    {reportData?.overview?.period && (
+                      <Badge variant="outline">{reportData.overview.period}</Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -413,11 +304,11 @@ function ReportsTab() {
                         <div>
                           <p className="text-sm text-cyan-500 dark:text-cyan-400">Total Sales</p>
                           <p className="text-2xl font-bold text-cyan-900 dark:text-cyan-100">
-                            ${reportData.overview.totalSales.toLocaleString()}
+                            ${reportData.overview?.totalSales?.toLocaleString() || 0}
                           </p>
                           <p className="text-xs text-cyan-500 flex items-center gap-1">
                             <TrendingUp className="w-3 h-3" />
-                            +{reportData.overview.growth.sales}%
+                            +{reportData.overview?.growth?.sales || 0}%
                           </p>
                         </div>
                         <DollarSign className="w-8 h-8 text-cyan-500" />
@@ -429,11 +320,11 @@ function ReportsTab() {
                         <div>
                           <p className="text-sm text-green-600 dark:text-green-400">Total Orders</p>
                           <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                            {reportData.overview.totalOrders.toLocaleString()}
+                            {reportData.overview?.totalOrders?.toLocaleString() || 0}
                           </p>
                           <p className="text-xs text-green-600 flex items-center gap-1">
                             <TrendingUp className="w-3 h-3" />
-                            +{reportData.overview.growth.orders}%
+                            +{reportData.overview?.growth?.orders || 0}%
                           </p>
                         </div>
                         <ShoppingBag className="w-8 h-8 text-green-600" />
@@ -445,11 +336,11 @@ function ReportsTab() {
                         <div>
                           <p className="text-sm text-purple-600 dark:text-purple-400">Total Customers</p>
                           <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                            {reportData.overview.totalCustomers.toLocaleString()}
+                            {reportData.overview?.totalCustomers?.toLocaleString() || 0}
                           </p>
                           <p className="text-xs text-purple-600 flex items-center gap-1">
                             <TrendingUp className="w-3 h-3" />
-                            +{reportData.overview.growth.customers}%
+                            +{reportData.overview?.growth?.customers || 0}%
                           </p>
                         </div>
                         <Users className="w-8 h-8 text-purple-600" />
@@ -461,7 +352,7 @@ function ReportsTab() {
                         <div>
                           <p className="text-sm text-orange-600 dark:text-orange-400">Avg. Order Value</p>
                           <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                            ${reportData.overview.averageOrderValue.toFixed(2)}
+                            ${reportData.overview?.averageOrderValue?.toFixed(2) || '0.00'}
                           </p>
                           <p className="text-xs text-orange-600">
                             Per order
@@ -496,23 +387,29 @@ function ReportsTab() {
                       </tr>
                     </thead>
                     <tbody>
-                      {reportData.medicines.map((medicine, index) => (
+                      {reportData.medicines?.map((medicine, index) => (
                         <tr key={medicine.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                           <td className="p-3">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-cyan-500">#{index + 1}</span>
-                              <span className="font-medium">{medicine.name}</span>
+                              <span className="font-medium">{medicine.name || 'Unknown'}</span>
                             </div>
                           </td>
                           <td className="p-3">
-                            <Badge variant="outline">{medicine.category}</Badge>
+                            <Badge variant="outline">{medicine.category || 'N/A'}</Badge>
                           </td>
-                          <td className="p-3 font-medium">{medicine.quantitySold}</td>
-                          <td className="p-3 font-bold text-green-600">৳{medicine.revenue.toFixed(2)}</td>
-                          <td className="p-3">৳{medicine.avgPrice.toFixed(2)}</td>
-                          <td className="p-3 text-gray-600">{medicine.seller}</td>
+                          <td className="p-3 font-medium">{medicine.quantitySold || 0}</td>
+                          <td className="p-3 font-bold text-green-600">৳{medicine.revenue?.toFixed(2) || '0.00'}</td>
+                          <td className="p-3">৳{medicine.avgPrice?.toFixed(2) || '0.00'}</td>
+                          <td className="p-3 text-gray-600">{medicine.seller || 'N/A'}</td>
                         </tr>
-                      ))}
+                      )) || (
+                        <tr>
+                          <td colSpan="6" className="p-3 text-center text-gray-500">
+                            No medicine sales data available
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -540,21 +437,27 @@ function ReportsTab() {
                       </tr>
                     </thead>
                     <tbody>
-                      {reportData.sellers.map((seller, index) => (
+                      {reportData.sellers?.map((seller, index) => (
                         <tr key={seller.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                           <td className="p-3">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-cyan-500">#{index + 1}</span>
-                              <span className="font-medium">{seller.name}</span>
+                              <span className="font-medium">{seller.name || 'Unknown Seller'}</span>
                             </div>
                           </td>
-                          <td className="p-3 font-bold text-green-600">৳{seller.totalSales.toFixed(2)}</td>
-                          <td className="p-3">{seller.totalOrders}</td>
-                          <td className="p-3">{seller.totalMedicines}</td>
-                          <td className="p-3">৳{seller.averageOrderValue.toFixed(2)}</td>
-                          <td className="p-3 font-medium text-cyan-500">৳{seller.commission.toFixed(2)}</td>
+                          <td className="p-3 font-bold text-green-600">৳{seller.totalSales?.toFixed(2) || '0.00'}</td>
+                          <td className="p-3">{seller.totalOrders || 0}</td>
+                          <td className="p-3">{seller.totalMedicines || 0}</td>
+                          <td className="p-3">৳{seller.averageOrderValue?.toFixed(2) || '0.00'}</td>
+                          <td className="p-3 font-medium text-cyan-500">৳{seller.commission?.toFixed(2) || '0.00'}</td>
                         </tr>
-                      ))}
+                      )) || (
+                        <tr>
+                          <td colSpan="6" className="p-3 text-center text-gray-500">
+                            No seller performance data available
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -582,21 +485,31 @@ function ReportsTab() {
                       </tr>
                     </thead>
                     <tbody>
-                      {reportData.customers.map((customer, index) => (
+                      {reportData.customers?.map((customer, index) => (
                         <tr key={customer.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                           <td className="p-3">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-cyan-500">#{index + 1}</span>
-                              <span className="font-medium">{customer.name}</span>
+                              <span className="font-medium">{customer.name || 'Unknown Customer'}</span>
                             </div>
                           </td>
-                          <td className="p-3 text-gray-600">{customer.email}</td>
-                          <td className="p-3 font-bold text-green-600">৳{customer.totalSpent.toFixed(2)}</td>
-                          <td className="p-3">{customer.totalOrders}</td>
-                          <td className="p-3">৳{customer.averageOrderValue.toFixed(2)}</td>
-                          <td className="p-3 text-sm">{new Date(customer.lastOrderDate).toLocaleDateString()}</td>
+                          <td className="p-3 text-gray-600">{customer.email || 'N/A'}</td>
+                          <td className="p-3 font-bold text-green-600">৳{customer.totalSpent?.toFixed(2) || '0.00'}</td>
+                          <td className="p-3">{customer.totalOrders || 0}</td>
+                          <td className="p-3">৳{customer.averageOrderValue?.toFixed(2) || '0.00'}</td>
+                          <td className="p-3 text-sm">
+                            {customer.lastOrderDate 
+                              ? new Date(customer.lastOrderDate).toLocaleDateString()
+                              : 'N/A'}
+                          </td>
                         </tr>
-                      ))}
+                      )) || (
+                        <tr>
+                          <td colSpan="6" className="p-3 text-center text-gray-500">
+                            No customer analytics data available
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

@@ -19,6 +19,7 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import './CategoryMedicines.css'; // Import the CSS file
+import { createApiUrl } from '../../../lib/utils';
 
 const CategoryMedicines = () => {
   const { user } = useAuth();
@@ -71,7 +72,7 @@ const CategoryMedicines = () => {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('/api/upload/image', {
+    const response = await fetch(createApiUrl('/api/upload/image'), {
       method: 'POST',
       body: formData,
     });
@@ -98,7 +99,7 @@ const CategoryMedicines = () => {
 
   const fetchAllCategories = async () => {
     try {
-      const res = await fetch('/api/categories');
+      const res = await fetch(createApiUrl('/api/categories'));
       if (res.ok) {
         // Handle potential empty or invalid JSON responses
         let data;
@@ -131,7 +132,7 @@ const CategoryMedicines = () => {
       setLoading(true);
       
       // Fetch category details
-      const categoryRes = await fetch(`/api/categories/${categoryId}`);
+      const categoryRes = await fetch(createApiUrl(`/api/categories/${categoryId}`));
       if (categoryRes.ok) {
         const categoryData = await categoryRes.json();
         setCategory(categoryData);
@@ -140,7 +141,7 @@ const CategoryMedicines = () => {
       }
       
       // Fetch medicines in this category
-      const medicinesRes = await fetch(`/api/medicines?category=${categoryId}&limit=100`);
+      const medicinesRes = await fetch(createApiUrl(`/api/medicines?category=${categoryId}&limit=100`));
       if (medicinesRes.ok) {
         const medicinesData = await medicinesRes.json();
         
@@ -310,6 +311,7 @@ const CategoryMedicines = () => {
     });
   };
 
+  // Handle add medicine
   const handleAddMedicine = async (e) => {
     e.preventDefault();
     
@@ -331,7 +333,7 @@ const CategoryMedicines = () => {
       return;
     }
     if (!medicineForm.company.trim()) {
-      toast.error('Company name is required');
+      toast.error('Company is required');
       return;
     }
     if (!medicineForm.massUnit.trim()) {
@@ -347,258 +349,153 @@ const CategoryMedicines = () => {
       return;
     }
 
-    // Validate category ID format (basic MongoDB ObjectId check)
-    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
-    if (!objectIdRegex.test(medicineForm.category)) {
-      toast.error('Invalid category selected. Please select a valid category.');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      // Handle image upload if a file was selected
-      let imageUrl = medicineForm.image || '';
-      
-      if (medicineForm.imageFile) {
-        try {
-          setIsUploadingImage(true);
-          const uploadToast = toast.loading('Uploading image...');
-          
-          const uploadResult = await uploadImageFile(medicineForm.imageFile);
-          imageUrl = uploadResult.url;
-          
-          toast.dismiss(uploadToast);
-          toast.success('Image uploaded successfully!');
-        } catch (uploadError) {
-          toast.error(`Image upload failed: ${uploadError.message}`);
-          // Continue with form submission even if image upload fails
-        } finally {
-          setIsUploadingImage(false);
-        }
-      }
-
+      const token = await user.getIdToken();
       const formData = {
         ...medicineForm,
-        image: imageUrl, // Use uploaded image URL or provided URL
         price: parseFloat(medicineForm.price),
         unitPrice: parseFloat(medicineForm.unitPrice) || 0,
         stripPrice: parseFloat(medicineForm.stripPrice) || 0,
-        discountPercentage: parseFloat(medicineForm.discountPercentage) || 0,
-        stockQuantity: parseInt(medicineForm.stockQuantity) || 0,
+        discountPercentage: parseInt(medicineForm.discountPercentage) || 0,
+        stockQuantity: parseInt(medicineForm.stockQuantity) || 0
       };
 
-      // Remove imageFile from the data being sent to server
-      delete formData.imageFile;
-
-      // Get the ID token for authentication
-      const token = user ? await user.getIdToken() : null;
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add Authorization header if token is available
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const res = await fetch('/api/medicines', {
+      const res = await fetch(createApiUrl('/api/medicines'), {
         method: 'POST',
-        headers,
-        body: JSON.stringify(formData),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
       });
 
-      const responseText = await res.text();
-
       if (res.ok) {
-        const newMedicine = JSON.parse(responseText);
-        
-        // Add the new medicine directly to the state instead of refetching
-        setMedicines(prevMedicines => {
-          const updatedMedicines = [...prevMedicines, newMedicine];
-          return updatedMedicines;
-        });
-        
-        toast.success('Medicine added successfully!');
+        const newMedicine = await res.json();
+        // Convert _id to id for frontend compatibility
+        const medicineWithId = {
+          ...newMedicine,
+          id: newMedicine._id
+        };
+        setMedicines([...medicines, medicineWithId]);
         closeAddMedicineModal();
-        
-        // Also refresh the data as a fallback after a short delay
-        setTimeout(() => {
-          fetchCategoryMedicines();
-        }, 1000);
-      } else {
-        let errorMessage = 'Failed to add medicine';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // If response is not JSON, use the raw text or status text
-          errorMessage = responseText || res.statusText || errorMessage;
-        }
-        toast.error(errorMessage);
-      }
-    } catch (error) {
-      toast.error('Failed to add medicine. Please check your connection and try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const updateMedicine = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    try {
-      // Upload image if a new file is provided
-      let imageUrl = editingMedicine.image; // Default to existing image
-      if (medicineForm.imageFile) {
-        try {
-          const uploadResult = await uploadImageFile(medicineForm.imageFile);
-          imageUrl = uploadResult.url;
-        } catch (uploadError) {
-          toast.error('Failed to upload image: ' + uploadError.message);
-          setIsSubmitting(false);
-          return;
-        }
-      }
-      
-      // Prepare form data
-      const formData = {
-        ...medicineForm,
-        image: imageUrl, // Use uploaded image URL or provided URL
-        price: parseFloat(medicineForm.price),
-        unitPrice: parseFloat(medicineForm.unitPrice) || 0,
-        stripPrice: parseFloat(medicineForm.stripPrice) || 0,
-        discountPercentage: parseFloat(medicineForm.discountPercentage) || 0,
-        stockQuantity: parseInt(medicineForm.stockQuantity) || 0,
-      };
-
-      // Remove imageFile from the data being sent to server
-      delete formData.imageFile;
-
-      // Get the ID token for authentication
-      const token = user ? await user.getIdToken() : null;
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add Authorization header if token is available
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const res = await fetch(`/api/medicines/${editingMedicine._id || editingMedicine.id}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(formData),
-      });
-
-      const responseText = await res.text();
-
-      if (res.ok) {
-        const updatedMedicine = JSON.parse(responseText);
-        
-        // Update the medicine in the state
-        setMedicines(prevMedicines => {
-          return prevMedicines.map(medicine => 
-            (medicine._id === editingMedicine._id || medicine.id === editingMedicine.id) 
-              ? updatedMedicine 
-              : medicine
-          );
-        });
-        
-        toast.success('Medicine updated successfully!');
-        closeEditMedicineModal();
-      } else {
-        let errorMessage = 'Failed to update medicine';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // If response is not JSON, use the raw text or status text
-          errorMessage = responseText || res.statusText || errorMessage;
-        }
-        toast.error(errorMessage);
-      }
-    } catch (error) {
-      toast.error('Failed to update medicine. Please check your connection and try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const deleteMedicine = async (medicineId) => {
-    if (!window.confirm('Are you sure you want to delete this medicine?')) {
-      return;
-    }
-    
-    try {
-      // Get the ID token for authentication
-      const token = user ? await user.getIdToken() : null;
-      const headers = {};
-      
-      // Add Authorization header if token is available
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const res = await fetch(`/api/medicines/${medicineId}`, {
-        method: 'DELETE',
-        headers,
-      });
-
-      if (res.ok) {
-        // Remove the medicine from the state
-        setMedicines(prevMedicines => 
-          prevMedicines.filter(medicine => 
-            medicine._id !== medicineId && medicine.id !== medicineId
-          )
-        );
-        toast.success('Medicine deleted successfully!');
+        toast.success('Medicine added successfully!');
       } else {
         const errorData = await res.json();
-        toast.error(errorData.message || 'Failed to delete medicine');
+        throw new Error(errorData.message || 'Failed to add medicine');
       }
     } catch (error) {
-      toast.error('Failed to delete medicine. Please check your connection and try again.');
+      console.error('Error adding medicine:', error);
+      toast.error(`Error: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const toggleMedicineStatus = async (medicineId, currentStatus) => {
-    try {
-      // Get the ID token for authentication
-      const token = user ? await user.getIdToken() : null;
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add Authorization header if token is available
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+  // Handle update medicine
+  const handleUpdateMedicine = async (e) => {
+    e.preventDefault();
+    
+    // Validate required fields
+    if (!medicineForm.name.trim()) {
+      toast.error('Medicine name is required');
+      return;
+    }
+    if (!medicineForm.genericName.trim()) {
+      toast.error('Generic name is required');
+      return;
+    }
+    if (!medicineForm.description.trim()) {
+      toast.error('Description is required');
+      return;
+    }
+    if (!medicineForm.category) {
+      toast.error('Category is required');
+      return;
+    }
+    if (!medicineForm.company.trim()) {
+      toast.error('Company is required');
+      return;
+    }
+    if (!medicineForm.massUnit.trim()) {
+      toast.error('Mass unit is required');
+      return;
+    }
+    if (!medicineForm.price || isNaN(medicineForm.price) || parseFloat(medicineForm.price) <= 0) {
+      toast.error('Valid price is required');
+      return;
+    }
+    if (!medicineForm.stockQuantity || isNaN(medicineForm.stockQuantity) || parseInt(medicineForm.stockQuantity) < 0) {
+      toast.error('Valid stock quantity is required');
+      return;
+    }
 
-      const res = await fetch(`/api/medicines/${medicineId}`, {
+    setIsSubmitting(true);
+    try {
+      const token = await user.getIdToken();
+      const formData = {
+        ...medicineForm,
+        price: parseFloat(medicineForm.price),
+        unitPrice: parseFloat(medicineForm.unitPrice) || 0,
+        stripPrice: parseFloat(medicineForm.stripPrice) || 0,
+        discountPercentage: parseInt(medicineForm.discountPercentage) || 0,
+        stockQuantity: parseInt(medicineForm.stockQuantity) || 0
+      };
+
+      const res = await fetch(createApiUrl(`/api/medicines/${editingMedicine._id || editingMedicine.id}`), {
         method: 'PUT',
-        headers,
-        body: JSON.stringify({ inStock: !currentStatus }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
       });
 
       if (res.ok) {
         const updatedMedicine = await res.json();
-        // Update the medicine in the state
-        setMedicines(prevMedicines => {
-          return prevMedicines.map(medicine => 
-            (medicine._id === medicineId || medicine.id === medicineId) 
-              ? updatedMedicine 
-              : medicine
-          );
-        });
-        toast.success(`Medicine ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+        setMedicines(medicines.map(m => 
+          (m._id === editingMedicine._id || m.id === editingMedicine.id) 
+            ? { ...updatedMedicine, id: updatedMedicine._id } 
+            : m
+        ));
+        closeEditMedicineModal();
+        toast.success('Medicine updated successfully!');
       } else {
         const errorData = await res.json();
-        toast.error(errorData.message || 'Failed to update medicine status');
+        throw new Error(errorData.message || 'Failed to update medicine');
       }
     } catch (error) {
-      toast.error('Failed to update medicine status. Please check your connection and try again.');
+      console.error('Error updating medicine:', error);
+      toast.error(`Error: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle delete medicine
+  const handleDeleteMedicine = async (medicineId) => {
+    if (!user) return;
+    
+    const medicine = medicines.find(m => m._id === medicineId || m.id === medicineId);
+    if (window.confirm(`Are you sure you want to delete "${medicine?.name}"?`)) {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(createApiUrl(`/api/medicines/${medicineId}`), {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          setMedicines(medicines.filter(m => m._id !== medicineId && m.id !== medicineId));
+          toast.success('Medicine deleted successfully!');
+        } else {
+          const errorData = await res.json();
+          throw new Error(errorData.message || 'Failed to delete medicine');
+        }
+      } catch (error) {
+        console.error('Error deleting medicine:', error);
+        toast.error(`Error: ${error.message}`);
+      }
     }
   };
 

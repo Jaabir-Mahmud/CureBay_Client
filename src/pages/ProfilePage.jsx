@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import SEOHelmet from '../components/SEOHelmet';
 import { useLanguage } from '../contexts/LanguageContext';
 import { t } from '../lib/i18n';
+import { createApiUrl } from '../lib/utils';
 
 // Country data with codes
 const countries = [
@@ -158,7 +159,7 @@ const ProfilePage = () => {
       formData.append('photo', profilePhoto);
       
       const token = await user.getIdToken();
-      const response = await fetch('http://localhost:5000/api/upload/profile', {
+      const response = await fetch(createApiUrl('/api/upload/profile'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -244,7 +245,7 @@ const ProfilePage = () => {
   const handleResendVerification = async () => {
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/auth/resend-verification', {
+      const response = await fetch(createApiUrl('/api/auth/resend-verification'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

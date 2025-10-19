@@ -9,6 +9,7 @@ import ExtraSection2 from '../components/ExtraSection2';
 import CustomerReviews from '../components/CustomerReviews';
 import { useLanguage } from '../contexts/LanguageContext';
 import { t } from '../lib/i18n';
+import { createApiUrl } from '../lib/utils';
 
 const HomePage = () => {
   const { language } = useLanguage();
@@ -20,7 +21,7 @@ const HomePage = () => {
   const fetchData = useCallback(async () => {
     try {
       // Fetch active hero slides with proper error handling
-      const heroSlidesResponse = await fetch('/api/hero-slides?active=true');
+      const heroSlidesResponse = await fetch(createApiUrl('/api/hero-slides?active=true'));
       if (heroSlidesResponse.ok) {
         const heroSlidesData = await heroSlidesResponse.json();
         setHeroSlides(Array.isArray(heroSlidesData) ? heroSlidesData : []);
@@ -29,7 +30,7 @@ const HomePage = () => {
       }
 
       // Fetch active banners with proper error handling
-      const bannersResponse = await fetch('/api/banners?active=true');
+      const bannersResponse = await fetch(createApiUrl('/api/banners?active=true'));
       if (bannersResponse.ok) {
         const bannersData = await bannersResponse.json();
         setBanners(Array.isArray(bannersData) ? bannersData : []);

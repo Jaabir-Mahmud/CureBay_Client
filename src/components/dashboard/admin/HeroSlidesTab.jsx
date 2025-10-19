@@ -30,6 +30,7 @@ import {
 } from '../../ui/dialog';
 import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { createApiUrl } from '../../../lib/utils';
 
 function HeroSlidesTab({ 
   heroSlides, 
@@ -108,7 +109,7 @@ function HeroSlidesTab({
       const token = await user.getIdToken();
       if (editingHeroSlide) {
         // Update existing slide
-        const response = await fetch(`/api/hero-slides/${editingHeroSlide._id || editingHeroSlide.id}`, {
+        const response = await fetch(createApiUrl(`/api/hero-slides/${editingHeroSlide._id || editingHeroSlide.id}`), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -138,7 +139,7 @@ function HeroSlidesTab({
         toast.success('Hero slide updated successfully!');
       } else {
         // Add new slide
-        const response = await fetch('/api/hero-slides', {
+        const response = await fetch(createApiUrl('/api/hero-slides'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -175,7 +176,7 @@ function HeroSlidesTab({
     if (window.confirm(`Are you sure you want to delete "${slide?.title}"?`)) {
       try {
         const token = await user.getIdToken();
-        const response = await fetch(`/api/hero-slides/${slideId}`, {
+        const response = await fetch(createApiUrl(`/api/hero-slides/${slideId}`), {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -198,7 +199,7 @@ function HeroSlidesTab({
     
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/hero-slides/${slideId}/toggle-status`, {
+      const response = await fetch(createApiUrl(`/api/hero-slides/${slideId}/toggle-status`), {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });

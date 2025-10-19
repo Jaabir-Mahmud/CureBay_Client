@@ -9,6 +9,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { t } from '../lib/i18n';
 import toast from 'react-hot-toast';
 import SEOHelmet from '../components/SEOHelmet';
+import { createApiUrl } from '../lib/utils';
 
 const MedicineDetailsPage = () => {
   const { medicineId } = useParams();
@@ -27,7 +28,7 @@ const MedicineDetailsPage = () => {
     const fetchMedicine = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/medicines/${medicineId}`);
+        const response = await fetch(createApiUrl(`/api/medicines/${medicineId}`));
         
         if (!response.ok) {
           if (response.status === 404) {

@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import { createApiUrl } from '../lib/utils';
 
 const DiscountsPage = () => {
   const { addToCart } = useCart();
@@ -34,7 +35,7 @@ const DiscountsPage = () => {
     const fetchDiscountedMedicines = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/medicines/discounted?limit=100');
+        const response = await fetch(createApiUrl('/api/medicines/discounted?limit=100'));
         if (!response.ok) {
           throw new Error('Failed to fetch discounted medicines');
         }

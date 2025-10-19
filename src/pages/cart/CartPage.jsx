@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import SEOHelmet from '../../components/SEOHelmet';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { t } from '../../lib/i18n';
+import { createApiUrl } from '../../lib/utils';
 
 const CartPage = () => {
   const {
@@ -71,7 +72,7 @@ const CartPage = () => {
     setCouponError('');
     
     try {
-      const response = await fetch('/api/coupons/validate', {
+      const response = await fetch(createApiUrl('/api/coupons/validate'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

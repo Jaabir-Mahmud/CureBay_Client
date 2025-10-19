@@ -26,6 +26,7 @@ import SEOHelmet from "../components/SEOHelmet";
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { createApiUrl } from "../lib/utils";
 
 // Validation schema for shipping information
 const shippingSchema = yup.object({
@@ -114,7 +115,7 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
 
     try {
       // First create the order
-      const orderResponse = await fetch('/api/orders', {
+      const orderResponse = await fetch(createApiUrl('/api/orders'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +143,7 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
       // Apply coupon if one was used
       if (orderData.coupon) {
         try {
-          await fetch('/api/coupons/apply', {
+          await fetch(createApiUrl('/api/coupons/apply'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -158,7 +159,7 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
       }
 
       // Create payment intent
-      const paymentIntentResponse = await fetch('/api/payments/create-payment-intent', {
+      const paymentIntentResponse = await fetch(createApiUrl('/api/payments/create-payment-intent'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -202,7 +203,7 @@ const CheckoutForm = ({ orderData, onPaymentSuccess }) => {
         toast.error(error.message || 'Payment failed. Please try again.');
       } else if (paymentIntent.status === 'succeeded') {
         // Confirm payment on backend
-        const confirmResponse = await fetch('/api/payments/confirm', {
+        const confirmResponse = await fetch(createApiUrl('/api/payments/confirm'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

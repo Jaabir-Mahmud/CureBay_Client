@@ -77,6 +77,7 @@ import {
 } from '../../../components/ui/tooltip';
 import { Separator } from '../../../components/ui/separator';
 import './dashboard-styles.css'; // Import custom styles
+import { createApiUrl } from '../../../lib/utils';
 
 // Import extracted components
 import ManageUsers from '../../../components/dashboard/admin/ManageUsers';
@@ -99,7 +100,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [recentUsers, setRecentUsers] = useState([]);
   const [pendingPayments, setPendingPayments] = useState([]);
-  const { user, logout, loading } = useAuth();
+  const { user, profile, logout, loading } = useAuth();
   
   // Categories state
   const [categories, setCategories] = useState([]);
@@ -212,30 +213,17 @@ const AdminDashboard = () => {
           return;
         }
         
-        // Fetch overview stats
-        const statsResponse = await fetch('/api/admin/overview', {
+        // Fetch admin overview stats
+        const statsResponse = await fetch(createApiUrl('/api/admin/overview'), {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();
           setStats(statsData);
-        } else {
-          // Set default stats if API fails
-          setStats({
-            totalRevenue: 125000,
-            revenueGrowth: 12.5,
-            paidTotal: 98000,
-            pendingTotal: 27000,
-            totalUsers: 2450,
-            userGrowth: 8.3,
-            totalSellers: 89,
-            totalMedicines: 6410,
-            totalOrders: 1890
-          });
         }
-        
+
         // Fetch recent users
-        const usersResponse = await fetch('/api/admin/recent-users', {
+        const usersResponse = await fetch(createApiUrl('/api/admin/recent-users'), {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (usersResponse.ok) {
@@ -244,9 +232,9 @@ const AdminDashboard = () => {
         } else {
           setRecentUsers([]);
         }
-        
+
         // Fetch pending payments
-        const paymentsResponse = await fetch('/api/admin/pending-payments', {
+        const paymentsResponse = await fetch(createApiUrl('/api/admin/pending-payments'), {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (paymentsResponse.ok) {
@@ -257,7 +245,7 @@ const AdminDashboard = () => {
         }
         
         // Fetch categories
-        const categoriesResponse = await fetch('/api/categories');
+        const categoriesResponse = await fetch(createApiUrl('/api/categories'));
         if (categoriesResponse.ok) {
           const categoriesData = await categoriesResponse.json();
           // Ensure we have an array and handle potential null/undefined values
@@ -271,7 +259,7 @@ const AdminDashboard = () => {
         }
         
         // Fetch all payments (orders with payment information)
-        const allPaymentsResponse = await fetch('/api/orders', {
+        const allPaymentsResponse = await fetch(createApiUrl('/api/orders'), {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (allPaymentsResponse.ok) {
@@ -291,7 +279,7 @@ const AdminDashboard = () => {
         }
         
         // Fetch hero slides
-        const heroSlidesResponse = await fetch('/api/hero-slides');
+        const heroSlidesResponse = await fetch(createApiUrl('/api/hero-slides'));
         if (heroSlidesResponse.ok) {
           const heroSlidesData = await heroSlidesResponse.json();
           setHeroSlides(Array.isArray(heroSlidesData) ? heroSlidesData : []);
@@ -300,7 +288,7 @@ const AdminDashboard = () => {
         }
         
         // Fetch banners
-        const bannersResponse = await fetch('/api/banners');
+        const bannersResponse = await fetch(createApiUrl('/api/banners'));
         if (bannersResponse.ok) {
           const bannersData = await bannersResponse.json();
           setBannerAds(Array.isArray(bannersData) ? bannersData : []);
@@ -362,14 +350,14 @@ const AdminDashboard = () => {
   const acceptPayment = async (orderId) => {
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`/api/admin/accept-payment/${orderId}`, { 
+      const res = await fetch(createApiUrl(`/api/admin/accept-payment/${orderId}`), { 
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to accept payment');
       setPendingPayments(payments => payments.filter(p => p.id !== orderId));
       // Optionally, refetch stats to update paid/pending totals
-      fetch('/api/admin/overview', {
+      fetch(createApiUrl('/api/admin/overview'), {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then(res => res.json())
@@ -508,16 +496,24 @@ const AdminDashboard = () => {
                   <MessageSquare className="h-5 w-5" />
                 </Button>
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold">
-                    {user?.email?.charAt(0).toUpperCase() || 'A'}
+                    {(() => {
+                      // Display user's name with priority: profile name -> Firebase user display name -> Firebase user email -> specific admin name -> general fallback
+                      const displayName = (profile && profile.name) || (user && user.displayName) || (user && user.email) || 'Jabir Mahmud';
+                      const initial = (displayName && displayName.charAt(0).toUpperCase()) || 'J';
+                      
+                      return (
+                        <>
+                          <div className="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold">
+                            {initial}
+                          </div>
+                          <div className="hidden md:block">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{displayName}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Administrator</p>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
-                  <div className="hidden md:block">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {user?.email || 'Admin User'}
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">Administrator</p>
-                  </div>
-                </div>
               </div>
             </div>
           </header>

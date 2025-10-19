@@ -6,6 +6,7 @@ import { t } from '../lib/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Pill, Heart, Circle, Syringe, Stethoscope, Tag, Search, X } from 'lucide-react';
 import SEOHelmet from '../components/SEOHelmet';
+import { createApiUrl } from '../lib/utils';
 
 const AllCategoriesPage = () => {
   const { language } = useLanguage();
@@ -15,7 +16,7 @@ const AllCategoriesPage = () => {
   const { data: categories = [], isLoading, error } = useQuery({
     queryKey: ['all-categories'],
     queryFn: async () => {
-      const response = await fetch('/api/categories');
+      const response = await fetch(createApiUrl('/api/categories'));
       if (!response.ok) throw new Error('Failed to fetch categories');
       const data = await response.json();
       

@@ -18,6 +18,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useLanguage } from '../../contexts/LanguageContext'; // Added LanguageContext import
 import { t } from '../../lib/i18n'; // Added translation import
+import { createApiUrl } from '../../lib/utils';
 
 // Validation schemas
 const loginSchema = yup.object({
@@ -164,7 +165,7 @@ const AuthPage = () => {
       // For profile updates after login, we use the profile endpoint which requires authentication
       const endpoint = isLogin ? '/api/upload/profile' : '/api/upload/image';
       
-      const response = await fetch(endpoint, {
+      const response = await fetch(createApiUrl(endpoint), {
         method: 'POST',
         body: formData,
       });
@@ -201,35 +202,56 @@ const AuthPage = () => {
   };
 
   const onSubmit = async (data) => {
-    setShowResend(false);
-    setPendingEmail("");
-    
+    if (!checkInternetConnection()) {
+      toast.error('No internet connection. Please check your connection and try again.');
+      return;
+    }
+
     try {
       if (isLogin) {
-        // Login
+        // Login logic
         const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
         const user = userCredential.user;
         
+        // Get fresh ID token with forced refresh
+        const freshIdToken = await user.getIdToken(true);
+        
+        // Send user data and token to backend
+        try {
+          const userData = {
+            uid: user.uid,
+            email: user.email,
+            name: user.displayName,
+            profilePicture: user.photoURL
+          };
+          
+          // Send idToken in the body for /api/auth/firebase-login
+          const response = await fetch(createApiUrl('/api/auth/firebase-login'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ idToken: freshIdToken, ...userData }),
+            credentials: 'include'
+          });
+
+          const responseData = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(responseData.error || 'Failed to authenticate with server');
+          }
+        } catch (error) {
+          console.error('Error authenticating with server:', error);
+          toast.error('Failed to authenticate with server. Please contact support.');
+          // Don't navigate if authentication failed
+          return;
+        }
+        
         // Check if email is verified
         if (!user.emailVerified) {
-          Swal.fire({
-            title: 'Email Verification Required',
-            text: 'Please verify your email address before logging in.',
-            icon: 'warning',
-            confirmButtonText: 'Resend Verification Email',
-            showCancelButton: true,
-            cancelButtonText: 'Cancel'
-          }).then(async (result) => {
-            if (result.isConfirmed) {
-              try {
-                await sendEmailVerification(user);
-                toast.success('Verification email sent! Please check your inbox.');
-              } catch (error) {
-                console.error('Error sending verification email:', error);
-                toast.error('Failed to send verification email. Please try again.');
-              }
-            }
-          });
+          setShowResend(true);
+          setPendingEmail(data.email);
+          toast.error('Please verify your email before logging in. A verification email has been sent to your email address.');
           return;
         }
         
@@ -237,7 +259,7 @@ const AuthPage = () => {
         console.log('Navigating to:', from);
         navigate(from, { replace: true });
       } else {
-        // Signup
+        // Signup logic
         const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
         const user = userCredential.user;
         
@@ -246,21 +268,16 @@ const AuthPage = () => {
         if (profilePhoto) {
           try {
             profilePictureUrl = await uploadPhoto();
-            if (!profilePictureUrl) {
-              toast.error('Failed to upload profile photo. Please try again.');
-              // Continue with signup even if photo upload fails
-            }
-          } catch (photoError) {
-            console.error('Photo upload failed:', photoError);
-            // Continue with signup even if photo upload fails
-            toast.error('Profile photo upload failed, but account was created. You can upload a photo later.');
+          } catch (uploadError) {
+            console.error('Failed to upload profile photo:', uploadError);
+            // Don't fail signup if photo upload fails, just continue without it
           }
         }
         
         // Send verification email
         await sendEmailVerification(user);
         
-        // Save additional user data
+        // Save additional user data to backend
         try {
           const userData = {
             uid: user.uid,
@@ -270,7 +287,7 @@ const AuthPage = () => {
             profilePicture: profilePictureUrl
           };
           
-          const response = await fetch('/api/users/signup', {
+          const response = await fetch(createApiUrl('/api/users/signup'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -366,7 +383,7 @@ const AuthPage = () => {
         };
         
         // Send idToken in the body for /api/auth/firebase-login
-        const response = await fetch('/api/auth/firebase-login', {
+        const response = await fetch(createApiUrl('/api/auth/firebase-login'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -380,7 +397,7 @@ const AuthPage = () => {
         if (!response.ok) {
           // If user not found, try to create a new account
           if (response.status === 404) {
-            const createResponse = await fetch('/api/users/signup', {
+            const createResponse = await fetch(createApiUrl('/api/users/signup'), {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

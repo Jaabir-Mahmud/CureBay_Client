@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useAuth } from '../../../contexts/AuthContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { createApiUrl } from '../../../lib/utils';
 
 const UserDashboard = () => {
   const { user, profile } = useAuth();
@@ -21,7 +22,7 @@ const UserDashboard = () => {
     queryKey: ['userPayments', user?.uid, statusFilter],
     queryFn: async () => {
       if (!user?.uid) return null;
-      const response = await fetch(`/api/payments/user/${profile?.id || user.uid}?status=${statusFilter !== 'all' ? statusFilter : ''}`);
+      const response = await fetch(createApiUrl(`/api/payments/user/${profile?.id || user.uid}?status=${statusFilter !== 'all' ? statusFilter : ''}`));
       if (!response.ok) throw new Error('Failed to fetch payments');
       return response.json();
     },
@@ -33,7 +34,7 @@ const UserDashboard = () => {
     queryKey: ['userOrders', user?.uid],
     queryFn: async () => {
       if (!user?.uid) return null;
-      const response = await fetch(`/api/orders?userId=${profile?.id || user.uid}`);
+      const response = await fetch(createApiUrl(`/api/orders?userId=${profile?.id || user.uid}`));
       if (!response.ok) throw new Error('Failed to fetch orders');
       return response.json();
     },

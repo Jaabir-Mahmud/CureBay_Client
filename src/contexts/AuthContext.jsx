@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "../services/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import toast from "react-hot-toast";
+import { createApiUrl } from "../lib/utils";
 
 // Utility function to sanitize user inputs
 const sanitizeInput = (input) => {
@@ -68,7 +69,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = await firebaseUser.getIdToken();
       // Use relative URL as Vite proxy should handle the routing
-      let res = await fetch('/api/users/me', {
+      let res = await fetch(createApiUrl('/api/users/me'), {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Security-Policy': "default-src 'self'"
@@ -114,13 +115,15 @@ export const AuthProvider = ({ children }) => {
         const userData = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          name: firebaseUser.displayName,
-          username: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+          name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+          username: firebaseUser.displayName 
+            ? firebaseUser.displayName.toLowerCase().replace(/[^a-z0-9_]/g, '').substring(0, 20) || firebaseUser.email.split('@')[0]
+            : firebaseUser.email.split('@')[0],
           role: 'user',
           profilePicture: firebaseUser.photoURL
         };
         // Try to create user (Google sign-in flow)
-        const createRes = await fetch('/api/users/google', {
+        const createRes = await fetch(createApiUrl('/api/users/google'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -130,7 +133,7 @@ export const AuthProvider = ({ children }) => {
         });
         if (createRes.ok) {
           // Try fetching profile again
-          res = await fetch('/api/users/me', {
+          res = await fetch(createApiUrl('/api/users/me'), {
             headers: { 
               Authorization: `Bearer ${token}`,
               'Content-Security-Policy': "default-src 'self'"
@@ -204,64 +207,39 @@ export const AuthProvider = ({ children }) => {
           sanitizedProfileData[key] = profileData[key];
         }
       });
-      
-      // Validate profile picture URL if provided
-      if (sanitizedProfileData.profilePicture) {
-        const sanitizedUrl = sanitizeProfilePictureUrl(sanitizedProfileData.profilePicture);
-        if (sanitizedUrl === null && sanitizedProfileData.profilePicture !== null) {
-          throw new Error('Invalid profile picture URL');
-        }
-        sanitizedProfileData.profilePicture = sanitizedUrl;
-      }
-      
-      // Use relative URL as Vite proxy should handle the routing
-      const response = await fetch('/api/users/update-profile', {
-        method: 'PATCH',
+
+      const response = await fetch(createApiUrl('/api/users/update-profile'), {
+        method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
           'Content-Security-Policy': "default-src 'self'"
         },
         body: JSON.stringify(sanitizedProfileData),
         credentials: 'same-origin'
       });
-      
-      console.log('Response received:', response.status, response.statusText);
 
-      // Check if response is OK before trying to parse JSON
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Profile update successful:', data);
-        // Sanitize the returned user data
-        const sanitizedUserData = {
-          ...data.user,
-          name: sanitizeInput(data.user.name),
-          email: sanitizeInput(data.user.email),
-          username: sanitizeInput(data.user.username),
-          phone: data.user.phone ? sanitizeInput(data.user.phone) : null,
-          address: data.user.address ? sanitizeInput(data.user.address) : null,
-          profilePicture: sanitizeProfilePictureUrl(data.user.profilePicture)
-        };
-        
-        setProfile(sanitizedUserData);
-        return { success: true, data: sanitizedUserData };
-      } else {
-        // Try to parse error response, but handle case where it might not be JSON
-        let errorData;
-        const contentType = response.headers.get('content-type');
-        console.log('Response content type:', contentType);
-        
-        if (contentType && contentType.includes('application/json')) {
-          errorData = await response.json();
-        } else {
-          errorData = { error: `Server error: ${response.status} ${response.statusText}` };
-        }
-        console.log('Profile update failed with error:', errorData);
-        throw new Error(errorData.error || 'Failed to update profile');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update profile');
       }
+
+      const updatedProfile = await response.json();
+      // Sanitize the response data as well
+      const sanitizedResponse = {
+        ...updatedProfile,
+        name: sanitizeInput(updatedProfile.name),
+        email: sanitizeInput(updatedProfile.email),
+        username: sanitizeInput(updatedProfile.username),
+        phone: updatedProfile.phone ? sanitizeInput(updatedProfile.phone) : null,
+        address: updatedProfile.address ? sanitizeInput(updatedProfile.address) : null,
+        profilePicture: sanitizeProfilePictureUrl(updatedProfile.profilePicture)
+      };
+      setProfile(sanitizedResponse);
+      return sanitizedResponse;
     } catch (error) {
-      console.error('Profile update error:', error);
-      return { success: false, error: error.message };
+      console.error('Error updating profile:', error);
+      throw error;
     }
   };
 

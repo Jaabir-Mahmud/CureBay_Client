@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
         '/uploads': 'http://localhost:5000',
       },
       host: true,
-      port: 3001,  // Changed from 3000 to avoid conflicts
+      port: 3000,  
       open: true,
       middleware: [
         (req, res, next) => {

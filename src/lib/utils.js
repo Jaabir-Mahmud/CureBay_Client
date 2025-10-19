@@ -24,7 +24,13 @@ export function getApiBaseUrl() {
  */
 export function createApiUrl(path) {
   const baseUrl = getApiBaseUrl();
-  // Remove leading slash from path if baseUrl is empty (development)
-  const normalizedPath = baseUrl ? path : path.startsWith('/') ? path : `/${path}`;
-  return baseUrl + normalizedPath;
+  // In development, we want relative paths that start with /
+  // In production, we want the full URL
+  if (baseUrl) {
+    // Production: return full URL
+    return baseUrl + path;
+  } else {
+    // Development: ensure path starts with /
+    return path.startsWith('/') ? path : `/${path}`;
+  }
 }

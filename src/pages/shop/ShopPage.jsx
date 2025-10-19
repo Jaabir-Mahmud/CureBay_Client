@@ -19,6 +19,7 @@ import {
   PaginationNext,
   PaginationEllipsis,
 } from '../../components/ui/pagination';
+import { createApiUrl } from '../../lib/utils';
 
 const ShopPage = () => {
   const { language } = useLanguage();
@@ -51,7 +52,7 @@ const ShopPage = () => {
         params.append('search', searchTerm);
       }
       
-      const response = await fetch(`/api/medicines?${params.toString()}`);
+      const response = await fetch(createApiUrl(`/api/medicines?${params.toString()}`));
       if (!response.ok) throw new Error('Failed to fetch medicines');
       return response.json();
     }
@@ -61,7 +62,7 @@ const ShopPage = () => {
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const response = await fetch('/api/categories');
+      const response = await fetch(createApiUrl('/api/categories'));
       if (!response.ok) throw new Error('Failed to fetch categories');
       return response.json();
     }

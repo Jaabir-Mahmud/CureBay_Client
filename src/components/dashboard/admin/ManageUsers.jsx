@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../../ui/tooltip';
+import { createApiUrl } from '../../../lib/utils';
 
 function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -46,7 +47,7 @@ function ManageUsers() {
   const fetchUsers = async () => {
     try {
       const token = await currentUser.getIdToken();
-      const res = await fetch('/api/users', {
+      const res = await fetch(createApiUrl('/api/users'), {
         headers: { Authorization: `Bearer ${token}` },
       });
       
@@ -90,7 +91,7 @@ function ManageUsers() {
   const updateRole = async (id, newRole) => {
     try {
       const token = await currentUser.getIdToken();
-      const res = await fetch(`/api/users/${id}/role`, {
+      const res = await fetch(createApiUrl(`/api/users/${id}/role`), {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -116,7 +117,7 @@ function ManageUsers() {
     setIsDeleting(true);
     try {
       const token = await currentUser.getIdToken();
-      const res = await fetch(`/api/users/${userToDelete._id}`, { 
+      const res = await fetch(createApiUrl(`/api/users/${userToDelete._id}`), { 
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -158,7 +159,7 @@ function ManageUsers() {
     setError(null);
     try {
       const token = await currentUser.getIdToken();
-      const res = await fetch('/api/users', {
+      const res = await fetch(createApiUrl('/api/users'), {
         headers: { Authorization: `Bearer ${token}` },
       });
       
@@ -199,25 +200,20 @@ function ManageUsers() {
     }
   };
 
-  const toggleActive = async (id) => {
+  const toggleUserActiveStatus = async (id) => {
     try {
       const token = await currentUser.getIdToken();
-      const res = await fetch(`/api/users/${id}/active`, { 
+      const res = await fetch(createApiUrl(`/api/users/${id}/active`), {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
       });
-      if (!res.ok) throw new Error('Failed to update status');
-      // Handle potential empty or invalid JSON responses
-      let data;
-      try {
-        data = await res.json();
-      } catch (jsonError) {
-        console.error('Failed to parse JSON response:', jsonError);
-        data = { isActive: false }; // Use default value as fallback
-      }
-      setUsers(users => users.map(u => (u._id === id ? { ...u, isActive: data.isActive } : u)));
+      if (!res.ok) throw new Error('Failed to toggle user status');
+      setUsers(users => users.map(u => (u._id === id ? { ...u, isActive: !u.isActive } : u)));
     } catch {
-      alert('Failed to update status');
+      alert('Failed to toggle user status');
     }
   };
 

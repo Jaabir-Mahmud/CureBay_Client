@@ -7,6 +7,7 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { useCart } from '../contexts/CartContext';
 import SEOHelmet from '../components/SEOHelmet';
+import { createApiUrl } from '../lib/utils';
 
 const CategoryPage = () => {
   const { addToCart, isInCart, wishlist = [] } = useCart();
@@ -23,7 +24,7 @@ const CategoryPage = () => {
     queryKey: ['category', categoryName],
     queryFn: async () => {
       if (!categoryName) return null;
-      const response = await fetch(`/api/categories/name/${encodeURIComponent(categoryName)}`);
+      const response = await fetch(createApiUrl(`/api/categories/name/${encodeURIComponent(categoryName)}`));
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error('Category not found');
@@ -54,7 +55,7 @@ const CategoryPage = () => {
         ...(searchTerm && { search: searchTerm })
       });
       
-      const response = await fetch(`/api/medicines?category=${currentCategory._id}&${params}`);
+      const response = await fetch(createApiUrl(`/api/medicines?category=${currentCategory._id}&${params}`));
       if (!response.ok) throw new Error('Failed to fetch medicines');
       return response.json();
     },
